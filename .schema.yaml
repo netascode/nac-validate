@@ -1,0 +1,44 @@
+---
+apic: include('apic', required=False)
+defaults: map(required=False)
+---
+apic:
+  tenants: list(include('tenant'), required=False)
+
+tenant:
+  name: regex('^[a-zA-Z0-9_.:-]{1,64}$')
+  description: regex('^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$', required=False)
+  vrfs: list(include('ten_vrf'), required=False)
+  bridge_domains: list(include('ten_bridge_domains'), required=False)
+  application_profiles: list(include('ten_application_profiles'), required=False)
+
+ten_vrf:
+  name: regex('^[a-zA-Z0-9_.:-]{1,64}$')
+  description: regex('^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$', required=False)
+  preferred_group: bool(required=False)
+
+ten_bridge_domains:
+  name: regex('^[a-zA-Z0-9_.:-]{1,64}$')
+  description: regex('^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$', required=False)
+  arp_flooding: bool(required=False)
+  unicast_routing: bool(required=False)
+  unknown_unicast: enum('flood', 'proxy', required=False)
+  vrf: regex('^[a-zA-Z0-9_.:-]{1,64}$')
+  subnets: list(include('ten_bridge_domain_subnets'), required=False)
+
+ten_bridge_domain_subnets:
+  description: regex('^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$', required=False)
+  ip: ip()
+  public: bool(required=False)
+  shared: bool(required=False)
+
+ten_application_profiles:
+  name: regex('^[a-zA-Z0-9_.:-]{1,64}$')
+  description: regex('^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$', required=False)
+  endpoint_groups: list(include('ten_ap_endpoint_groups'), required=False)
+
+ten_ap_endpoint_groups:
+  name: regex('^[a-zA-Z0-9_.:-]{1,64}$')
+  description: regex('^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$', required=False)
+  preferred_group: bool(required=False)
+  bridge_domain: regex('^[a-zA-Z0-9_.:-]{1,64}$')
