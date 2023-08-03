@@ -16422,6 +16422,12 @@
                                 },
                                 "title": "Users",
                                 "description": "Users (List - Object)\n\nElements:\n- name (required)\n- domain"
+                            },
+                            "orchestrator_only": {
+                                "type": "boolean",
+                                "default": "true",
+                                "title": "Orchestrator Only",
+                                "description": "Orchestrator Only (Boolean)\n- Default value: true"
                             }
                         },
                         "required": [
@@ -16429,7 +16435,7 @@
                         ]
                     },
                     "title": "Tenants",
-                    "description": "Tenants (List - Object)\n\nElements:\n- name (required)\n- description\n- sites\n- users"
+                    "description": "Tenants (List - Object)\n\nElements:\n- name (required)\n- description\n- sites\n- users\n- orchestrator_only"
                 },
                 "policies": {
                     "type": "object",
@@ -17271,6 +17277,18 @@
                                                         "title": "Name",
                                                         "description": "Name (String)"
                                                     },
+                                                    "data_plane_learning": {
+                                                        "type": "boolean",
+                                                        "default": "true",
+                                                        "title": "Data Plane Learning",
+                                                        "description": "Data Plane Learning (Boolean)\n- Default value: true"
+                                                    },
+                                                    "preferred_group": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Preferred Group",
+                                                        "description": "Preferred Group (Boolean)\n- Default value: false"
+                                                    },
                                                     "l3_multicast": {
                                                         "type": "boolean",
                                                         "default": "false",
@@ -17467,7 +17485,7 @@
                                                 ]
                                             },
                                             "title": "VRFs",
-                                            "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- l3_multicast\n- vzany\n- sites\n- contracts"
+                                            "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- data_plane_learning\n- preferred_group\n- l3_multicast\n- vzany\n- sites\n- contracts"
                                         },
                                         "bridge_domains": {
                                             "type": "array",
@@ -17526,6 +17544,43 @@
                                                         "default": "false",
                                                         "title": "L3 Multicast",
                                                         "description": "L3 Multicast (Boolean)\n- Default value: false"
+                                                    },
+                                                    "virtual_mac": {
+                                                        "type": "string",
+                                                        "pattern": "^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$",
+                                                        "title": "Virtual MAC",
+                                                        "description": "Virtual MAC (String)\n- MAC address (XX:XX:XX:XX:XX:XX)"
+                                                    },
+                                                    "multi_destination_flooding": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "bd-flood",
+                                                            "encap-flood",
+                                                            "drop"
+                                                        ],
+                                                        "default": "bd-flood",
+                                                        "title": "Multi Destination Flooding",
+                                                        "description": "Multi Destination Flooding (String)\n- Default value: bd-flood\n- Allowed values: bd-flood, encap-flood, drop"
+                                                    },
+                                                    "unknown_ipv4_multicast": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "flood",
+                                                            "opt-flood"
+                                                        ],
+                                                        "default": "flood",
+                                                        "title": "Unknown Ipv4 Multicast",
+                                                        "description": "Unknown Ipv4 Multicast (String)\n- Default value: flood\n- Allowed values: flood, opt-flood"
+                                                    },
+                                                    "unknown_ipv6_multicast": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "flood",
+                                                            "opt-flood"
+                                                        ],
+                                                        "default": "flood",
+                                                        "title": "Unknown Ipv6 Multicast",
+                                                        "description": "Unknown Ipv6 Multicast (String)\n- Default value: flood\n- Allowed values: flood, opt-flood"
                                                     },
                                                     "vrf": {
                                                         "type": "object",
@@ -17730,7 +17785,7 @@
                                                 ]
                                             },
                                             "title": "Bridge Domains",
-                                            "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- l2_unknown_unicast\n- intersite_bum_traffic\n- optimize_wan_bandwidth\n- l2_stretch\n- unicast_routing\n- arp_flooding\n- l3_multicast\n- vrf (required)\n- subnets\n- sites\n- dhcp_policies\n- dhcp_relay_policy\n- dhcp_option_policy"
+                                            "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- l2_unknown_unicast\n- intersite_bum_traffic\n- optimize_wan_bandwidth\n- l2_stretch\n- unicast_routing\n- arp_flooding\n- l3_multicast\n- virtual_mac\n- multi_destination_flooding\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- sites\n- dhcp_policies\n- dhcp_relay_policy\n- dhcp_option_policy"
                                         },
                                         "filters": {
                                             "type": "array",
@@ -18729,6 +18784,23 @@
                                                                     "title": "Name",
                                                                     "description": "Name (String)"
                                                                 },
+                                                                "type": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "firewall",
+                                                                        "load-balancer",
+                                                                        "other"
+                                                                    ],
+                                                                    "title": "Type",
+                                                                    "description": "Type (String)\n- Allowed values: firewall, load-balancer, other"
+                                                                },
+                                                                "index": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 3,
+                                                                    "title": "Index",
+                                                                    "description": "Index (Integer)\n- Minimum value: 1\n- Maximum value: 3"
+                                                                },
                                                                 "sites": {
                                                                     "type": "array",
                                                                     "items": {
@@ -18768,7 +18840,7 @@
                                                             ]
                                                         },
                                                         "title": "Nodes",
-                                                        "description": "Nodes (List - Object)\n\nElements:\n- name (required)\n- sites (required)"
+                                                        "description": "Nodes (List - Object)\n\nElements:\n- name (required)\n- type\n- index\n- sites (required)"
                                                     }
                                                 },
                                                 "required": [
