@@ -7617,11 +7617,16 @@
                             },
                             "title": "Nodes",
                             "description": "Nodes (List - Object)\n\nElements:\n- id (required)\n- pod\n- role (required)\n- type\n- serial_number\n- name\n- oob_address\n- oob_gateway\n- oob_v6_address\n- oob_v6_gateway\n- inb_address\n- inb_gateway\n- inb_v6_address\n- inb_v6_gateway\n- update_group\n- fabric_policy_group\n- access_policy_group\n- remote_pool_id"
+                        },
+                        "expected_state": {
+                            "type": "object",
+                            "title": "Expected State",
+                            "description": "Expected State (Object)\n- Map (key-value pairs)"
                         }
                     },
                     "required": [],
                     "title": "Node Policies",
-                    "description": "Node Policies (Object)\n\nElements:\n- inb_endpoint_group\n- oob_endpoint_group\n- update_groups\n- vpc_groups\n- nodes"
+                    "description": "Node Policies (Object)\n\nElements:\n- inb_endpoint_group\n- oob_endpoint_group\n- update_groups\n- vpc_groups\n- nodes\n- expected_state"
                 },
                 "interface_policies": {
                     "type": "object",
@@ -7727,6 +7732,11 @@
                                                                 "maximum": 199,
                                                                 "title": "FEX ID",
                                                                 "description": "FEX ID (Integer)\n- Minimum value: 101\n- Maximum value: 199"
+                                                            },
+                                                            "expected_state": {
+                                                                "type": "object",
+                                                                "title": "Expected State",
+                                                                "description": "Expected State (Object)\n- Map (key-value pairs)"
                                                             }
                                                         },
                                                         "required": [
@@ -7734,7 +7744,12 @@
                                                         ]
                                                     },
                                                     "title": "Sub Ports",
-                                                    "description": "Sub Ports (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id"
+                                                    "description": "Sub Ports (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id\n- expected_state"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n- Map (key-value pairs)"
                                                 }
                                             },
                                             "required": [
@@ -7742,7 +7757,7 @@
                                             ]
                                         },
                                         "title": "Interfaces",
-                                        "description": "Interfaces (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id\n- type\n- sub_ports"
+                                        "description": "Interfaces (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id\n- type\n- sub_ports\n- expected_state"
                                     },
                                     "fexes": {
                                         "type": "array",
@@ -7788,6 +7803,11 @@
                                                                 "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                                 "title": "Policy Group",
                                                                 "description": "Policy Group (String)"
+                                                            },
+                                                            "expected_state": {
+                                                                "type": "object",
+                                                                "title": "Expected State",
+                                                                "description": "Expected State (Object)\n- Map (key-value pairs)"
                                                             }
                                                         },
                                                         "required": [
@@ -7795,7 +7815,7 @@
                                                         ]
                                                     },
                                                     "title": "Interfaces",
-                                                    "description": "Interfaces (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group"
+                                                    "description": "Interfaces (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- expected_state"
                                                 }
                                             },
                                             "required": [
@@ -7903,6 +7923,24 @@
                                             "default": "false",
                                             "title": "Preferred Group",
                                             "description": "Preferred Group (Boolean)\n- Default value: false"
+                                        },
+                                        "endpoint_retention_policy": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Endpoint Retention Policy",
+                                            "description": "Endpoint Retention Policy (String)"
+                                        },
+                                        "monitoring_policy": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Monitoring Policy",
+                                            "description": "Monitoring Policy (String)"
+                                        },
+                                        "transit_route_tag_policy": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Transit Route Tag Policy",
+                                            "description": "Transit Route Tag Policy (String)"
                                         },
                                         "leaked_internal_prefixes": {
                                             "type": "array",
@@ -8119,6 +8157,21 @@
                                             "required": [],
                                             "title": "BGP",
                                             "description": "BGP (Object)\n\nElements:\n- timer_policy\n- ipv4_address_family_context_policy\n- ipv6_address_family_context_policy\n- ipv4_import_route_target\n- ipv4_export_route_target\n- ipv6_import_route_target\n- ipv6_export_route_target"
+                                        },
+                                        "ospf": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "timer_policy": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Timer Policy",
+                                                    "description": "Timer Policy (String)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "OSPF",
+                                            "description": "OSPF (Object)\n\nElements:\n- timer_policy"
                                         },
                                         "dns_labels": {
                                             "type": "array",
@@ -8399,7 +8452,7 @@
                                     ]
                                 },
                                 "title": "VRFs",
-                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim"
+                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- endpoint_retention_policy\n- monitoring_policy\n- transit_route_tag_policy\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- ospf\n- dns_labels\n- pim"
                             },
                             "bridge_domains": {
                                 "type": "array",
@@ -8975,6 +9028,63 @@
                                                         "title": "Static Ports",
                                                         "description": "Static Ports (List - Object)\n\nElements:\n- node_id\n- node2_id\n- fex_id\n- pod_id\n- module\n- port\n- sub_port\n- channel\n- vlan (required)\n- deployment_immediacy\n- mode"
                                                     },
+                                                    "static_leafs": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "node_id": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 4000,
+                                                                    "title": "Node ID",
+                                                                    "description": "Node ID (Integer)\n- Minimum value: 1\n- Maximum value: 4000"
+                                                                },
+                                                                "pod_id": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 255,
+                                                                    "title": "Pod ID",
+                                                                    "description": "Pod ID (Integer)\n- Minimum value: 1\n- Maximum value: 255"
+                                                                },
+                                                                "vlan": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 4096,
+                                                                    "title": "Vlan",
+                                                                    "description": "Vlan (Integer)\n- Minimum value: 1\n- Maximum value: 4096"
+                                                                },
+                                                                "deployment_immediacy": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "immediate",
+                                                                        "lazy"
+                                                                    ],
+                                                                    "default": "lazy",
+                                                                    "title": "Deployment Immediacy",
+                                                                    "description": "Deployment Immediacy (String)\n- Default value: lazy\n- Allowed values: immediate, lazy"
+                                                                },
+                                                                "mode": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "regular",
+                                                                        "native",
+                                                                        "untagged"
+                                                                    ],
+                                                                    "default": "regular",
+                                                                    "title": "Mode",
+                                                                    "description": "Mode (String)\n- Default value: regular\n- Allowed values: regular, native, untagged"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "node_id",
+                                                                "vlan"
+                                                            ]
+                                                        },
+                                                        "title": "Static Leafs",
+                                                        "description": "Static Leafs (List - Object)\n\nElements:\n- node_id (required)\n- pod_id\n- vlan (required)\n- deployment_immediacy\n- mode"
+                                                    },
                                                     "static_endpoints": {
                                                         "type": "array",
                                                         "items": {
@@ -9388,7 +9498,7 @@
                                                 ]
                                             },
                                             "title": "Endpoint Groups",
-                                            "description": "Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- flood_in_encap\n- intra_epg_isolation\n- preferred_group\n- proxy_arp\n- bridge_domain (required)\n- physical_domains\n- vmware_vmm_domains\n- static_ports\n- static_endpoints\n- subnets\n- contracts\n- qos_class\n- custom_qos_policy\n- tags\n- trust_control_policy\n- l4l7_virtual_ips\n- l4l7_address_pools"
+                                            "description": "Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- flood_in_encap\n- intra_epg_isolation\n- preferred_group\n- proxy_arp\n- bridge_domain (required)\n- physical_domains\n- vmware_vmm_domains\n- static_ports\n- static_leafs\n- static_endpoints\n- subnets\n- contracts\n- qos_class\n- custom_qos_policy\n- tags\n- trust_control_policy\n- l4l7_virtual_ips\n- l4l7_address_pools"
                                         },
                                         "endpoint_security_groups": {
                                             "type": "array",
