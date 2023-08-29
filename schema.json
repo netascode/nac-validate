@@ -5023,6 +5023,7 @@
                                             "speed": {
                                                 "type": "string",
                                                 "enum": [
+                                                    "auto",
                                                     "100M",
                                                     "1G",
                                                     "10G",
@@ -5034,7 +5035,7 @@
                                                 ],
                                                 "default": "inherit",
                                                 "title": "Speed",
-                                                "description": "Speed (String)\n- Default value: inherit\n- Allowed values: 100M, 1G, 10G, 25G, 40G, 100G, 400G, inherit"
+                                                "description": "Speed (String)\n- Default value: inherit\n- Allowed values: auto, 100M, 1G, 10G, 25G, 40G, 100G, 400G, inherit"
                                             },
                                             "auto": {
                                                 "type": "boolean",
@@ -7608,6 +7609,11 @@
                                         "maximum": 255,
                                         "title": "Remote Pool ID",
                                         "description": "Remote Pool ID (Integer)\n- Minimum value: 1\n- Maximum value: 255"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n- Map (key-value pairs)"
                                     }
                                 },
                                 "required": [
@@ -7616,7 +7622,7 @@
                                 ]
                             },
                             "title": "Nodes",
-                            "description": "Nodes (List - Object)\n\nElements:\n- id (required)\n- pod\n- role (required)\n- type\n- serial_number\n- name\n- oob_address\n- oob_gateway\n- oob_v6_address\n- oob_v6_gateway\n- inb_address\n- inb_gateway\n- inb_v6_address\n- inb_v6_gateway\n- update_group\n- fabric_policy_group\n- access_policy_group\n- remote_pool_id"
+                            "description": "Nodes (List - Object)\n\nElements:\n- id (required)\n- pod\n- role (required)\n- type\n- serial_number\n- name\n- oob_address\n- oob_gateway\n- oob_v6_address\n- oob_v6_gateway\n- inb_address\n- inb_gateway\n- inb_v6_address\n- inb_v6_gateway\n- update_group\n- fabric_policy_group\n- access_policy_group\n- remote_pool_id\n- expected_state"
                         },
                         "expected_state": {
                             "type": "object",
@@ -7924,24 +7930,6 @@
                                             "title": "Preferred Group",
                                             "description": "Preferred Group (Boolean)\n- Default value: false"
                                         },
-                                        "endpoint_retention_policy": {
-                                            "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
-                                            "title": "Endpoint Retention Policy",
-                                            "description": "Endpoint Retention Policy (String)"
-                                        },
-                                        "monitoring_policy": {
-                                            "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
-                                            "title": "Monitoring Policy",
-                                            "description": "Monitoring Policy (String)"
-                                        },
-                                        "transit_route_tag_policy": {
-                                            "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
-                                            "title": "Transit Route Tag Policy",
-                                            "description": "Transit Route Tag Policy (String)"
-                                        },
                                         "leaked_internal_prefixes": {
                                             "type": "array",
                                             "items": {
@@ -8157,21 +8145,6 @@
                                             "required": [],
                                             "title": "BGP",
                                             "description": "BGP (Object)\n\nElements:\n- timer_policy\n- ipv4_address_family_context_policy\n- ipv6_address_family_context_policy\n- ipv4_import_route_target\n- ipv4_export_route_target\n- ipv6_import_route_target\n- ipv6_export_route_target"
-                                        },
-                                        "ospf": {
-                                            "type": "object",
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "timer_policy": {
-                                                    "type": "string",
-                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
-                                                    "title": "Timer Policy",
-                                                    "description": "Timer Policy (String)"
-                                                }
-                                            },
-                                            "required": [],
-                                            "title": "OSPF",
-                                            "description": "OSPF (Object)\n\nElements:\n- timer_policy"
                                         },
                                         "dns_labels": {
                                             "type": "array",
@@ -8452,7 +8425,7 @@
                                     ]
                                 },
                                 "title": "VRFs",
-                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- endpoint_retention_policy\n- monitoring_policy\n- transit_route_tag_policy\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- ospf\n- dns_labels\n- pim"
+                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim"
                             },
                             "bridge_domains": {
                                 "type": "array",
