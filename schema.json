@@ -7365,6 +7365,11 @@
                                         },
                                         "title": "Remote Pools",
                                         "description": "Remote Pools (List - Object)\n\nElements:\n- id (required)\n- remote_pool (required)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n- Map (key-value pairs)"
                                     }
                                 },
                                 "required": [
@@ -7372,7 +7377,7 @@
                                 ]
                             },
                             "title": "Pods",
-                            "description": "Pods (List - Object)\n\nElements:\n- id (required)\n- tep_pool\n- data_plane_tep\n- unicast_tep\n- policy\n- external_tep_pools\n- remote_pools"
+                            "description": "Pods (List - Object)\n\nElements:\n- id (required)\n- tep_pool\n- data_plane_tep\n- unicast_tep\n- policy\n- external_tep_pools\n- remote_pools\n- expected_state"
                         }
                     },
                     "required": [],
