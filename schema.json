@@ -775,12 +775,42 @@
                                                 },
                                                 "title": "NTP Keys",
                                                 "description": "NTP Keys (List - Object)\n\nElements:\n- id (required)\n- key (required)\n- auth_type (required)\n- trusted (required)"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": []
                                     },
                                     "title": "Date Time Policies",
-                                    "description": "Date Time Policies (List - Object)\n\nElements:\n- name\n- ntp_admin_state\n- ntp_auth_state\n- apic_ntp_server_state\n- apic_ntp_server_master_mode\n- apic_ntp_server_master_stratum\n- ntp_servers\n- ntp_keys"
+                                    "description": "Date Time Policies (List - Object)\n\nElements:\n- name\n- ntp_admin_state\n- ntp_auth_state\n- apic_ntp_server_state\n- apic_ntp_server_master_mode\n- apic_ntp_server_master_stratum\n- ntp_servers\n- ntp_keys\n- expected_state"
                                 },
                                 "snmp_policies": {
                                     "type": "array",
@@ -1310,6 +1340,36 @@
                                         },
                                         "title": "Selectors",
                                         "description": "Selectors (List - Object)\n\nElements:\n- name (required)\n- policy\n- type\n- pod_blocks"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -1317,7 +1377,7 @@
                                 ]
                             },
                             "title": "Pod Profiles",
-                            "description": "Pod Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors"
+                            "description": "Pod Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- expected_state"
                         },
                         "switch_policies": {
                             "type": "object",
@@ -1541,6 +1601,36 @@
                                         },
                                         "title": "Interface Profiles",
                                         "description": "Interface Profiles (List - String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -1548,7 +1638,7 @@
                                 ]
                             },
                             "title": "Leaf Switch Profiles",
-                            "description": "Leaf Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles"
+                            "description": "Leaf Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles\n- expected_state"
                         },
                         "spine_switch_profiles": {
                             "type": "array",
@@ -1631,6 +1721,36 @@
                                         },
                                         "title": "Interface Profiles",
                                         "description": "Interface Profiles (List - String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -1638,7 +1758,7 @@
                                 ]
                             },
                             "title": "Spine Switch Profiles",
-                            "description": "Spine Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles"
+                            "description": "Spine Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles\n- expected_state"
                         },
                         "leaf_interface_profiles": {
                             "type": "array",
@@ -1651,6 +1771,36 @@
                                         "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                         "title": "Name",
                                         "description": "Name (String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -1658,7 +1808,7 @@
                                 ]
                             },
                             "title": "Leaf Interface Profiles",
-                            "description": "Leaf Interface Profiles (List - Object)\n\nElements:\n- name (required)"
+                            "description": "Leaf Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- expected_state"
                         },
                         "spine_interface_profiles": {
                             "type": "array",
@@ -1740,6 +1890,36 @@
                                         },
                                         "title": "Selectors",
                                         "description": "Selectors (List - Object)\n\nElements:\n- name (required)\n- port_blocks"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -1747,7 +1927,7 @@
                                 ]
                             },
                             "title": "Spine Interface Profiles",
-                            "description": "Spine Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors"
+                            "description": "Spine Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- expected_state"
                         },
                         "external_connectivity_policy": {
                             "type": "object",
@@ -1817,13 +1997,43 @@
                                     },
                                     "title": "Routing Profiles",
                                     "description": "Routing Profiles (List - Object)\n\nElements:\n- name (required)\n- description\n- subnets"
+                                },
+                                "expected_state": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "minimum_health": {
+                                            "type": "integer",
+                                            "maximum": 100,
+                                            "title": "Minimum Health",
+                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                        },
+                                        "maximum_critical_faults": {
+                                            "type": "integer",
+                                            "title": "Maximum Critical Faults",
+                                            "description": "Maximum Critical Faults (Integer)"
+                                        },
+                                        "maximum_major_faults": {
+                                            "type": "integer",
+                                            "title": "Maximum Major Faults",
+                                            "description": "Maximum Major Faults (Integer)"
+                                        },
+                                        "maximum_minor_faults": {
+                                            "type": "integer",
+                                            "title": "Maximum Minor Faults",
+                                            "description": "Maximum Minor Faults (Integer)"
+                                        }
+                                    },
+                                    "required": [],
+                                    "title": "Expected State",
+                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                 }
                             },
                             "required": [
                                 "name"
                             ],
                             "title": "External Connectivity Policy",
-                            "description": "External Connectivity Policy (Object)\n\nElements:\n- name (required)\n- fabric_id\n- site_id\n- bgp_password\n- route_target\n- routing_profiles"
+                            "description": "External Connectivity Policy (Object)\n\nElements:\n- name (required)\n- fabric_id\n- site_id\n- bgp_password\n- route_target\n- routing_profiles\n- expected_state"
                         },
                         "infra_dscp_translation_policy": {
                             "type": "object",
@@ -2499,6 +2709,36 @@
                                         },
                                         "title": "Uplinks",
                                         "description": "Uplinks (List - Object)\n\nElements:\n- id (required)\n- name (required)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -2506,7 +2746,7 @@
                                 ]
                             },
                             "title": "Vmware VMM Domains",
-                            "description": "Vmware VMM Domains (List - Object)\n\nElements:\n- name (required)\n- access_mode\n- delimiter\n- tag_collection\n- vlan_pool\n- vswitch\n- credential_policies\n- vcenters\n- uplinks"
+                            "description": "Vmware VMM Domains (List - Object)\n\nElements:\n- name (required)\n- access_mode\n- delimiter\n- tag_collection\n- vlan_pool\n- vswitch\n- credential_policies\n- vcenters\n- uplinks\n- expected_state"
                         },
                         "aaa": {
                             "type": "object",
@@ -2648,6 +2888,36 @@
                                                 "type": "string",
                                                 "title": "Monitoring Password",
                                                 "description": "Monitoring Password (String)"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -2655,7 +2925,7 @@
                                         ]
                                     },
                                     "title": "Tacacs Providers",
-                                    "description": "Tacacs Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- protocol\n- key\n- timeout\n- retries\n- mgmt_epg\n- monitoring\n- monitoring_username\n- monitoring_password"
+                                    "description": "Tacacs Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- protocol\n- key\n- timeout\n- retries\n- mgmt_epg\n- monitoring\n- monitoring_username\n- monitoring_password\n- expected_state"
                                 },
                                 "users": {
                                     "type": "array",
@@ -3297,6 +3567,36 @@
                                         "default": "inb",
                                         "title": "MGMT EPG",
                                         "description": "MGMT EPG (String)\n- Default value: inb\n- Allowed values: inb, oob"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -3307,7 +3607,7 @@
                                 ]
                             },
                             "title": "Remote Locations",
-                            "description": "Remote Locations (List - Object)\n\nElements:\n- name (required)\n- description\n- hostname_ip (required)\n- protocol (required)\n- path\n- port\n- auth_type\n- username (required)\n- password\n- ssh_public_key\n- ssh_private_key\n- ssh_passphrase\n- mgmt_epg"
+                            "description": "Remote Locations (List - Object)\n\nElements:\n- name (required)\n- description\n- hostname_ip (required)\n- protocol (required)\n- path\n- port\n- auth_type\n- username (required)\n- password\n- ssh_public_key\n- ssh_private_key\n- ssh_passphrase\n- mgmt_epg\n- expected_state"
                         },
                         "schedulers": {
                             "type": "array",
@@ -3430,6 +3730,36 @@
                                         "default": "false",
                                         "title": "Snapshot",
                                         "description": "Snapshot (Boolean)\n- Default value: false"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -3437,7 +3767,7 @@
                                 ]
                             },
                             "title": "Config Exports",
-                            "description": "Config Exports (List - Object)\n\nElements:\n- name (required)\n- description\n- format\n- remote_location\n- scheduler\n- snapshot"
+                            "description": "Config Exports (List - Object)\n\nElements:\n- name (required)\n- description\n- format\n- remote_location\n- scheduler\n- snapshot\n- expected_state"
                         },
                         "monitoring": {
                             "type": "object",
@@ -3934,6 +4264,36 @@
                                                 ],
                                                 "title": "Destination",
                                                 "description": "Destination (Object)\n\nElements:\n- name (required)\n- description"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -3942,7 +4302,7 @@
                                         ]
                                     },
                                     "title": "Source Groups",
-                                    "description": "Source Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- sources\n- destination (required)"
+                                    "description": "Source Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- sources\n- destination (required)\n- expected_state"
                                 },
                                 "destination_groups": {
                                     "type": "array",
@@ -4068,6 +4428,36 @@
                                                 "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                 "title": "Endpoint Group",
                                                 "description": "Endpoint Group (String)"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -4075,7 +4465,7 @@
                                         ]
                                     },
                                     "title": "Destination Groups",
-                                    "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- ip\n- source_prefix\n- dscp\n- flow_id\n- mtu\n- ttl\n- version\n- enforce_version\n- tenant\n- application_profile\n- endpoint_group"
+                                    "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- ip\n- source_prefix\n- dscp\n- flow_id\n- mtu\n- ttl\n- version\n- enforce_version\n- tenant\n- application_profile\n- endpoint_group\n- expected_state"
                                 }
                             },
                             "required": [],
@@ -4389,6 +4779,36 @@
                                         "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                         "title": "Vlan Pool",
                                         "description": "Vlan Pool (String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -4397,7 +4817,7 @@
                                 ]
                             },
                             "title": "Physical Domains",
-                            "description": "Physical Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)"
+                            "description": "Physical Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)\n- expected_state"
                         },
                         "routed_domains": {
                             "type": "array",
@@ -4416,6 +4836,36 @@
                                         "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                         "title": "Vlan Pool",
                                         "description": "Vlan Pool (String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -4424,7 +4874,7 @@
                                 ]
                             },
                             "title": "Routed Domains",
-                            "description": "Routed Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)"
+                            "description": "Routed Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)\n- expected_state"
                         },
                         "aaeps": {
                             "type": "array",
@@ -4546,6 +4996,36 @@
                                         },
                                         "title": "Endpoint Groups",
                                         "description": "Endpoint Groups (List - Object)\n\nElements:\n- tenant (required)\n- application_profile (required)\n- endpoint_group (required)\n- vlan\n- primary_vlan\n- secondary_vlan\n- mode\n- deployment_immediacy"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -4553,7 +5033,7 @@
                                 ]
                             },
                             "title": "AAEPs",
-                            "description": "AAEPs (List - Object)\n\nElements:\n- name (required)\n- infra_vlan\n- physical_domains\n- routed_domains\n- vmware_vmm_domains\n- endpoint_groups"
+                            "description": "AAEPs (List - Object)\n\nElements:\n- name (required)\n- infra_vlan\n- physical_domains\n- routed_domains\n- vmware_vmm_domains\n- endpoint_groups\n- expected_state"
                         },
                         "switch_policies": {
                             "type": "object",
@@ -4847,6 +5327,36 @@
                                         },
                                         "title": "Interface Profiles",
                                         "description": "Interface Profiles (List - String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -4854,7 +5364,7 @@
                                 ]
                             },
                             "title": "Leaf Switch Profiles",
-                            "description": "Leaf Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles"
+                            "description": "Leaf Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles\n- expected_state"
                         },
                         "spine_switch_profiles": {
                             "type": "array",
@@ -4937,6 +5447,36 @@
                                         },
                                         "title": "Interface Profiles",
                                         "description": "Interface Profiles (List - String)"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -4944,7 +5484,7 @@
                                 ]
                             },
                             "title": "Spine Switch Profiles",
-                            "description": "Spine Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles"
+                            "description": "Spine Switch Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- interface_profiles\n- expected_state"
                         },
                         "interface_policies": {
                             "type": "object",
@@ -5907,6 +6447,36 @@
                                         },
                                         "title": "Selectors",
                                         "description": "Selectors (List - Object)\n\nElements:\n- name (required)\n- fex_id\n- fex_profile\n- policy_group\n- port_blocks\n- sub_port_blocks"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -5914,7 +6484,7 @@
                                 ]
                             },
                             "title": "Leaf Interface Profiles",
-                            "description": "Leaf Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors"
+                            "description": "Leaf Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- expected_state"
                         },
                         "fex_interface_profiles": {
                             "type": "array",
@@ -6022,6 +6592,36 @@
                                         },
                                         "title": "Selectors",
                                         "description": "Selectors (List - Object)\n\nElements:\n- name (required)\n- fex_id\n- fex_profile\n- policy_group\n- port_blocks"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -6029,7 +6629,7 @@
                                 ]
                             },
                             "title": "FEX Interface Profiles",
-                            "description": "FEX Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors"
+                            "description": "FEX Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- expected_state"
                         },
                         "spine_interface_profiles": {
                             "type": "array",
@@ -6137,6 +6737,36 @@
                                         },
                                         "title": "Selectors",
                                         "description": "Selectors (List - Object)\n\nElements:\n- name (required)\n- fex_id\n- fex_profile\n- policy_group\n- port_blocks"
+                                    },
+                                    "expected_state": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
+                                        "title": "Expected State",
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -6144,7 +6774,7 @@
                                 ]
                             },
                             "title": "Spine Interface Profiles",
-                            "description": "Spine Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors"
+                            "description": "Spine Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- selectors\n- expected_state"
                         },
                         "mcp": {
                             "type": "object",
@@ -6522,6 +7152,36 @@
                                                 "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                 "title": "Endpoint Group",
                                                 "description": "Endpoint Group (String)"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -6529,7 +7189,7 @@
                                         ]
                                     },
                                     "title": "Destination Groups",
-                                    "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- node_id\n- pod_id\n- sub_port\n- module\n- port\n- channel\n- ip\n- source_prefix\n- dscp\n- flow_id\n- mtu\n- ttl\n- version\n- enforce_version\n- tenant\n- application_profile\n- endpoint_group"
+                                    "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- node_id\n- pod_id\n- sub_port\n- module\n- port\n- channel\n- ip\n- source_prefix\n- dscp\n- flow_id\n- mtu\n- ttl\n- version\n- enforce_version\n- tenant\n- application_profile\n- endpoint_group\n- expected_state"
                                 },
                                 "source_groups": {
                                     "type": "array",
@@ -6735,6 +7395,36 @@
                                                 "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
                                                 "title": "Filter Group",
                                                 "description": "Filter Group (String)"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -6743,7 +7433,7 @@
                                         ]
                                     },
                                     "title": "Source Groups",
-                                    "description": "Source Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- sources\n- destination (required)\n- filter_group"
+                                    "description": "Source Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- sources\n- destination (required)\n- filter_group\n- expected_state"
                                 },
                                 "filter_groups": {
                                     "type": "array",
@@ -7110,6 +7800,36 @@
                                                 ],
                                                 "title": "Destination",
                                                 "description": "Destination (Object)\n\nElements:\n- name (required)\n- description"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -7118,7 +7838,7 @@
                                         ]
                                     },
                                     "title": "Sessions",
-                                    "description": "Sessions (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- sources\n- destination (required)"
+                                    "description": "Sessions (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- sources\n- destination (required)\n- expected_state"
                                 },
                                 "destination_groups": {
                                     "type": "array",
@@ -7255,6 +7975,36 @@
                                                 },
                                                 "title": "Destinations",
                                                 "description": "Destinations (List - Object)\n\nElements:\n- name (required)\n- description\n- tenant\n- application_profile\n- endpoint_group\n- endpoint\n- ip\n- dscp\n- flow_id\n- mtu\n- ttl"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                             }
                                         },
                                         "required": [
@@ -7262,7 +8012,7 @@
                                         ]
                                     },
                                     "title": "Destination Groups",
-                                    "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- destinations"
+                                    "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- destinations\n- expected_state"
                                 }
                             },
                             "required": [],
@@ -7368,8 +8118,33 @@
                                     },
                                     "expected_state": {
                                         "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "minimum_health": {
+                                                "type": "integer",
+                                                "maximum": 100,
+                                                "title": "Minimum Health",
+                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                            },
+                                            "maximum_critical_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Critical Faults",
+                                                "description": "Maximum Critical Faults (Integer)"
+                                            },
+                                            "maximum_major_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Major Faults",
+                                                "description": "Maximum Major Faults (Integer)"
+                                            },
+                                            "maximum_minor_faults": {
+                                                "type": "integer",
+                                                "title": "Maximum Minor Faults",
+                                                "description": "Maximum Minor Faults (Integer)"
+                                            }
+                                        },
+                                        "required": [],
                                         "title": "Expected State",
-                                        "description": "Expected State (Object)\n- Map (key-value pairs)"
+                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                     }
                                 },
                                 "required": [
@@ -7617,8 +8392,19 @@
                                     },
                                     "expected_state": {
                                         "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "psu_count": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 10,
+                                                "title": "PSU Count",
+                                                "description": "PSU Count (Integer)\n- Minimum value: 1\n- Maximum value: 10"
+                                            }
+                                        },
+                                        "required": [],
                                         "title": "Expected State",
-                                        "description": "Expected State (Object)\n- Map (key-value pairs)"
+                                        "description": "Expected State (Object)\n\nElements:\n- psu_count"
                                     }
                                 },
                                 "required": [
@@ -7631,8 +8417,24 @@
                         },
                         "expected_state": {
                             "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "nodes_status": {
+                                    "type": "string",
+                                    "enum": [
+                                        "active",
+                                        "inactive",
+                                        "disabled",
+                                        "unknown",
+                                        "undiscovered"
+                                    ],
+                                    "title": "Nodes Status",
+                                    "description": "Nodes Status (String)\n- Allowed values: active, inactive, disabled, unknown, undiscovered"
+                                }
+                            },
+                            "required": [],
                             "title": "Expected State",
-                            "description": "Expected State (Object)\n- Map (key-value pairs)"
+                            "description": "Expected State (Object)\n\nElements:\n- nodes_status"
                         }
                     },
                     "required": [],
@@ -7746,8 +8548,17 @@
                                                             },
                                                             "expected_state": {
                                                                 "type": "object",
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "lldp_neighbor": {
+                                                                        "type": "string",
+                                                                        "title": "LLDP Neighbor",
+                                                                        "description": "LLDP Neighbor (String)"
+                                                                    }
+                                                                },
+                                                                "required": [],
                                                                 "title": "Expected State",
-                                                                "description": "Expected State (Object)\n- Map (key-value pairs)"
+                                                                "description": "Expected State (Object)\n\nElements:\n- lldp_neighbor"
                                                             }
                                                         },
                                                         "required": [
@@ -7759,8 +8570,17 @@
                                                 },
                                                 "expected_state": {
                                                     "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "lldp_neighbor": {
+                                                            "type": "string",
+                                                            "title": "LLDP Neighbor",
+                                                            "description": "LLDP Neighbor (String)"
+                                                        }
+                                                    },
+                                                    "required": [],
                                                     "title": "Expected State",
-                                                    "description": "Expected State (Object)\n- Map (key-value pairs)"
+                                                    "description": "Expected State (Object)\n\nElements:\n- lldp_neighbor"
                                                 }
                                             },
                                             "required": [
@@ -7817,8 +8637,17 @@
                                                             },
                                                             "expected_state": {
                                                                 "type": "object",
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "lldp_neighbor": {
+                                                                        "type": "string",
+                                                                        "title": "LLDP Neighbor",
+                                                                        "description": "LLDP Neighbor (String)"
+                                                                    }
+                                                                },
+                                                                "required": [],
                                                                 "title": "Expected State",
-                                                                "description": "Expected State (Object)\n- Map (key-value pairs)"
+                                                                "description": "Expected State (Object)\n\nElements:\n- lldp_neighbor"
                                                             }
                                                         },
                                                         "required": [
@@ -8423,6 +9252,36 @@
                                             "required": [],
                                             "title": "Pim",
                                             "description": "Pim (Object)\n\nElements:\n- mtu\n- fast_convergence\n- strict_rfc\n- max_multicast_entries\n- reserved_multicast_entries\n- resource_policy_multicast_route_map\n- static_rps\n- fabric_rps\n- bsr_forward_updates\n- bsr_listen_updates\n- bsr_filter_multicast_route_map\n- auto_rp_forward_updates\n- auto_rp_listen_updates\n- auto_rp_filter_multicast_route_map\n- asm_shared_range_multicast_route_map\n- asm_sg_expiry_multicast_route_map\n- asm_sg_expiry\n- asm_traffic_registry_max_rate\n- asm_traffic_registry_source_ip\n- ssm_group_range_multicast_route_map\n- igmp_context_ssm_translate_policies\n- inter_vrf_policies"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -8430,7 +9289,7 @@
                                     ]
                                 },
                                 "title": "VRFs",
-                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim"
+                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim\n- expected_state"
                             },
                             "bridge_domains": {
                                 "type": "array",
@@ -8677,6 +9536,36 @@
                                             "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                             "title": "IGMP Snooping Policy",
                                             "description": "IGMP Snooping Policy (String)"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -8685,7 +9574,7 @@
                                     ]
                                 },
                                 "title": "Bridge Domains",
-                                "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- arp_flooding\n- advertise_host_routes\n- ip_dataplane_learning\n- limit_ip_learn_to_subnets\n- mac\n- virtual_mac\n- ep_move_detection\n- l3_multicast\n- multi_destination_flooding\n- unicast_routing\n- unknown_unicast\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- l3outs\n- dhcp_labels\n- igmp_interface_policy\n- igmp_snooping_policy"
+                                "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- arp_flooding\n- advertise_host_routes\n- ip_dataplane_learning\n- limit_ip_learn_to_subnets\n- mac\n- virtual_mac\n- ep_move_detection\n- l3_multicast\n- multi_destination_flooding\n- unicast_routing\n- unknown_unicast\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- l3outs\n- dhcp_labels\n- igmp_interface_policy\n- igmp_snooping_policy\n- expected_state"
                             },
                             "application_profiles": {
                                 "type": "array",
@@ -9468,6 +10357,36 @@
                                                         },
                                                         "title": "L4L7 Address Pools",
                                                         "description": "L4L7 Address Pools (List - Object)\n\nElements:\n- name (required)\n- gateway_address (required)\n- from\n- to"
+                                                    },
+                                                    "expected_state": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "minimum_health": {
+                                                                "type": "integer",
+                                                                "maximum": 100,
+                                                                "title": "Minimum Health",
+                                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                            },
+                                                            "maximum_critical_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Critical Faults",
+                                                                "description": "Maximum Critical Faults (Integer)"
+                                                            },
+                                                            "maximum_major_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Major Faults",
+                                                                "description": "Maximum Major Faults (Integer)"
+                                                            },
+                                                            "maximum_minor_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Minor Faults",
+                                                                "description": "Maximum Minor Faults (Integer)"
+                                                            }
+                                                        },
+                                                        "required": [],
+                                                        "title": "Expected State",
+                                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                     }
                                                 },
                                                 "required": [
@@ -9476,7 +10395,7 @@
                                                 ]
                                             },
                                             "title": "Endpoint Groups",
-                                            "description": "Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- flood_in_encap\n- intra_epg_isolation\n- preferred_group\n- proxy_arp\n- bridge_domain (required)\n- physical_domains\n- vmware_vmm_domains\n- static_ports\n- static_leafs\n- static_endpoints\n- subnets\n- contracts\n- qos_class\n- custom_qos_policy\n- tags\n- trust_control_policy\n- l4l7_virtual_ips\n- l4l7_address_pools"
+                                            "description": "Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- flood_in_encap\n- intra_epg_isolation\n- preferred_group\n- proxy_arp\n- bridge_domain (required)\n- physical_domains\n- vmware_vmm_domains\n- static_ports\n- static_leafs\n- static_endpoints\n- subnets\n- contracts\n- qos_class\n- custom_qos_policy\n- tags\n- trust_control_policy\n- l4l7_virtual_ips\n- l4l7_address_pools\n- expected_state"
                                         },
                                         "endpoint_security_groups": {
                                             "type": "array",
@@ -9691,6 +10610,36 @@
                                                         },
                                                         "title": "IP Subnet Selectors",
                                                         "description": "IP Subnet Selectors (List - Object)\n\nElements:\n- value (required)\n- description"
+                                                    },
+                                                    "expected_state": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "minimum_health": {
+                                                                "type": "integer",
+                                                                "maximum": 100,
+                                                                "title": "Minimum Health",
+                                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                            },
+                                                            "maximum_critical_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Critical Faults",
+                                                                "description": "Maximum Critical Faults (Integer)"
+                                                            },
+                                                            "maximum_major_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Major Faults",
+                                                                "description": "Maximum Major Faults (Integer)"
+                                                            },
+                                                            "maximum_minor_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Minor Faults",
+                                                                "description": "Maximum Minor Faults (Integer)"
+                                                            }
+                                                        },
+                                                        "required": [],
+                                                        "title": "Expected State",
+                                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                     }
                                                 },
                                                 "required": [
@@ -9699,7 +10648,37 @@
                                                 ]
                                             },
                                             "title": "Endpoint Security Groups",
-                                            "description": "Endpoint Security Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- vrf (required)\n- shutdown\n- intra_esg_isolation\n- preferred_group\n- contracts\n- tag_selectors\n- epg_selectors\n- ip_subnet_selectors"
+                                            "description": "Endpoint Security Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- vrf (required)\n- shutdown\n- intra_esg_isolation\n- preferred_group\n- contracts\n- tag_selectors\n- epg_selectors\n- ip_subnet_selectors\n- expected_state"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -9707,7 +10686,7 @@
                                     ]
                                 },
                                 "title": "Application Profiles",
-                                "description": "Application Profiles (List - Object)\n\nElements:\n- name (required)\n- managed\n- alias\n- description\n- endpoint_groups\n- endpoint_security_groups"
+                                "description": "Application Profiles (List - Object)\n\nElements:\n- name (required)\n- managed\n- alias\n- description\n- endpoint_groups\n- endpoint_security_groups\n- expected_state"
                             },
                             "inb_endpoint_groups": {
                                 "type": "array",
@@ -9777,6 +10756,36 @@
                                             },
                                             "title": "Static Routes",
                                             "description": "Static Routes (List - String)"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -9786,7 +10795,7 @@
                                     ]
                                 },
                                 "title": "INB Endpoint Groups",
-                                "description": "INB Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- vlan (required)\n- bridge_domain (required)\n- contracts\n- static_routes"
+                                "description": "INB Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- vlan (required)\n- bridge_domain (required)\n- contracts\n- static_routes\n- expected_state"
                             },
                             "oob_endpoint_groups": {
                                 "type": "array",
@@ -9826,6 +10835,36 @@
                                             },
                                             "title": "Static Routes",
                                             "description": "Static Routes (List - String)"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -9833,7 +10872,7 @@
                                     ]
                                 },
                                 "title": "OOB Endpoint Groups",
-                                "description": "OOB Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- oob_contracts\n- static_routes"
+                                "description": "OOB Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- oob_contracts\n- static_routes\n- expected_state"
                             },
                             "ext_mgmt_instances": {
                                 "type": "array",
@@ -9872,6 +10911,36 @@
                                             "required": [],
                                             "title": "OOB Contracts",
                                             "description": "OOB Contracts (Object)\n\nElements:\n- consumers"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -9879,7 +10948,7 @@
                                     ]
                                 },
                                 "title": "EXT MGMT Instances",
-                                "description": "EXT MGMT Instances (List - Object)\n\nElements:\n- name (required)\n- subnets\n- oob_contracts"
+                                "description": "EXT MGMT Instances (List - Object)\n\nElements:\n- name (required)\n- subnets\n- oob_contracts\n- expected_state"
                             },
                             "l3outs": {
                                 "type": "array",
@@ -11656,6 +12725,36 @@
                                                         "required": [],
                                                         "title": "Contracts",
                                                         "description": "Contracts (Object)\n\nElements:\n- consumers\n- providers\n- imported_consumers"
+                                                    },
+                                                    "expected_state": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "minimum_health": {
+                                                                "type": "integer",
+                                                                "maximum": 100,
+                                                                "title": "Minimum Health",
+                                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                            },
+                                                            "maximum_critical_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Critical Faults",
+                                                                "description": "Maximum Critical Faults (Integer)"
+                                                            },
+                                                            "maximum_major_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Major Faults",
+                                                                "description": "Maximum Major Faults (Integer)"
+                                                            },
+                                                            "maximum_minor_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Minor Faults",
+                                                                "description": "Maximum Minor Faults (Integer)"
+                                                            }
+                                                        },
+                                                        "required": [],
+                                                        "title": "Expected State",
+                                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                     }
                                                 },
                                                 "required": [
@@ -11663,7 +12762,7 @@
                                                 ]
                                             },
                                             "title": "External Endpoint Groups",
-                                            "description": "External Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- preferred_group\n- qos_class\n- target_dscp\n- subnets\n- contracts"
+                                            "description": "External Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- preferred_group\n- qos_class\n- target_dscp\n- subnets\n- contracts\n- expected_state"
                                         },
                                         "import_route_map": {
                                             "type": "object",
@@ -11959,6 +13058,91 @@
                                             "default": "false",
                                             "title": "Remote Leaf",
                                             "description": "Remote Leaf (Boolean)\n- Default value: false"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                },
+                                                "learned_prefixes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "prefix": {
+                                                                "type": "string",
+                                                                "title": "Prefix",
+                                                                "description": "Prefix (String)\n- IPv4 or IPv6 address"
+                                                            },
+                                                            "route_type": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "internal",
+                                                                    "external"
+                                                                ],
+                                                                "title": "Route Type",
+                                                                "description": "Route Type (String)\n- Allowed values: internal, external"
+                                                            },
+                                                            "source_protocol": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "bgp",
+                                                                    "ospf",
+                                                                    "eigrp"
+                                                                ],
+                                                                "title": "Source Protocol",
+                                                                "description": "Source Protocol (String)\n- Allowed values: bgp, ospf, eigrp"
+                                                            },
+                                                            "administrative_distance": {
+                                                                "type": "integer",
+                                                                "minimum": 1,
+                                                                "maximum": 255,
+                                                                "title": "Administrative Distance",
+                                                                "description": "Administrative Distance (Integer)\n- Minimum value: 1\n- Maximum value: 255"
+                                                            },
+                                                            "learned_node_ids": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 4000
+                                                                },
+                                                                "title": "Learned Node Ids",
+                                                                "description": "Learned Node Ids (List - Integer)"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "prefix"
+                                                        ]
+                                                    },
+                                                    "title": "Learned Prefixes",
+                                                    "description": "Learned Prefixes (List - Object)\n\nElements:\n- prefix (required)\n- route_type\n- source_protocol\n- administrative_distance\n- learned_node_ids"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults\n- learned_prefixes"
                                         }
                                     },
                                     "required": [
@@ -11968,7 +13152,7 @@
                                     ]
                                 },
                                 "title": "L3Outs",
-                                "description": "L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- target_dscp\n- vrf (required)\n- domain (required)\n- ospf\n- bfd_policy\n- bgp_peers\n- nodes\n- node_profiles\n- external_endpoint_groups\n- import_route_map\n- export_route_map\n- interleak_route_map\n- default_route_leak_policy\n- dampening_ipv4_route_map\n- dampening_ipv6_route_map\n- redistribution_route_maps\n- l3_multicast_ipv4\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- multipod\n- remote_leaf"
+                                "description": "L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- target_dscp\n- vrf (required)\n- domain (required)\n- ospf\n- bfd_policy\n- bgp_peers\n- nodes\n- node_profiles\n- external_endpoint_groups\n- import_route_map\n- export_route_map\n- interleak_route_map\n- default_route_leak_policy\n- dampening_ipv4_route_map\n- dampening_ipv6_route_map\n- redistribution_route_maps\n- l3_multicast_ipv4\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- multipod\n- remote_leaf\n- expected_state"
                             },
                             "filters": {
                                 "type": "array",
@@ -12412,6 +13596,36 @@
                                             },
                                             "title": "Subjects",
                                             "description": "Subjects (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- qos_class\n- target_dscp\n- service_graph\n- filters"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -12419,7 +13633,7 @@
                                     ]
                                 },
                                 "title": "Contracts",
-                                "description": "Contracts (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- scope\n- qos_class\n- target_dscp\n- subjects"
+                                "description": "Contracts (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- scope\n- qos_class\n- target_dscp\n- subjects\n- expected_state"
                             },
                             "oob_contracts": {
                                 "type": "array",
@@ -12514,6 +13728,36 @@
                                             },
                                             "title": "Subjects",
                                             "description": "Subjects (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- service_graph\n- filters"
+                                        },
+                                        "expected_state": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "minimum_health": {
+                                                    "type": "integer",
+                                                    "maximum": 100,
+                                                    "title": "Minimum Health",
+                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                },
+                                                "maximum_critical_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Critical Faults",
+                                                    "description": "Maximum Critical Faults (Integer)"
+                                                },
+                                                "maximum_major_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Major Faults",
+                                                    "description": "Maximum Major Faults (Integer)"
+                                                },
+                                                "maximum_minor_faults": {
+                                                    "type": "integer",
+                                                    "title": "Maximum Minor Faults",
+                                                    "description": "Maximum Minor Faults (Integer)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "Expected State",
+                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                         }
                                     },
                                     "required": [
@@ -12521,7 +13765,7 @@
                                     ]
                                 },
                                 "title": "OOB Contracts",
-                                "description": "OOB Contracts (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- scope\n- subjects"
+                                "description": "OOB Contracts (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- scope\n- subjects\n- expected_state"
                             },
                             "imported_contracts": {
                                 "type": "array",
@@ -13648,6 +14892,36 @@
                                                     },
                                                     "title": "Entries",
                                                     "description": "Entries (List - Object)\n\nElements:\n- order (required)\n- source_ip\n- group_ip\n- rp_ip\n- action"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -13655,7 +14929,7 @@
                                             ]
                                         },
                                         "title": "Multicast Route Maps",
-                                        "description": "Multicast Route Maps (List - Object)\n\nElements:\n- name (required)\n- description\n- entries"
+                                        "description": "Multicast Route Maps (List - Object)\n\nElements:\n- name (required)\n- description\n- entries\n- expected_state"
                                     },
                                     "pim_policies": {
                                         "type": "array",
@@ -13841,6 +15115,36 @@
                                                     "default": "false",
                                                     "title": "Querier",
                                                     "description": "Querier (Boolean)\n- Default value: false"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -13848,7 +15152,7 @@
                                             ]
                                         },
                                         "title": "IGMP Snooping Policies",
-                                        "description": "IGMP Snooping Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- last_member_query_interval\n- query_interval\n- query_response_interval\n- start_query_count\n- start_query_interval\n- fast_leave\n- querier"
+                                        "description": "IGMP Snooping Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- last_member_query_interval\n- query_interval\n- query_response_interval\n- start_query_count\n- start_query_interval\n- fast_leave\n- querier\n- expected_state"
                                     },
                                     "igmp_interface_policies": {
                                         "type": "array",
@@ -14020,6 +15324,36 @@
                                                     "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                     "title": "Static Report Multicast Route Map",
                                                     "description": "Static Report Multicast Route Map (String)"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -14027,7 +15361,7 @@
                                             ]
                                         },
                                         "title": "IGMP Interface Policies",
-                                        "description": "IGMP Interface Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- grp_timeout\n- allow_v3_asm\n- fast_leave\n- report_link_local_groups\n- last_member_count\n- last_member_response_time\n- querier_timeout\n- query_interval\n- robustness_variable\n- query_response_interval\n- startup_query_count\n- startup_query_interval\n- version\n- max_mcast_entries\n- reserved_mcast_entries\n- state_limit_multicast_route_map\n- report_policy_multicast_route_map\n- static_report_multicast_route_map"
+                                        "description": "IGMP Interface Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- grp_timeout\n- allow_v3_asm\n- fast_leave\n- report_link_local_groups\n- last_member_count\n- last_member_response_time\n- querier_timeout\n- query_interval\n- robustness_variable\n- query_response_interval\n- startup_query_count\n- startup_query_interval\n- version\n- max_mcast_entries\n- reserved_mcast_entries\n- state_limit_multicast_route_map\n- report_policy_multicast_route_map\n- static_report_multicast_route_map\n- expected_state"
                                     },
                                     "ip_sla_policies": {
                                         "type": "array",
@@ -14080,6 +15414,36 @@
                                                     "maximum": 65535,
                                                     "title": "Port",
                                                     "description": "Port (Integer)\n- Minimum value: 1\n- Maximum value: 65535"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -14087,7 +15451,7 @@
                                             ]
                                         },
                                         "title": "IP Sla Policies",
-                                        "description": "IP Sla Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- frequency\n- multiplier\n- sla_type\n- port"
+                                        "description": "IP Sla Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- frequency\n- multiplier\n- sla_type\n- port\n- expected_state"
                                     },
                                     "trust_control_policies": {
                                         "type": "array",
@@ -14276,6 +15640,36 @@
                                                             "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                             "title": "Endpoint Group",
                                                             "description": "Endpoint Group (String)"
+                                                        },
+                                                        "expected_state": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "minimum_health": {
+                                                                    "type": "integer",
+                                                                    "maximum": 100,
+                                                                    "title": "Minimum Health",
+                                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                                },
+                                                                "maximum_critical_faults": {
+                                                                    "type": "integer",
+                                                                    "title": "Maximum Critical Faults",
+                                                                    "description": "Maximum Critical Faults (Integer)"
+                                                                },
+                                                                "maximum_major_faults": {
+                                                                    "type": "integer",
+                                                                    "title": "Maximum Major Faults",
+                                                                    "description": "Maximum Major Faults (Integer)"
+                                                                },
+                                                                "maximum_minor_faults": {
+                                                                    "type": "integer",
+                                                                    "title": "Maximum Minor Faults",
+                                                                    "description": "Maximum Minor Faults (Integer)"
+                                                                }
+                                                            },
+                                                            "required": [],
+                                                            "title": "Expected State",
+                                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                         }
                                                     },
                                                     "required": [
@@ -14287,7 +15681,7 @@
                                                     ]
                                                 },
                                                 "title": "Destination Groups",
-                                                "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- ip (required)\n- source_prefix (required)\n- dscp\n- flow_id\n- mtu\n- ttl\n- version\n- enforce_version\n- tenant\n- application_profile (required)\n- endpoint_group (required)"
+                                                "description": "Destination Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- ip (required)\n- source_prefix (required)\n- dscp\n- flow_id\n- mtu\n- ttl\n- version\n- enforce_version\n- tenant\n- application_profile (required)\n- endpoint_group (required)\n- expected_state"
                                             },
                                             "source_groups": {
                                                 "type": "array",
@@ -14372,6 +15766,36 @@
                                                             },
                                                             "title": "Sources",
                                                             "description": "Sources (List - Object)\n\nElements:\n- name (required)\n- description\n- direction\n- application_profile\n- endpoint_group"
+                                                        },
+                                                        "expected_state": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "minimum_health": {
+                                                                    "type": "integer",
+                                                                    "maximum": 100,
+                                                                    "title": "Minimum Health",
+                                                                    "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                                },
+                                                                "maximum_critical_faults": {
+                                                                    "type": "integer",
+                                                                    "title": "Maximum Critical Faults",
+                                                                    "description": "Maximum Critical Faults (Integer)"
+                                                                },
+                                                                "maximum_major_faults": {
+                                                                    "type": "integer",
+                                                                    "title": "Maximum Major Faults",
+                                                                    "description": "Maximum Major Faults (Integer)"
+                                                                },
+                                                                "maximum_minor_faults": {
+                                                                    "type": "integer",
+                                                                    "title": "Maximum Minor Faults",
+                                                                    "description": "Maximum Minor Faults (Integer)"
+                                                                }
+                                                            },
+                                                            "required": [],
+                                                            "title": "Expected State",
+                                                            "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                         }
                                                     },
                                                     "required": [
@@ -14380,7 +15804,7 @@
                                                     ]
                                                 },
                                                 "title": "Source Groups",
-                                                "description": "Source Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- destination (required)\n- sources"
+                                                "description": "Source Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- admin_state\n- destination (required)\n- sources\n- expected_state"
                                             }
                                         },
                                         "required": [],
@@ -14989,6 +16413,36 @@
                                                     },
                                                     "title": "Logical Interfaces",
                                                     "description": "Logical Interfaces (List - Object)\n\nElements:\n- name (required)\n- alias\n- vlan\n- concrete_interfaces"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -14996,7 +16450,7 @@
                                             ]
                                         },
                                         "title": "L4L7 Devices",
-                                        "description": "L4L7 Devices (List - Object)\n\nElements:\n- name (required)\n- alias\n- context_aware\n- type\n- function\n- copy_device\n- managed\n- promiscuous_mode\n- service_type\n- trunking\n- physical_domain\n- vmware_vmm_domain\n- concrete_devices\n- logical_interfaces"
+                                        "description": "L4L7 Devices (List - Object)\n\nElements:\n- name (required)\n- alias\n- context_aware\n- type\n- function\n- copy_device\n- managed\n- promiscuous_mode\n- service_type\n- trunking\n- physical_domain\n- vmware_vmm_domain\n- concrete_devices\n- logical_interfaces\n- expected_state"
                                     },
                                     "redirect_policies": {
                                         "type": "array",
@@ -15153,6 +16607,36 @@
                                                     "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                     "title": "IP Sla Policy",
                                                     "description": "IP Sla Policy (String)"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -15160,7 +16644,7 @@
                                             ]
                                         },
                                         "title": "Redirect Policies",
-                                        "description": "Redirect Policies (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- anycast\n- type\n- hashing\n- threshold\n- max_threshold\n- min_threshold\n- pod_aware\n- resilient_hashing\n- redirect_backup_policy\n- threshold_down_action\n- l3_destinations\n- ip_sla_policy"
+                                        "description": "Redirect Policies (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- anycast\n- type\n- hashing\n- threshold\n- max_threshold\n- min_threshold\n- pod_aware\n- resilient_hashing\n- redirect_backup_policy\n- threshold_down_action\n- l3_destinations\n- ip_sla_policy\n- expected_state"
                                     },
                                     "service_epg_policies": {
                                         "type": "array",
@@ -15211,6 +16695,36 @@
                                                     "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
                                                     "title": "Description",
                                                     "description": "Description (String)"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -15218,7 +16732,7 @@
                                             ]
                                         },
                                         "title": "Redirect Health Groups",
-                                        "description": "Redirect Health Groups (List - Object)\n\nElements:\n- name (required)\n- description"
+                                        "description": "Redirect Health Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- expected_state"
                                     },
                                     "redirect_backup_policies": {
                                         "type": "array",
@@ -15287,6 +16801,36 @@
                                                     },
                                                     "title": "L3 Destinations",
                                                     "description": "L3 Destinations (List - Object)\n\nElements:\n- description\n- ip (required)\n- ip_2\n- destination_name\n- mac (required)\n- redirect_health_group"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -15294,7 +16838,7 @@
                                             ]
                                         },
                                         "title": "Redirect Backup Policies",
-                                        "description": "Redirect Backup Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- l3_destinations"
+                                        "description": "Redirect Backup Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- l3_destinations\n- expected_state"
                                     },
                                     "service_graph_templates": {
                                         "type": "array",
@@ -15371,6 +16915,36 @@
                                                     ],
                                                     "title": "Device",
                                                     "description": "Device (Object)\n\nElements:\n- name (required)\n- tenant"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -15379,7 +16953,7 @@
                                             ]
                                         },
                                         "title": "Service Graph Templates",
-                                        "description": "Service Graph Templates (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- template_type\n- redirect\n- share_encapsulation\n- device (required)"
+                                        "description": "Service Graph Templates (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- template_type\n- redirect\n- share_encapsulation\n- device (required)\n- expected_state"
                                     },
                                     "device_selection_policies": {
                                         "type": "array",
@@ -15698,6 +17272,36 @@
                                                     ],
                                                     "title": "Provider",
                                                     "description": "Provider (Object)\n\nElements:\n- l3_destination\n- permit_logging\n- logical_interface (required)\n- redirect_policy\n- bridge_domain\n- external_endpoint_group\n- service_epg_policy\n- custom_qos_policy"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -15708,12 +17312,42 @@
                                             ]
                                         },
                                         "title": "Device Selection Policies",
-                                        "description": "Device Selection Policies (List - Object)\n\nElements:\n- contract (required)\n- service_graph_template (required)\n- consumer (required)\n- provider (required)"
+                                        "description": "Device Selection Policies (List - Object)\n\nElements:\n- contract (required)\n- service_graph_template (required)\n- consumer (required)\n- provider (required)\n- expected_state"
                                     }
                                 },
                                 "required": [],
                                 "title": "Services",
                                 "description": "Services (Object)\n\nElements:\n- l4l7_devices\n- redirect_policies\n- service_epg_policies\n- redirect_health_groups\n- redirect_backup_policies\n- service_graph_templates\n- device_selection_policies"
+                            },
+                            "expected_state": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "minimum_health": {
+                                        "type": "integer",
+                                        "maximum": 100,
+                                        "title": "Minimum Health",
+                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                    },
+                                    "maximum_critical_faults": {
+                                        "type": "integer",
+                                        "title": "Maximum Critical Faults",
+                                        "description": "Maximum Critical Faults (Integer)"
+                                    },
+                                    "maximum_major_faults": {
+                                        "type": "integer",
+                                        "title": "Maximum Major Faults",
+                                        "description": "Maximum Major Faults (Integer)"
+                                    },
+                                    "maximum_minor_faults": {
+                                        "type": "integer",
+                                        "title": "Maximum Minor Faults",
+                                        "description": "Maximum Minor Faults (Integer)"
+                                    }
+                                },
+                                "required": [],
+                                "title": "Expected State",
+                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                             }
                         },
                         "required": [
@@ -15721,7 +17355,7 @@
                         ]
                     },
                     "title": "Tenants",
-                    "description": "Tenants (List - Object)\n\nElements:\n- name (required)\n- managed\n- alias\n- description\n- vrfs\n- bridge_domains\n- application_profiles\n- inb_endpoint_groups\n- oob_endpoint_groups\n- ext_mgmt_instances\n- l3outs\n- filters\n- contracts\n- oob_contracts\n- imported_contracts\n- policies\n- services"
+                    "description": "Tenants (List - Object)\n\nElements:\n- name (required)\n- managed\n- alias\n- description\n- vrfs\n- bridge_domains\n- application_profiles\n- inb_endpoint_groups\n- oob_endpoint_groups\n- ext_mgmt_instances\n- l3outs\n- filters\n- contracts\n- oob_contracts\n- imported_contracts\n- policies\n- services\n- expected_state"
                 },
                 "auto_generate_switch_pod_profiles": {
                     "type": "boolean",
@@ -15763,11 +17397,41 @@
                     "type": "string",
                     "title": "NAE Assurance Group",
                     "description": "NAE Assurance Group (String)"
+                },
+                "expected_state": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "minimum_health": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "title": "Minimum Health",
+                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                        },
+                        "maximum_critical_faults": {
+                            "type": "integer",
+                            "title": "Maximum Critical Faults",
+                            "description": "Maximum Critical Faults (Integer)"
+                        },
+                        "maximum_major_faults": {
+                            "type": "integer",
+                            "title": "Maximum Major Faults",
+                            "description": "Maximum Major Faults (Integer)"
+                        },
+                        "maximum_minor_faults": {
+                            "type": "integer",
+                            "title": "Maximum Minor Faults",
+                            "description": "Maximum Minor Faults (Integer)"
+                        }
+                    },
+                    "required": [],
+                    "title": "Expected State",
+                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                 }
             },
             "required": [],
             "title": "APIC",
-            "description": "APIC (Object)\n\nElements:\n- version\n- bootstrap\n- fabric_policies\n- access_policies\n- pod_policies\n- node_policies\n- interface_policies\n- tenants\n- auto_generate_switch_pod_profiles\n- auto_generate_pod_profiles\n- auto_generate_fabric_leaf_switch_interface_profiles\n- auto_generate_fabric_spine_switch_interface_profiles\n- auto_generate_access_leaf_switch_interface_profiles\n- auto_generate_access_spine_switch_interface_profiles\n- nae_assurance_group"
+            "description": "APIC (Object)\n\nElements:\n- version\n- bootstrap\n- fabric_policies\n- access_policies\n- pod_policies\n- node_policies\n- interface_policies\n- tenants\n- auto_generate_switch_pod_profiles\n- auto_generate_pod_profiles\n- auto_generate_fabric_leaf_switch_interface_profiles\n- auto_generate_fabric_spine_switch_interface_profiles\n- auto_generate_access_leaf_switch_interface_profiles\n- auto_generate_access_spine_switch_interface_profiles\n- nae_assurance_group\n- expected_state"
         },
         "defaults": {
             "title": "Defaults",
