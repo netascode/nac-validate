@@ -2772,11 +2772,12 @@
                                     "type": "string",
                                     "enum": [
                                         "local",
-                                        "tacacs"
+                                        "tacacs",
+                                        "ldap"
                                     ],
                                     "default": "local",
                                     "title": "Default Realm",
-                                    "description": "Default Realm (String)\n- Default value: local\n- Allowed values: local, tacacs"
+                                    "description": "Default Realm (String)\n- Default value: local\n- Allowed values: local, tacacs, ldap"
                                 },
                                 "default_login_domain": {
                                     "type": "string",
@@ -2788,11 +2789,12 @@
                                     "type": "string",
                                     "enum": [
                                         "local",
-                                        "tacacs"
+                                        "tacacs",
+                                        "ldap"
                                     ],
                                     "default": "local",
                                     "title": "Console Realm",
-                                    "description": "Console Realm (String)\n- Default value: local\n- Allowed values: local, tacacs"
+                                    "description": "Console Realm (String)\n- Default value: local\n- Allowed values: local, tacacs, ldap"
                                 },
                                 "console_login_domain": {
                                     "type": "string",
@@ -3146,16 +3148,33 @@
                                                 "type": "string",
                                                 "enum": [
                                                     "local",
-                                                    "tacacs"
+                                                    "tacacs",
+                                                    "ldap"
                                                 ],
                                                 "title": "Realm",
-                                                "description": "Realm (String)\n- Allowed values: local, tacacs"
+                                                "description": "Realm (String)\n- Allowed values: local, tacacs, ldap"
                                             },
                                             "description": {
                                                 "type": "string",
                                                 "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
                                                 "title": "Description",
                                                 "description": "Description (String)"
+                                            },
+                                            "auth_choice": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "CiscoAVPair",
+                                                    "LdapGroupMap"
+                                                ],
+                                                "default": "CiscoAVPair",
+                                                "title": "Auth Choice",
+                                                "description": "Auth Choice (String)\n- Default value: CiscoAVPair\n- Allowed values: CiscoAVPair, LdapGroupMap"
+                                            },
+                                            "ldap_group_map": {
+                                                "type": "string",
+                                                "pattern": "^[a-zA-Z0-9_.:-]{1,31}$",
+                                                "title": "Ldap Group Map",
+                                                "description": "Ldap Group Map (String)"
                                             },
                                             "tacacs_providers": {
                                                 "type": "array",
@@ -3189,6 +3208,39 @@
                                                 },
                                                 "title": "Tacacs Providers",
                                                 "description": "Tacacs Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- priority"
+                                            },
+                                            "ldap_providers": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "hostname_ip": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9:][a-zA-Z0-9.:-]{0,254}$"
+                                                                },
+                                                                {
+                                                                    "type": "string"
+                                                                }
+                                                            ],
+                                                            "title": "Hostname IP",
+                                                            "description": "Hostname IP (String, String)"
+                                                        },
+                                                        "priority": {
+                                                            "type": "integer",
+                                                            "maximum": 16,
+                                                            "title": "Priority",
+                                                            "description": "Priority (Integer)\n- Maximum value: 16"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "hostname_ip"
+                                                    ]
+                                                },
+                                                "title": "Ldap Providers",
+                                                "description": "Ldap Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- priority"
                                             }
                                         },
                                         "required": [
@@ -3197,7 +3249,7 @@
                                         ]
                                     },
                                     "title": "Login Domains",
-                                    "description": "Login Domains (List - Object)\n\nElements:\n- name (required)\n- realm (required)\n- description\n- tacacs_providers"
+                                    "description": "Login Domains (List - Object)\n\nElements:\n- name (required)\n- realm (required)\n- description\n- auth_choice\n- ldap_group_map\n- tacacs_providers\n- ldap_providers"
                                 },
                                 "ca_certificates": {
                                     "type": "array",
@@ -3285,11 +3337,265 @@
                                     },
                                     "title": "Key Rings",
                                     "description": "Key Rings (List - Object)\n\nElements:\n- name (required)\n- description\n- certificate\n- modulus\n- ca_certificate\n- private_key"
+                                },
+                                "ldap": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "providers": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "hostname_ip": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^[a-zA-Z0-9:][a-zA-Z0-9.:-]{0,254}$"
+                                                            },
+                                                            {
+                                                                "type": "string"
+                                                            }
+                                                        ],
+                                                        "title": "Hostname IP",
+                                                        "description": "Hostname IP (String, String)"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                        "title": "Description",
+                                                        "description": "Description (String)"
+                                                    },
+                                                    "port": {
+                                                        "type": "integer",
+                                                        "maximum": 65535,
+                                                        "default": 389,
+                                                        "title": "Port",
+                                                        "description": "Port (Integer)\n- Default value: 389\n- Maximum value: 65535"
+                                                    },
+                                                    "bind_dn": {
+                                                        "type": "string",
+                                                        "title": "Bind Dn",
+                                                        "description": "Bind Dn (String)"
+                                                    },
+                                                    "base_dn": {
+                                                        "type": "string",
+                                                        "title": "Base Dn",
+                                                        "description": "Base Dn (String)"
+                                                    },
+                                                    "password": {
+                                                        "type": "string",
+                                                        "title": "Password",
+                                                        "description": "Password (String)"
+                                                    },
+                                                    "timeout": {
+                                                        "type": "integer",
+                                                        "minimum": 5,
+                                                        "maximum": 60,
+                                                        "default": 30,
+                                                        "title": "Timeout",
+                                                        "description": "Timeout (Integer)\n- Default value: 30\n- Minimum value: 5\n- Maximum value: 60"
+                                                    },
+                                                    "retries": {
+                                                        "type": "integer",
+                                                        "maximum": 5,
+                                                        "default": 1,
+                                                        "title": "Retries",
+                                                        "description": "Retries (Integer)\n- Default value: 1\n- Maximum value: 5"
+                                                    },
+                                                    "enable_ssl": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Enable Ssl",
+                                                        "description": "Enable Ssl (Boolean)\n- Default value: false"
+                                                    },
+                                                    "filter": {
+                                                        "type": "string",
+                                                        "title": "Filter",
+                                                        "description": "Filter (String)"
+                                                    },
+                                                    "attribute": {
+                                                        "type": "string",
+                                                        "title": "Attribute",
+                                                        "description": "Attribute (String)"
+                                                    },
+                                                    "ssl_validation_level": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "permissive",
+                                                            "strict"
+                                                        ],
+                                                        "default": "strict",
+                                                        "title": "Ssl Validation Level",
+                                                        "description": "Ssl Validation Level (String)\n- Default value: strict\n- Allowed values: permissive, strict"
+                                                    },
+                                                    "mgmt_epg": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "inb",
+                                                            "oob"
+                                                        ],
+                                                        "default": "inb",
+                                                        "title": "MGMT EPG",
+                                                        "description": "MGMT EPG (String)\n- Default value: inb\n- Allowed values: inb, oob"
+                                                    },
+                                                    "server_monitoring": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Server Monitoring",
+                                                        "description": "Server Monitoring (Boolean)\n- Default value: false"
+                                                    },
+                                                    "monitoring_username": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.@-]{0,31}$",
+                                                        "default": "default",
+                                                        "title": "Monitoring Username",
+                                                        "description": "Monitoring Username (String)\n- Default value: default"
+                                                    },
+                                                    "monitoring_password": {
+                                                        "type": "string",
+                                                        "title": "Monitoring Password",
+                                                        "description": "Monitoring Password (String)"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "hostname_ip"
+                                                ]
+                                            },
+                                            "title": "Providers",
+                                            "description": "Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- bind_dn\n- base_dn\n- password\n- timeout\n- retries\n- enable_ssl\n- filter\n- attribute\n- ssl_validation_level\n- mgmt_epg\n- server_monitoring\n- monitoring_username\n- monitoring_password"
+                                        },
+                                        "group_map_rules": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "Name",
+                                                        "description": "Name (String)"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                        "title": "Description",
+                                                        "description": "Description (String)"
+                                                    },
+                                                    "group_dn": {
+                                                        "type": "string",
+                                                        "title": "Group Dn",
+                                                        "description": "Group Dn (String)"
+                                                    },
+                                                    "security_domains": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,31}$",
+                                                                    "title": "Name",
+                                                                    "description": "Name (String)"
+                                                                },
+                                                                "roles": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "object",
+                                                                        "additionalProperties": false,
+                                                                        "properties": {
+                                                                            "name": {
+                                                                                "type": "string",
+                                                                                "pattern": "^[a-zA-Z0-9_.-]{1,31}$",
+                                                                                "title": "Name",
+                                                                                "description": "Name (String)"
+                                                                            },
+                                                                            "privilege_type": {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "write",
+                                                                                    "read"
+                                                                                ],
+                                                                                "default": "write",
+                                                                                "title": "Privilege Type",
+                                                                                "description": "Privilege Type (String)\n- Default value: write\n- Allowed values: write, read"
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "name"
+                                                                        ]
+                                                                    },
+                                                                    "title": "Roles",
+                                                                    "description": "Roles (List - Object)\n\nElements:\n- name (required)\n- privilege_type"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name"
+                                                            ]
+                                                        },
+                                                        "title": "Security Domains",
+                                                        "description": "Security Domains (List - Object)\n\nElements:\n- name (required)\n- roles"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ]
+                                            },
+                                            "title": "Group Map Rules",
+                                            "description": "Group Map Rules (List - Object)\n\nElements:\n- name (required)\n- description\n- group_dn\n- security_domains"
+                                        },
+                                        "group_maps": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "Name",
+                                                        "description": "Name (String)"
+                                                    },
+                                                    "rules": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "Name",
+                                                                    "description": "Name (String)"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name"
+                                                            ]
+                                                        },
+                                                        "title": "Rules",
+                                                        "description": "Rules (List - Object)\n\nElements:\n- name (required)"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ]
+                                            },
+                                            "title": "Group Maps",
+                                            "description": "Group Maps (List - Object)\n\nElements:\n- name (required)\n- rules"
+                                        }
+                                    },
+                                    "required": [],
+                                    "title": "Ldap",
+                                    "description": "Ldap (Object)\n\nElements:\n- providers\n- group_map_rules\n- group_maps"
                                 }
                             },
                             "required": [],
                             "title": "AAA",
-                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings"
+                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap"
                         },
                         "geolocation": {
                             "type": "object",
@@ -8764,6 +9070,12 @@
                                             "title": "Preferred Group",
                                             "description": "Preferred Group (Boolean)\n- Default value: false"
                                         },
+                                        "transit_route_tag_policy": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Transit Route Tag Policy",
+                                            "description": "Transit Route Tag Policy (String)"
+                                        },
                                         "leaked_internal_prefixes": {
                                             "type": "array",
                                             "items": {
@@ -9289,7 +9601,7 @@
                                     ]
                                 },
                                 "title": "VRFs",
-                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim\n- expected_state"
+                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- transit_route_tag_policy\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim\n- expected_state"
                             },
                             "bridge_domains": {
                                 "type": "array",
@@ -13143,6 +13455,18 @@
                                             "required": [],
                                             "title": "Expected State",
                                             "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults\n- learned_prefixes"
+                                        },
+                                        "import_route_control_enforcement": {
+                                            "type": "boolean",
+                                            "default": "false",
+                                            "title": "Import Route Control Enforcement",
+                                            "description": "Import Route Control Enforcement (Boolean)\n- Default value: false"
+                                        },
+                                        "export_route_control_enforcement": {
+                                            "type": "boolean",
+                                            "default": "true",
+                                            "title": "Export Route Control Enforcement",
+                                            "description": "Export Route Control Enforcement (Boolean)\n- Default value: true"
                                         }
                                     },
                                     "required": [
@@ -13152,7 +13476,582 @@
                                     ]
                                 },
                                 "title": "L3Outs",
-                                "description": "L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- target_dscp\n- vrf (required)\n- domain (required)\n- ospf\n- bfd_policy\n- bgp_peers\n- nodes\n- node_profiles\n- external_endpoint_groups\n- import_route_map\n- export_route_map\n- interleak_route_map\n- default_route_leak_policy\n- dampening_ipv4_route_map\n- dampening_ipv6_route_map\n- redistribution_route_maps\n- l3_multicast_ipv4\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- multipod\n- remote_leaf\n- expected_state"
+                                "description": "L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- target_dscp\n- vrf (required)\n- domain (required)\n- ospf\n- bfd_policy\n- bgp_peers\n- nodes\n- node_profiles\n- external_endpoint_groups\n- import_route_map\n- export_route_map\n- interleak_route_map\n- default_route_leak_policy\n- dampening_ipv4_route_map\n- dampening_ipv6_route_map\n- redistribution_route_maps\n- l3_multicast_ipv4\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- multipod\n- remote_leaf\n- expected_state\n- import_route_control_enforcement\n- export_route_control_enforcement"
+                            },
+                            "sr_mpls_l3outs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Name",
+                                            "description": "Name (String)"
+                                        },
+                                        "alias": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Alias",
+                                            "description": "Alias (String)"
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                            "title": "Description",
+                                            "description": "Description (String)"
+                                        },
+                                        "vrf": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "VRF",
+                                            "description": "VRF (String)"
+                                        },
+                                        "sr_mpls_infra_l3out": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Sr Mpls Infra L3Out",
+                                            "description": "Sr Mpls Infra L3Out (String)"
+                                        },
+                                        "domain": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Domain",
+                                            "description": "Domain (String)"
+                                        },
+                                        "transport_data_plane": {
+                                            "type": "string",
+                                            "enum": [
+                                                "sr_mpls",
+                                                "mpls"
+                                            ],
+                                            "default": "sr_mpls",
+                                            "title": "Transport Data Plane",
+                                            "description": "Transport Data Plane (String)\n- Default value: sr_mpls\n- Allowed values: sr_mpls, mpls"
+                                        },
+                                        "node_profiles": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "Name",
+                                                        "description": "Name (String)"
+                                                    },
+                                                    "mpls_custom_qos_policy": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "Mpls Custom QoS Policy",
+                                                        "description": "Mpls Custom QoS Policy (String)"
+                                                    },
+                                                    "bfd_multihop_node_policy": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "BFD Multihop Node Policy",
+                                                        "description": "BFD Multihop Node Policy (String)"
+                                                    },
+                                                    "nodes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "node_id": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 4000,
+                                                                    "title": "Node ID",
+                                                                    "description": "Node ID (Integer)\n- Minimum value: 1\n- Maximum value: 4000"
+                                                                },
+                                                                "pod_id": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 255,
+                                                                    "default": 1,
+                                                                    "title": "Pod ID",
+                                                                    "description": "Pod ID (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 255"
+                                                                },
+                                                                "router_id": {
+                                                                    "type": "string",
+                                                                    "title": "Router ID",
+                                                                    "description": "Router ID (String)\n- IPv4 or IPv6 address"
+                                                                },
+                                                                "bgp_evpn_loopback": {
+                                                                    "type": "string",
+                                                                    "title": "BGP Evpn Loopback",
+                                                                    "description": "BGP Evpn Loopback (String)\n- IPv4 or IPv6 address"
+                                                                },
+                                                                "mpls_transport_loopback": {
+                                                                    "type": "string",
+                                                                    "title": "Mpls Transport Loopback",
+                                                                    "description": "Mpls Transport Loopback (String)\n- IPv4 or IPv6 address"
+                                                                },
+                                                                "segment_id_index": {
+                                                                    "type": "integer",
+                                                                    "maximum": 4294967295,
+                                                                    "title": "Segment ID Index",
+                                                                    "description": "Segment ID Index (Integer)\n- Maximum value: 4294967295"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "node_id",
+                                                                "bgp_evpn_loopback",
+                                                                "mpls_transport_loopback",
+                                                                "segment_id_index"
+                                                            ]
+                                                        },
+                                                        "title": "Nodes",
+                                                        "description": "Nodes (List - Object)\n\nElements:\n- node_id (required)\n- pod_id\n- router_id\n- bgp_evpn_loopback (required)\n- mpls_transport_loopback (required)\n- segment_id_index (required)"
+                                                    },
+                                                    "interface_profiles": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "Name",
+                                                                    "description": "Name (String)"
+                                                                },
+                                                                "description": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                                    "title": "Description",
+                                                                    "description": "Description (String)"
+                                                                },
+                                                                "bfd_policy": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "BFD Policy",
+                                                                    "description": "BFD Policy (String)"
+                                                                },
+                                                                "interfaces": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "object",
+                                                                        "additionalProperties": false,
+                                                                        "properties": {
+                                                                            "description": {
+                                                                                "type": "string",
+                                                                                "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                                                "title": "Description",
+                                                                                "description": "Description (String)"
+                                                                            },
+                                                                            "node_id": {
+                                                                                "type": "integer",
+                                                                                "minimum": 1,
+                                                                                "maximum": 4000,
+                                                                                "title": "Node ID",
+                                                                                "description": "Node ID (Integer)\n- Minimum value: 1\n- Maximum value: 4000"
+                                                                            },
+                                                                            "pod_id": {
+                                                                                "type": "integer",
+                                                                                "minimum": 1,
+                                                                                "maximum": 255,
+                                                                                "default": 1,
+                                                                                "title": "Pod ID",
+                                                                                "description": "Pod ID (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 255"
+                                                                            },
+                                                                            "module": {
+                                                                                "type": "integer",
+                                                                                "minimum": 1,
+                                                                                "maximum": 9,
+                                                                                "default": 1,
+                                                                                "title": "Module",
+                                                                                "description": "Module (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 9"
+                                                                            },
+                                                                            "port": {
+                                                                                "type": "integer",
+                                                                                "minimum": 1,
+                                                                                "maximum": 127,
+                                                                                "title": "Port",
+                                                                                "description": "Port (Integer)\n- Minimum value: 1\n- Maximum value: 127"
+                                                                            },
+                                                                            "channel": {
+                                                                                "type": "string",
+                                                                                "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                                "title": "Channel",
+                                                                                "description": "Channel (String)"
+                                                                            },
+                                                                            "ip": {
+                                                                                "type": "string",
+                                                                                "title": "IP",
+                                                                                "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                            },
+                                                                            "vlan": {
+                                                                                "type": "integer",
+                                                                                "minimum": 1,
+                                                                                "maximum": 4096,
+                                                                                "title": "Vlan",
+                                                                                "description": "Vlan (Integer)\n- Minimum value: 1\n- Maximum value: 4096"
+                                                                            },
+                                                                            "mac": {
+                                                                                "type": "string",
+                                                                                "pattern": "^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$",
+                                                                                "default": "00:22:BD:F8:19:FF",
+                                                                                "title": "MAC",
+                                                                                "description": "MAC (String)\n- Default value: 00:22:BD:F8:19:FF\n- MAC address (XX:XX:XX:XX:XX:XX)"
+                                                                            },
+                                                                            "mtu": {
+                                                                                "anyOf": [
+                                                                                    {
+                                                                                        "type": "string",
+                                                                                        "enum": [
+                                                                                            "inherit"
+                                                                                        ]
+                                                                                    },
+                                                                                    {
+                                                                                        "type": "integer",
+                                                                                        "minimum": 576,
+                                                                                        "maximum": 9216
+                                                                                    }
+                                                                                ],
+                                                                                "default": "inherit",
+                                                                                "title": "MTU",
+                                                                                "description": "MTU (String, Integer)\n- Default value: inherit"
+                                                                            },
+                                                                            "bgp_peers": {
+                                                                                "type": "array",
+                                                                                "items": {
+                                                                                    "type": "object",
+                                                                                    "additionalProperties": false,
+                                                                                    "properties": {
+                                                                                        "ip": {
+                                                                                            "type": "string",
+                                                                                            "title": "IP",
+                                                                                            "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                                        },
+                                                                                        "remote_as": {
+                                                                                            "type": "integer",
+                                                                                            "maximum": 4294967295,
+                                                                                            "title": "Remote AS",
+                                                                                            "description": "Remote AS (Integer)\n- Maximum value: 4294967295"
+                                                                                        },
+                                                                                        "description": {
+                                                                                            "type": "string",
+                                                                                            "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                                                            "title": "Description",
+                                                                                            "description": "Description (String)"
+                                                                                        },
+                                                                                        "allow_self_as": {
+                                                                                            "type": "boolean",
+                                                                                            "default": "false",
+                                                                                            "title": "Allow Self AS",
+                                                                                            "description": "Allow Self AS (Boolean)\n- Default value: false"
+                                                                                        },
+                                                                                        "send_community": {
+                                                                                            "type": "boolean",
+                                                                                            "default": "false",
+                                                                                            "title": "Send Community",
+                                                                                            "description": "Send Community (Boolean)\n- Default value: false"
+                                                                                        },
+                                                                                        "send_ext_community": {
+                                                                                            "type": "boolean",
+                                                                                            "default": "false",
+                                                                                            "title": "Send EXT Community",
+                                                                                            "description": "Send EXT Community (Boolean)\n- Default value: false"
+                                                                                        },
+                                                                                        "password": {
+                                                                                            "type": "string",
+                                                                                            "title": "Password",
+                                                                                            "description": "Password (String)"
+                                                                                        },
+                                                                                        "bfd": {
+                                                                                            "type": "boolean",
+                                                                                            "default": "false",
+                                                                                            "title": "BFD",
+                                                                                            "description": "BFD (Boolean)\n- Default value: false"
+                                                                                        },
+                                                                                        "unicast_address_family": {
+                                                                                            "type": "boolean",
+                                                                                            "default": "true",
+                                                                                            "title": "Unicast Address Family",
+                                                                                            "description": "Unicast Address Family (Boolean)\n- Default value: true"
+                                                                                        },
+                                                                                        "admin_state": {
+                                                                                            "type": "boolean",
+                                                                                            "default": "true",
+                                                                                            "title": "Admin State",
+                                                                                            "description": "Admin State (Boolean)\n- Default value: true"
+                                                                                        },
+                                                                                        "local_as": {
+                                                                                            "type": "integer",
+                                                                                            "maximum": 4294967295,
+                                                                                            "title": "Local AS",
+                                                                                            "description": "Local AS (Integer)\n- Maximum value: 4294967295"
+                                                                                        },
+                                                                                        "peer_prefix_policy": {
+                                                                                            "type": "string",
+                                                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                                            "title": "Peer Prefix Policy",
+                                                                                            "description": "Peer Prefix Policy (String)"
+                                                                                        }
+                                                                                    },
+                                                                                    "required": [
+                                                                                        "ip",
+                                                                                        "remote_as"
+                                                                                    ]
+                                                                                },
+                                                                                "title": "BGP Peers",
+                                                                                "description": "BGP Peers (List - Object)\n\nElements:\n- ip (required)\n- remote_as (required)\n- description\n- allow_self_as\n- send_community\n- send_ext_community\n- password\n- bfd\n- unicast_address_family\n- admin_state\n- local_as\n- peer_prefix_policy"
+                                                                            }
+                                                                        },
+                                                                        "required": []
+                                                                    },
+                                                                    "title": "Interfaces",
+                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- vlan\n- mac\n- mtu\n- bgp_peers"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name"
+                                                            ]
+                                                        },
+                                                        "title": "Interface Profiles",
+                                                        "description": "Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- description\n- bfd_policy\n- interfaces"
+                                                    },
+                                                    "evpn_connectivity": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "ip": {
+                                                                    "type": "string",
+                                                                    "title": "IP",
+                                                                    "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                },
+                                                                "description": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                                    "title": "Description",
+                                                                    "description": "Description (String)"
+                                                                },
+                                                                "remote_as": {
+                                                                    "type": "integer",
+                                                                    "maximum": 4294967295,
+                                                                    "title": "Remote AS",
+                                                                    "description": "Remote AS (Integer)\n- Maximum value: 4294967295"
+                                                                },
+                                                                "allow_self_as": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "Allow Self AS",
+                                                                    "description": "Allow Self AS (Boolean)\n- Default value: false"
+                                                                },
+                                                                "disable_peer_as_check": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "Disable Peer AS Check",
+                                                                    "description": "Disable Peer AS Check (Boolean)\n- Default value: false"
+                                                                },
+                                                                "ttl": {
+                                                                    "type": "integer",
+                                                                    "minimum": 1,
+                                                                    "maximum": 255,
+                                                                    "default": 2,
+                                                                    "title": "TTL",
+                                                                    "description": "TTL (Integer)\n- Default value: 2\n- Minimum value: 1\n- Maximum value: 255"
+                                                                },
+                                                                "bfd": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "BFD",
+                                                                    "description": "BFD (Boolean)\n- Default value: false"
+                                                                },
+                                                                "password": {
+                                                                    "type": "string",
+                                                                    "title": "Password",
+                                                                    "description": "Password (String)"
+                                                                },
+                                                                "peer_prefix_policy": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "Peer Prefix Policy",
+                                                                    "description": "Peer Prefix Policy (String)"
+                                                                },
+                                                                "admin_state": {
+                                                                    "type": "boolean",
+                                                                    "default": "true",
+                                                                    "title": "Admin State",
+                                                                    "description": "Admin State (Boolean)\n- Default value: true"
+                                                                },
+                                                                "local_as": {
+                                                                    "type": "integer",
+                                                                    "maximum": 4294967295,
+                                                                    "title": "Local AS",
+                                                                    "description": "Local AS (Integer)\n- Maximum value: 4294967295"
+                                                                },
+                                                                "as_propagate": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "none",
+                                                                        "no-prepend",
+                                                                        "replace-as",
+                                                                        "dual-as"
+                                                                    ],
+                                                                    "default": "none",
+                                                                    "title": "AS Propagate",
+                                                                    "description": "AS Propagate (String)\n- Default value: none\n- Allowed values: none, no-prepend, replace-as, dual-as"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "ip",
+                                                                "remote_as"
+                                                            ]
+                                                        },
+                                                        "title": "Evpn Connectivity",
+                                                        "description": "Evpn Connectivity (List - Object)\n\nElements:\n- ip (required)\n- description\n- remote_as (required)\n- allow_self_as\n- disable_peer_as_check\n- ttl\n- bfd\n- password\n- peer_prefix_policy\n- admin_state\n- local_as\n- as_propagate"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ]
+                                            },
+                                            "title": "Node Profiles",
+                                            "description": "Node Profiles (List - Object)\n\nElements:\n- name (required)\n- mpls_custom_qos_policy\n- bfd_multihop_node_policy\n- nodes\n- interface_profiles\n- evpn_connectivity"
+                                        },
+                                        "external_endpoint_groups": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "Name",
+                                                        "description": "Name (String)"
+                                                    },
+                                                    "alias": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "Alias",
+                                                        "description": "Alias (String)"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                        "title": "Description",
+                                                        "description": "Description (String)"
+                                                    },
+                                                    "preferred_group": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Preferred Group",
+                                                        "description": "Preferred Group (Boolean)\n- Default value: false"
+                                                    },
+                                                    "subnets": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "Name",
+                                                                    "description": "Name (String)"
+                                                                },
+                                                                "prefix": {
+                                                                    "type": "string",
+                                                                    "title": "Prefix",
+                                                                    "description": "Prefix (String)\n- IPv4 or IPv6 address"
+                                                                },
+                                                                "route_leaking": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "Route Leaking",
+                                                                    "description": "Route Leaking (Boolean)\n- Default value: false"
+                                                                },
+                                                                "security": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "Security",
+                                                                    "description": "Security (Boolean)\n- Default value: false"
+                                                                },
+                                                                "aggregate_shared_route_control": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "Aggregate Shared Route Control",
+                                                                    "description": "Aggregate Shared Route Control (Boolean)\n- Default value: false"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "prefix"
+                                                            ]
+                                                        },
+                                                        "title": "Subnets",
+                                                        "description": "Subnets (List - Object)\n\nElements:\n- name\n- prefix (required)\n- route_leaking\n- security\n- aggregate_shared_route_control"
+                                                    },
+                                                    "contracts": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "consumers": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                                                },
+                                                                "title": "Consumers",
+                                                                "description": "Consumers (List - String)"
+                                                            },
+                                                            "providers": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                                                },
+                                                                "title": "Providers",
+                                                                "description": "Providers (List - String)"
+                                                            },
+                                                            "imported_consumers": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                                                },
+                                                                "title": "Imported Consumers",
+                                                                "description": "Imported Consumers (List - String)"
+                                                            }
+                                                        },
+                                                        "required": [],
+                                                        "title": "Contracts",
+                                                        "description": "Contracts (Object)\n\nElements:\n- consumers\n- providers\n- imported_consumers"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ]
+                                            },
+                                            "title": "External Endpoint Groups",
+                                            "description": "External Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- preferred_group\n- subnets\n- contracts"
+                                        },
+                                        "inbound_route_map": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Inbound Route Map",
+                                            "description": "Inbound Route Map (String)"
+                                        },
+                                        "outbound_route_map": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                            "title": "Outbound Route Map",
+                                            "description": "Outbound Route Map (String)"
+                                        }
+                                    },
+                                    "required": [
+                                        "name"
+                                    ]
+                                },
+                                "title": "Sr Mpls L3Outs",
+                                "description": "Sr Mpls L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- vrf\n- sr_mpls_infra_l3out\n- domain\n- transport_data_plane\n- node_profiles\n- external_endpoint_groups\n- inbound_route_map\n- outbound_route_map"
                             },
                             "filters": {
                                 "type": "array",
@@ -14306,6 +15205,39 @@
                                         },
                                         "title": "DHCP Option Policies",
                                         "description": "DHCP Option Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- options"
+                                    },
+                                    "route_tag_policies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Name",
+                                                    "description": "Name (String)"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                    "title": "Description",
+                                                    "description": "Description (String)"
+                                                },
+                                                "tag": {
+                                                    "type": "integer",
+                                                    "maximum": 4294967295,
+                                                    "default": 4294967295,
+                                                    "title": "Tag",
+                                                    "description": "Tag (Integer)\n- Default value: 4294967295\n- Maximum value: 4294967295"
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ]
+                                        },
+                                        "title": "Route Tag Policies",
+                                        "description": "Route Tag Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- tag"
                                     },
                                     "route_control_route_maps": {
                                         "type": "array",
@@ -16124,11 +17056,337 @@
                                         },
                                         "title": "QoS",
                                         "description": "QoS (List - Object)\n\nElements:\n- name (required)\n- description\n- alias\n- dscp_priority_maps\n- dot1p_classifiers"
+                                    },
+                                    "mpls_custom_qos_policies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Name",
+                                                    "description": "Name (String)"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                    "title": "Description",
+                                                    "description": "Description (String)"
+                                                },
+                                                "alias": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Alias",
+                                                    "description": "Alias (String)"
+                                                },
+                                                "ingress_rules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "priority": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "unspecified",
+                                                                    "level1",
+                                                                    "level2",
+                                                                    "level3",
+                                                                    "level4",
+                                                                    "level5",
+                                                                    "level6",
+                                                                    "level7"
+                                                                ],
+                                                                "default": "unspecified",
+                                                                "title": "Priority",
+                                                                "description": "Priority (String)\n- Default value: unspecified\n- Allowed values: unspecified, level1, level2, level3, level4, level5, level6, level7"
+                                                            },
+                                                            "exp_from": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 7
+                                                                    }
+                                                                ],
+                                                                "title": "Exp From",
+                                                                "description": "Exp From (String, Integer)"
+                                                            },
+                                                            "exp_to": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 7
+                                                                    }
+                                                                ],
+                                                                "title": "Exp To",
+                                                                "description": "Exp To (String, Integer)"
+                                                            },
+                                                            "dscp_target": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified",
+                                                                            "CS0",
+                                                                            "CS1",
+                                                                            "AF11",
+                                                                            "AF12",
+                                                                            "AF13",
+                                                                            "CS2",
+                                                                            "AF21",
+                                                                            "AF22",
+                                                                            "AF23",
+                                                                            "CS3",
+                                                                            "AF31",
+                                                                            "AF32",
+                                                                            "AF33",
+                                                                            "CS4",
+                                                                            "AF41",
+                                                                            "AF42",
+                                                                            "AF43",
+                                                                            "CS5",
+                                                                            "VA",
+                                                                            "EF",
+                                                                            "CS6",
+                                                                            "CS7"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 63
+                                                                    }
+                                                                ],
+                                                                "default": "unspecified",
+                                                                "title": "DSCP Target",
+                                                                "description": "DSCP Target (String, Integer)\n- Default value: unspecified"
+                                                            },
+                                                            "cos_target": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 7
+                                                                    }
+                                                                ],
+                                                                "default": "unspecified",
+                                                                "title": "CoS Target",
+                                                                "description": "CoS Target (String, Integer)\n- Default value: unspecified"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "exp_from",
+                                                            "exp_to"
+                                                        ]
+                                                    },
+                                                    "title": "Ingress Rules",
+                                                    "description": "Ingress Rules (List - Object)\n\nElements:\n- priority\n- exp_from (required)\n- exp_to (required)\n- dscp_target\n- cos_target"
+                                                },
+                                                "egress_rules": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "dscp_from": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified",
+                                                                            "CS0",
+                                                                            "CS1",
+                                                                            "AF11",
+                                                                            "AF12",
+                                                                            "AF13",
+                                                                            "CS2",
+                                                                            "AF21",
+                                                                            "AF22",
+                                                                            "AF23",
+                                                                            "CS3",
+                                                                            "AF31",
+                                                                            "AF32",
+                                                                            "AF33",
+                                                                            "CS4",
+                                                                            "AF41",
+                                                                            "AF42",
+                                                                            "AF43",
+                                                                            "CS5",
+                                                                            "VA",
+                                                                            "EF",
+                                                                            "CS6",
+                                                                            "CS7"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 63
+                                                                    }
+                                                                ],
+                                                                "title": "DSCP From",
+                                                                "description": "DSCP From (String, Integer)"
+                                                            },
+                                                            "dscp_to": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified",
+                                                                            "CS0",
+                                                                            "CS1",
+                                                                            "AF11",
+                                                                            "AF12",
+                                                                            "AF13",
+                                                                            "CS2",
+                                                                            "AF21",
+                                                                            "AF22",
+                                                                            "AF23",
+                                                                            "CS3",
+                                                                            "AF31",
+                                                                            "AF32",
+                                                                            "AF33",
+                                                                            "CS4",
+                                                                            "AF41",
+                                                                            "AF42",
+                                                                            "AF43",
+                                                                            "CS5",
+                                                                            "VA",
+                                                                            "EF",
+                                                                            "CS6",
+                                                                            "CS7"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 63
+                                                                    }
+                                                                ],
+                                                                "title": "DSCP To",
+                                                                "description": "DSCP To (String, Integer)"
+                                                            },
+                                                            "exp_target": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 7
+                                                                    }
+                                                                ],
+                                                                "default": "unspecified",
+                                                                "title": "Exp Target",
+                                                                "description": "Exp Target (String, Integer)\n- Default value: unspecified"
+                                                            },
+                                                            "cos_target": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "unspecified"
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "type": "integer",
+                                                                        "maximum": 7
+                                                                    }
+                                                                ],
+                                                                "default": "unspecified",
+                                                                "title": "CoS Target",
+                                                                "description": "CoS Target (String, Integer)\n- Default value: unspecified"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "dscp_from",
+                                                            "dscp_to"
+                                                        ]
+                                                    },
+                                                    "title": "Egress Rules",
+                                                    "description": "Egress Rules (List - Object)\n\nElements:\n- dscp_from (required)\n- dscp_to (required)\n- exp_target\n- cos_target"
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ]
+                                        },
+                                        "title": "Mpls Custom QoS Policies",
+                                        "description": "Mpls Custom QoS Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- alias\n- ingress_rules\n- egress_rules"
+                                    },
+                                    "bfd_multihop_node_policies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Name",
+                                                    "description": "Name (String)"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                    "title": "Description",
+                                                    "description": "Description (String)"
+                                                },
+                                                "detection_multiplier": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 50,
+                                                    "default": 3,
+                                                    "title": "Detection Multiplier",
+                                                    "description": "Detection Multiplier (Integer)\n- Default value: 3\n- Minimum value: 1\n- Maximum value: 50"
+                                                },
+                                                "min_rx_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 50,
+                                                    "maximum": 999,
+                                                    "default": 250,
+                                                    "title": "Min RX Interval",
+                                                    "description": "Min RX Interval (Integer)\n- Default value: 250\n- Minimum value: 50\n- Maximum value: 999"
+                                                },
+                                                "min_tx_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 50,
+                                                    "maximum": 999,
+                                                    "default": 250,
+                                                    "title": "Min TX Interval",
+                                                    "description": "Min TX Interval (Integer)\n- Default value: 250\n- Minimum value: 50\n- Maximum value: 999"
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ]
+                                        },
+                                        "title": "BFD Multihop Node Policies",
+                                        "description": "BFD Multihop Node Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- detection_multiplier\n- min_rx_interval\n- min_tx_interval"
                                     }
                                 },
                                 "required": [],
                                 "title": "Policies",
-                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos"
+                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies"
                             },
                             "services": {
                                 "type": "object",
@@ -17319,6 +18577,15 @@
                                 "title": "Services",
                                 "description": "Services (Object)\n\nElements:\n- l4l7_devices\n- redirect_policies\n- service_epg_policies\n- redirect_health_groups\n- redirect_backup_policies\n- service_graph_templates\n- device_selection_policies"
                             },
+                            "security_domains": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                },
+                                "title": "Security Domains",
+                                "description": "Security Domains (List - String)"
+                            },
                             "expected_state": {
                                 "type": "object",
                                 "additionalProperties": false,
@@ -17355,7 +18622,7 @@
                         ]
                     },
                     "title": "Tenants",
-                    "description": "Tenants (List - Object)\n\nElements:\n- name (required)\n- managed\n- alias\n- description\n- vrfs\n- bridge_domains\n- application_profiles\n- inb_endpoint_groups\n- oob_endpoint_groups\n- ext_mgmt_instances\n- l3outs\n- filters\n- contracts\n- oob_contracts\n- imported_contracts\n- policies\n- services\n- expected_state"
+                    "description": "Tenants (List - Object)\n\nElements:\n- name (required)\n- managed\n- alias\n- description\n- vrfs\n- bridge_domains\n- application_profiles\n- inb_endpoint_groups\n- oob_endpoint_groups\n- ext_mgmt_instances\n- l3outs\n- sr_mpls_l3outs\n- filters\n- contracts\n- oob_contracts\n- imported_contracts\n- policies\n- services\n- security_domains\n- expected_state"
                 },
                 "auto_generate_switch_pod_profiles": {
                     "type": "boolean",
