@@ -5115,6 +5115,15 @@
                                         "required": [],
                                         "title": "Expected State",
                                         "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
+                                    },
+                                    "security_domains": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                        },
+                                        "title": "Security Domains",
+                                        "description": "Security Domains (List - String)"
                                     }
                                 },
                                 "required": [
@@ -5123,7 +5132,7 @@
                                 ]
                             },
                             "title": "Physical Domains",
-                            "description": "Physical Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)\n- expected_state"
+                            "description": "Physical Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)\n- expected_state\n- security_domains"
                         },
                         "routed_domains": {
                             "type": "array",
@@ -5172,6 +5181,15 @@
                                         "required": [],
                                         "title": "Expected State",
                                         "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
+                                    },
+                                    "security_domains": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                        },
+                                        "title": "Security Domains",
+                                        "description": "Security Domains (List - String)"
                                     }
                                 },
                                 "required": [
@@ -5180,7 +5198,7 @@
                                 ]
                             },
                             "title": "Routed Domains",
-                            "description": "Routed Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)\n- expected_state"
+                            "description": "Routed Domains (List - Object)\n\nElements:\n- name (required)\n- vlan_pool (required)\n- expected_state\n- security_domains"
                         },
                         "aaeps": {
                             "type": "array",
@@ -17361,19 +17379,19 @@
                                                 },
                                                 "min_rx_interval": {
                                                     "type": "integer",
-                                                    "minimum": 50,
+                                                    "minimum": 250,
                                                     "maximum": 999,
                                                     "default": 250,
                                                     "title": "Min RX Interval",
-                                                    "description": "Min RX Interval (Integer)\n- Default value: 250\n- Minimum value: 50\n- Maximum value: 999"
+                                                    "description": "Min RX Interval (Integer)\n- Default value: 250\n- Minimum value: 250\n- Maximum value: 999"
                                                 },
                                                 "min_tx_interval": {
                                                     "type": "integer",
-                                                    "minimum": 50,
+                                                    "minimum": 250,
                                                     "maximum": 999,
                                                     "default": 250,
                                                     "title": "Min TX Interval",
-                                                    "description": "Min TX Interval (Integer)\n- Default value: 250\n- Minimum value: 50\n- Maximum value: 999"
+                                                    "description": "Min TX Interval (Integer)\n- Default value: 250\n- Minimum value: 250\n- Maximum value: 999"
                                                 }
                                             },
                                             "required": [
