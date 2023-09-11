@@ -12,16 +12,16 @@ Resource        ./apic_common.resource
 Verify Date and Time Policy {{ date_time_policy_name }}
     ${r}=   GET On Session   apic   /api/mo/uni/fabric/time-{{ date_time_policy_name }}.json   params=rsp-subtree=full 
     Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.name   {{ date_time_policy_name }}
-    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.adminSt   {{ policy.ntp_admin_state | cisco.nac.nac_bool("enabled") }}
-    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.StratumValue   {{ policy.apic_ntp_server_master_stratum | default(defaults.apic.fabric_policies.pod_policies.date_time_policies.apic_ntp_server_master_stratum) }}
-    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.authSt   {{ policy.ntp_auth_state | cisco.nac.nac_bool("enabled") }}
-    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.serverState   {{ policy.apic_ntp_server_state | cisco.nac.nac_bool("enabled") }}
+    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.adminSt   {{ 'enabled' if policy.ntp_admin_state == true else 'disabled' }} 
+    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.StratumValue   {{ policy.apic_ntp_server_master_stratum }}
+    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.authSt   {{ 'enabled' if policy.ntp_auth_state == true else 'disabled' }} 
+    Should Be Equal Value Json String   ${r.json()}   $..datetimePol.attributes.serverState   {{ 'enabled' if policy.apic_ntp_server_state == true else 'disabled' }} 
     {% for server in policy.ntp_servers | default([]) %}
 
 # Verify NTP Server {{ server.hostname_ip }}
     ${server}=   Set Variable   $..datetimePol.children[?(@.datetimeNtpProv.attributes.name=='{{ server.hostname_ip }}')]
     Should Be Equal Value Json String   ${r.json()}    ${server}..datetimeNtpProv.attributes.name   {{ server.hostname_ip }}
-    Should Be Equal Value Json String   ${r.json()}    ${server}..datetimeNtpProv.attributes.preferred   {{ server.preferred | default(defaults.apic.fabric_policies.pod_policies.date_time_policies.ntp_servers.preferred) | cisco.nac.nac_bool("yes") }}
+    Should Be Equal Value Json String   ${r.json()}    ${server}..datetimeNtpProv.attributes.preferred   {{ 'yes' if server.preferred == true else 'disabled' }} 
     {% endfor %}
 {% endfor %}
 
