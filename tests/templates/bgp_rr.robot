@@ -1,7 +1,7 @@
 *** Settings ***
 Documentation   Verify BGP Configuration
 Suite Setup     Login APIC
-Default Tags    apic   day1   config   fabric_policies
+Default Tags    apic   day1   fabric_policies
 Resource        ./apic_common.resource
 
 *** Test Cases ***
@@ -37,7 +37,7 @@ Verify BGP AS Configuration on APIC
         {% if node.role != 'apic' %}
 
 Verify BGP AS on Node-{{ node.id }}
-    ${r}=   GET On Session   apic   /api/mo/topology/pod-{{ node.pod }}/node-{{ node.id }}/sys/bgp/inst/dom-overlay-1.json   params=query-target=subtree&target-subtree-class=bgpPeer
+    ${r}=   GET On Session   apic   /api/mo/topology/pod-{{ node.pod  | default(defaults.apic.node_policies.nodes.pod) }}/node-{{ node.id }}/sys/bgp/inst/dom-overlay-1.json   params=query-target=subtree&target-subtree-class=bgpPeer
     Should Be Equal Value Json String   ${r.json()}   $..bgpPeer.attributes.asn   {{ apic.fabric_policies.fabric_bgp_as }}     
         {% endif %}
     {% endfor %}
