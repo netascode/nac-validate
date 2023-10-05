@@ -12069,12 +12069,23 @@
                                                                     },
                                                                     "title": "Paths",
                                                                     "description": "Paths (List - Object)\n\nElements:\n- physical_domain\n- vmware_vmm_domain\n- elag\n- floating_ip (required)"
+                                                                },
+                                                                "mode": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "regular",
+                                                                        "native",
+                                                                        "untagged"
+                                                                    ],
+                                                                    "default": "regular",
+                                                                    "title": "Mode",
+                                                                    "description": "Mode (String)\n- Default value: regular\n- Allowed values: regular, native, untagged"
                                                                 }
                                                             },
                                                             "required": []
                                                         },
                                                         "title": "Interfaces",
-                                                        "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- port\n- module\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths"
+                                                        "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- port\n- module\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode"
                                                     }
                                                 },
                                                 "required": [
@@ -12833,12 +12844,23 @@
                                                                                 },
                                                                                 "title": "Paths",
                                                                                 "description": "Paths (List - Object)\n\nElements:\n- physical_domain\n- vmware_vmm_domain\n- elag\n- floating_ip (required)"
+                                                                            },
+                                                                            "mode": {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "regular",
+                                                                                    "native",
+                                                                                    "untagged"
+                                                                                ],
+                                                                                "default": "regular",
+                                                                                "title": "Mode",
+                                                                                "description": "Mode (String)\n- Default value: regular\n- Allowed values: regular, native, untagged"
                                                                             }
                                                                         },
                                                                         "required": []
                                                                     },
                                                                     "title": "Interfaces",
-                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths"
+                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode"
                                                                 }
                                                             },
                                                             "required": [
