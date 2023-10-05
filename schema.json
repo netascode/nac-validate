@@ -10381,13 +10381,12 @@
                                                                 }
                                                             },
                                                             "required": [
-                                                                "name",
                                                                 "mac",
                                                                 "type"
                                                             ]
                                                         },
                                                         "title": "Static Endpoints",
-                                                        "description": "Static Endpoints (List - Object)\n\nElements:\n- name (required)\n- alias\n- vlan\n- mac (required)\n- ip\n- type (required)\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- additional_ips"
+                                                        "description": "Static Endpoints (List - Object)\n\nElements:\n- name\n- alias\n- vlan\n- mac (required)\n- ip\n- type (required)\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- additional_ips"
                                                     },
                                                     "subnets": {
                                                         "type": "array",
