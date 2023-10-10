@@ -12080,12 +12080,49 @@
                                                                     "default": "regular",
                                                                     "title": "Mode",
                                                                     "description": "Mode (String)\n- Default value: regular\n- Allowed values: regular, native, untagged"
+                                                                },
+                                                                "expected_state": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": false,
+                                                                    "properties": {
+                                                                        "ospf_neighbors": {
+                                                                            "type": "array",
+                                                                            "items": {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "properties": {
+                                                                                    "ip": {
+                                                                                        "type": "string",
+                                                                                        "title": "IP",
+                                                                                        "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                                    },
+                                                                                    "state": {
+                                                                                        "type": "string",
+                                                                                        "enum": [
+                                                                                            "full",
+                                                                                            "down"
+                                                                                        ],
+                                                                                        "title": "State",
+                                                                                        "description": "State (String)\n- Allowed values: full, down"
+                                                                                    }
+                                                                                },
+                                                                                "required": [
+                                                                                    "ip"
+                                                                                ]
+                                                                            },
+                                                                            "title": "OSPF Neighbors",
+                                                                            "description": "OSPF Neighbors (List - Object)\n\nElements:\n- ip (required)\n- state"
+                                                                        }
+                                                                    },
+                                                                    "required": [],
+                                                                    "title": "Expected State",
+                                                                    "description": "Expected State (Object)\n\nElements:\n- ospf_neighbors"
                                                                 }
                                                             },
                                                             "required": []
                                                         },
                                                         "title": "Interfaces",
-                                                        "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- port\n- module\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode"
+                                                        "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- port\n- module\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode\n- expected_state"
                                                     }
                                                 },
                                                 "required": [
@@ -12855,12 +12892,49 @@
                                                                                 "default": "regular",
                                                                                 "title": "Mode",
                                                                                 "description": "Mode (String)\n- Default value: regular\n- Allowed values: regular, native, untagged"
+                                                                            },
+                                                                            "expected_state": {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "properties": {
+                                                                                    "ospf_neighbors": {
+                                                                                        "type": "array",
+                                                                                        "items": {
+                                                                                            "type": "object",
+                                                                                            "additionalProperties": false,
+                                                                                            "properties": {
+                                                                                                "ip": {
+                                                                                                    "type": "string",
+                                                                                                    "title": "IP",
+                                                                                                    "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                                                },
+                                                                                                "state": {
+                                                                                                    "type": "string",
+                                                                                                    "enum": [
+                                                                                                        "full",
+                                                                                                        "down"
+                                                                                                    ],
+                                                                                                    "title": "State",
+                                                                                                    "description": "State (String)\n- Allowed values: full, down"
+                                                                                                }
+                                                                                            },
+                                                                                            "required": [
+                                                                                                "ip"
+                                                                                            ]
+                                                                                        },
+                                                                                        "title": "OSPF Neighbors",
+                                                                                        "description": "OSPF Neighbors (List - Object)\n\nElements:\n- ip (required)\n- state"
+                                                                                    }
+                                                                                },
+                                                                                "required": [],
+                                                                                "title": "Expected State",
+                                                                                "description": "Expected State (Object)\n\nElements:\n- ospf_neighbors"
                                                                             }
                                                                         },
                                                                         "required": []
                                                                     },
                                                                     "title": "Interfaces",
-                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode"
+                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode\n- expected_state"
                                                                 }
                                                             },
                                                             "required": [
@@ -14848,6 +14922,185 @@
                                         },
                                         "title": "OSPF Interface Policies",
                                         "description": "OSPF Interface Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- cost\n- passive_interface\n- mtu_ignore\n- advertise_subnet\n- bfd\n- hello_interval\n- dead_interval\n- network_type\n- priority\n- lsa_retransmit_interval\n- lsa_transmit_delay"
+                                    },
+                                    "ospf_timer_policies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Name",
+                                                    "description": "Name (String)"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                    "title": "Description",
+                                                    "description": "Description (String)"
+                                                },
+                                                "reference_bandwidth": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 4000000,
+                                                    "default": 40000,
+                                                    "title": "Reference Bandwidth",
+                                                    "description": "Reference Bandwidth (Integer)\n- Default value: 40000\n- Minimum value: 1\n- Maximum value: 4000000"
+                                                },
+                                                "distance": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 255,
+                                                    "default": 110,
+                                                    "title": "Distance",
+                                                    "description": "Distance (Integer)\n- Default value: 110\n- Minimum value: 1\n- Maximum value: 255"
+                                                },
+                                                "max_ecmp": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 64,
+                                                    "default": 8,
+                                                    "title": "Max Ecmp",
+                                                    "description": "Max Ecmp (Integer)\n- Default value: 8\n- Minimum value: 1\n- Maximum value: 64"
+                                                },
+                                                "spf_init_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 600000,
+                                                    "default": 200,
+                                                    "title": "Spf Init Interval",
+                                                    "description": "Spf Init Interval (Integer)\n- Default value: 200\n- Minimum value: 1\n- Maximum value: 600000"
+                                                },
+                                                "spf_hold_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 600000,
+                                                    "default": 1000,
+                                                    "title": "Spf Hold Interval",
+                                                    "description": "Spf Hold Interval (Integer)\n- Default value: 1000\n- Minimum value: 1\n- Maximum value: 600000"
+                                                },
+                                                "spf_max_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 600000,
+                                                    "default": 5000,
+                                                    "title": "Spf Max Interval",
+                                                    "description": "Spf Max Interval (Integer)\n- Default value: 5000\n- Minimum value: 1\n- Maximum value: 600000"
+                                                },
+                                                "max_lsa_reset_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 1800,
+                                                    "default": 10,
+                                                    "title": "Max LSA Reset Interval",
+                                                    "description": "Max LSA Reset Interval (Integer)\n- Default value: 10\n- Minimum value: 1\n- Maximum value: 1800"
+                                                },
+                                                "max_lsa_sleep_count": {
+                                                    "type": "integer",
+                                                    "minimum": 50,
+                                                    "maximum": 30000,
+                                                    "default": 5,
+                                                    "title": "Max LSA Sleep Count",
+                                                    "description": "Max LSA Sleep Count (Integer)\n- Default value: 5\n- Minimum value: 50\n- Maximum value: 30000"
+                                                },
+                                                "max_lsa_sleep_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 50,
+                                                    "maximum": 30000,
+                                                    "default": 5,
+                                                    "title": "Max LSA Sleep Interval",
+                                                    "description": "Max LSA Sleep Interval (Integer)\n- Default value: 5\n- Minimum value: 50\n- Maximum value: 30000"
+                                                },
+                                                "lsa_arrival_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 600000,
+                                                    "default": 1000,
+                                                    "title": "LSA Arrival Interval",
+                                                    "description": "LSA Arrival Interval (Integer)\n- Default value: 1000\n- Minimum value: 1\n- Maximum value: 600000"
+                                                },
+                                                "lsa_group_pacing_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 1800,
+                                                    "default": 10,
+                                                    "title": "LSA Group Pacing Interval",
+                                                    "description": "LSA Group Pacing Interval (Integer)\n- Default value: 10\n- Minimum value: 1\n- Maximum value: 1800"
+                                                },
+                                                "lsa_hold_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 30000,
+                                                    "default": 5000,
+                                                    "title": "LSA Hold Interval",
+                                                    "description": "LSA Hold Interval (Integer)\n- Default value: 5000\n- Minimum value: 1\n- Maximum value: 30000"
+                                                },
+                                                "lsa_start_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 5000,
+                                                    "title": "LSA Start Interval",
+                                                    "description": "LSA Start Interval (Integer)\n- Minimum value: 1\n- Maximum value: 5000"
+                                                },
+                                                "lsa_max_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 30000,
+                                                    "default": 5000,
+                                                    "title": "LSA Max Interval",
+                                                    "description": "LSA Max Interval (Integer)\n- Default value: 5000\n- Minimum value: 1\n- Maximum value: 30000"
+                                                },
+                                                "max_lsa_num": {
+                                                    "type": "integer",
+                                                    "default": 20000,
+                                                    "title": "Max LSA Num",
+                                                    "description": "Max LSA Num (Integer)\n- Default value: 20000"
+                                                },
+                                                "max_lsa_threshold": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 100,
+                                                    "default": 75,
+                                                    "title": "Max LSA Threshold",
+                                                    "description": "Max LSA Threshold (Integer)\n- Default value: 75\n- Minimum value: 1\n- Maximum value: 100"
+                                                },
+                                                "max_lsa_action": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "reject",
+                                                        "log"
+                                                    ],
+                                                    "default": "reject",
+                                                    "title": "Max LSA Action",
+                                                    "description": "Max LSA Action (String)\n- Default value: reject\n- Allowed values: reject, log"
+                                                },
+                                                "graceful_restart": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "Graceful Restart",
+                                                    "description": "Graceful Restart (Boolean)\n- Default value: false"
+                                                },
+                                                "router_id_lookup": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "Router ID Lookup",
+                                                    "description": "Router ID Lookup (Boolean)\n- Default value: false"
+                                                },
+                                                "prefix_suppression": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "Prefix Suppression",
+                                                    "description": "Prefix Suppression (Boolean)\n- Default value: false"
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ]
+                                        },
+                                        "title": "OSPF Timer Policies",
+                                        "description": "OSPF Timer Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- reference_bandwidth\n- distance\n- max_ecmp\n- spf_init_interval\n- spf_hold_interval\n- spf_max_interval\n- max_lsa_reset_interval\n- max_lsa_sleep_count\n- max_lsa_sleep_interval\n- lsa_arrival_interval\n- lsa_group_pacing_interval\n- lsa_hold_interval\n- lsa_start_interval\n- lsa_max_interval\n- max_lsa_num\n- max_lsa_threshold\n- max_lsa_action\n- graceful_restart\n- router_id_lookup\n- prefix_suppression"
                                     },
                                     "bgp_timer_policies": {
                                         "type": "array",
@@ -17425,7 +17678,7 @@
                                 },
                                 "required": [],
                                 "title": "Policies",
-                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies"
+                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- ospf_timer_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies"
                             },
                             "services": {
                                 "type": "object",
