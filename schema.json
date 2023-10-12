@@ -4914,6 +4914,14 @@
                             "title": "Leaf Interface Selector Name",
                             "description": "Leaf Interface Selector Name (String)\n- Default value: ETH\\g<mod>-\\g<port>\n- Minimum length: 1\n- Maximum length: 64"
                         },
+                        "leaf_interface_selector_sub_port_name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "default": "ETH\\g<mod>-\\g<port>-\\g<sport>",
+                            "title": "Leaf Interface Selector Sub Port Name",
+                            "description": "Leaf Interface Selector Sub Port Name (String)\n- Default value: ETH\\g<mod>-\\g<port>-\\g<sport>\n- Minimum length: 1\n- Maximum length: 64"
+                        },
                         "fex_profile_name": {
                             "type": "string",
                             "minLength": 1,
@@ -8346,7 +8354,7 @@
                     },
                     "required": [],
                     "title": "Access Policies",
-                    "description": "Access Policies (Object)\n\nElements:\n- leaf_switch_profile_name\n- leaf_switch_selector_name\n- leaf_interface_profile_name\n- leaf_interface_selector_name\n- fex_profile_name\n- fex_interface_selector_name\n- spine_switch_profile_name\n- spine_switch_selector_name\n- spine_interface_profile_name\n- spine_interface_selector_name\n- vpc_group_name\n- infra_vlan\n- vlan_pools\n- physical_domains\n- routed_domains\n- aaeps\n- switch_policies\n- spine_switch_policy_groups\n- leaf_switch_policy_groups\n- leaf_switch_profiles\n- spine_switch_profiles\n- interface_policies\n- leaf_interface_policy_groups\n- spine_interface_policy_groups\n- leaf_interface_profiles\n- fex_interface_profiles\n- spine_interface_profiles\n- mcp\n- qos\n- span\n- vspan"
+                    "description": "Access Policies (Object)\n\nElements:\n- leaf_switch_profile_name\n- leaf_switch_selector_name\n- leaf_interface_profile_name\n- leaf_interface_selector_name\n- leaf_interface_selector_sub_port_name\n- fex_profile_name\n- fex_interface_selector_name\n- spine_switch_profile_name\n- spine_switch_selector_name\n- spine_interface_profile_name\n- spine_interface_selector_name\n- vpc_group_name\n- infra_vlan\n- vlan_pools\n- physical_domains\n- routed_domains\n- aaeps\n- switch_policies\n- spine_switch_policy_groups\n- leaf_switch_policy_groups\n- leaf_switch_profiles\n- spine_switch_profiles\n- interface_policies\n- leaf_interface_policy_groups\n- spine_interface_policy_groups\n- leaf_interface_profiles\n- fex_interface_profiles\n- spine_interface_profiles\n- mcp\n- qos\n- span\n- vspan"
                 },
                 "pod_policies": {
                     "type": "object",
@@ -9663,6 +9671,12 @@
                                             "title": "IP Dataplane Learning",
                                             "description": "IP Dataplane Learning (Boolean)\n- Default value: true"
                                         },
+                                        "clear_remote_mac_entries": {
+                                            "type": "boolean",
+                                            "default": "false",
+                                            "title": "Clear Remote MAC Entries",
+                                            "description": "Clear Remote MAC Entries (Boolean)\n- Default value: false"
+                                        },
                                         "limit_ip_learn_to_subnets": {
                                             "type": "boolean",
                                             "default": "true",
@@ -9904,7 +9918,7 @@
                                     ]
                                 },
                                 "title": "Bridge Domains",
-                                "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- arp_flooding\n- advertise_host_routes\n- ip_dataplane_learning\n- limit_ip_learn_to_subnets\n- mac\n- virtual_mac\n- ep_move_detection\n- l3_multicast\n- multi_destination_flooding\n- unicast_routing\n- unknown_unicast\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- l3outs\n- dhcp_labels\n- igmp_interface_policy\n- igmp_snooping_policy\n- expected_state"
+                                "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- arp_flooding\n- advertise_host_routes\n- ip_dataplane_learning\n- clear_remote_mac_entries\n- limit_ip_learn_to_subnets\n- mac\n- virtual_mac\n- ep_move_detection\n- l3_multicast\n- multi_destination_flooding\n- unicast_routing\n- unknown_unicast\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- l3outs\n- dhcp_labels\n- igmp_interface_policy\n- igmp_snooping_policy\n- expected_state"
                             },
                             "application_profiles": {
                                 "type": "array",
