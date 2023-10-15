@@ -876,11 +876,15 @@
                                                             "type": "string",
                                                             "enum": [
                                                                 "hmac-md5-96",
-                                                                "hmac-sha1-96"
+                                                                "hmac-sha1-96",
+                                                                "hmac-sha2-224",
+                                                                "hmac-sha2-256",
+                                                                "hmac-sha2-384",
+                                                                "hmac-sha2-512"
                                                             ],
                                                             "default": "hmac-sha1-96",
                                                             "title": "Authorization Type",
-                                                            "description": "Authorization Type (String)\n- Default value: hmac-sha1-96\n- Allowed values: hmac-md5-96, hmac-sha1-96"
+                                                            "description": "Authorization Type (String)\n- Default value: hmac-sha1-96\n- Allowed values: hmac-md5-96, hmac-sha1-96, hmac-sha2-224, hmac-sha2-256, hmac-sha2-384, hmac-sha2-512"
                                                         },
                                                         "authorization_key": {
                                                             "type": "string",
@@ -2470,6 +2474,15 @@
                                         "title": "Vlan Pool",
                                         "description": "Vlan Pool (String)"
                                     },
+                                    "security_domains": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+                                        },
+                                        "title": "Security Domains",
+                                        "description": "Security Domains (List - String)"
+                                    },
                                     "vswitch": {
                                         "type": "object",
                                         "additionalProperties": false,
@@ -2746,7 +2759,7 @@
                                 ]
                             },
                             "title": "Vmware VMM Domains",
-                            "description": "Vmware VMM Domains (List - Object)\n\nElements:\n- name (required)\n- access_mode\n- delimiter\n- tag_collection\n- vlan_pool\n- vswitch\n- credential_policies\n- vcenters\n- uplinks\n- expected_state"
+                            "description": "Vmware VMM Domains (List - Object)\n\nElements:\n- name (required)\n- access_mode\n- delimiter\n- tag_collection\n- vlan_pool\n- security_domains\n- vswitch\n- credential_policies\n- vcenters\n- uplinks\n- expected_state"
                         },
                         "aaa": {
                             "type": "object",
@@ -4872,11 +4885,50 @@
                             },
                             "title": "L2 MTU Policies",
                             "description": "L2 MTU Policies (List - Object)\n\nElements:\n- name (required)\n- port_mtu_size"
+                        },
+                        "system_performance": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "admin_state": {
+                                    "type": "boolean",
+                                    "default": "false",
+                                    "title": "Admin State",
+                                    "description": "Admin State (Boolean)\n- Default value: false"
+                                },
+                                "response_threshold": {
+                                    "type": "integer",
+                                    "minimum": 40,
+                                    "maximum": 8500,
+                                    "default": 8500,
+                                    "title": "Response Threshold",
+                                    "description": "Response Threshold (Integer)\n- Default value: 8500\n- Minimum value: 40\n- Maximum value: 8500"
+                                },
+                                "top_slowest_requests": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10,
+                                    "default": 5,
+                                    "title": "Top Slowest Requests",
+                                    "description": "Top Slowest Requests (Integer)\ntop slowest in UI in API is topNRequests\n- Default value: 5\n- Minimum value: 1\n- Maximum value: 10"
+                                },
+                                "calculation_window": {
+                                    "type": "integer",
+                                    "minimum": 30,
+                                    "maximum": 300,
+                                    "default": 300,
+                                    "title": "Calculation Window",
+                                    "description": "Calculation Window (Integer)\nfrequency in UI calculation_window in API\n- Default value: 300\n- Minimum value: 30\n- Maximum value: 300"
+                                }
+                            },
+                            "required": [],
+                            "title": "System Performance",
+                            "description": "System Performance (Object)\n\nElements:\n- admin_state\n- response_threshold\n- top_slowest_requests\n- calculation_window"
                         }
                     },
                     "required": [],
                     "title": "Fabric Policies",
-                    "description": "Fabric Policies (Object)\n\nElements:\n- leaf_switch_profile_name\n- leaf_switch_selector_name\n- leaf_interface_profile_name\n- spine_switch_profile_name\n- spine_switch_selector_name\n- spine_interface_profile_name\n- pod_profile_name\n- pod_profile_pod_selector_name\n- config_passphrase\n- apic_conn_pref\n- banners\n- ep_loop_protection\n- rogue_ep_control\n- global_settings\n- port_tracking\n- ptp\n- ip_aging\n- ignore_acked_faults\n- use_infra_gipo\n- coop_group_policy\n- l2_port_mtu\n- fabric_isis_redistribute_metric\n- fabric_isis_bfd\n- fabric_bgp_as\n- fabric_bgp_rr\n- fabric_bgp_ext_rr\n- date_time_format\n- dns_policies\n- err_disabled_recovery\n- pod_policies\n- pod_policy_groups\n- pod_profiles\n- switch_policies\n- leaf_switch_policy_groups\n- spine_switch_policy_groups\n- leaf_switch_profiles\n- spine_switch_profiles\n- leaf_interface_profiles\n- spine_interface_profiles\n- external_connectivity_policy\n- infra_dscp_translation_policy\n- vmware_vmm_domains\n- aaa\n- geolocation\n- remote_locations\n- schedulers\n- config_exports\n- monitoring\n- span\n- smart_licensing\n- l2_mtu_policies"
+                    "description": "Fabric Policies (Object)\n\nElements:\n- leaf_switch_profile_name\n- leaf_switch_selector_name\n- leaf_interface_profile_name\n- spine_switch_profile_name\n- spine_switch_selector_name\n- spine_interface_profile_name\n- pod_profile_name\n- pod_profile_pod_selector_name\n- config_passphrase\n- apic_conn_pref\n- banners\n- ep_loop_protection\n- rogue_ep_control\n- global_settings\n- port_tracking\n- ptp\n- ip_aging\n- ignore_acked_faults\n- use_infra_gipo\n- coop_group_policy\n- l2_port_mtu\n- fabric_isis_redistribute_metric\n- fabric_isis_bfd\n- fabric_bgp_as\n- fabric_bgp_rr\n- fabric_bgp_ext_rr\n- date_time_format\n- dns_policies\n- err_disabled_recovery\n- pod_policies\n- pod_policy_groups\n- pod_profiles\n- switch_policies\n- leaf_switch_policy_groups\n- spine_switch_policy_groups\n- leaf_switch_profiles\n- spine_switch_profiles\n- leaf_interface_profiles\n- spine_interface_profiles\n- external_connectivity_policy\n- infra_dscp_translation_policy\n- vmware_vmm_domains\n- aaa\n- geolocation\n- remote_locations\n- schedulers\n- config_exports\n- monitoring\n- span\n- smart_licensing\n- l2_mtu_policies\n- system_performance"
                 },
                 "access_policies": {
                     "type": "object",
@@ -9825,6 +9877,12 @@
                                                         "default": "false",
                                                         "title": "No Default Gateway",
                                                         "description": "No Default Gateway (Boolean)\n- Default value: false"
+                                                    },
+                                                    "nd_ra_prefix_policy": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                        "title": "ND RA Prefix Policy",
+                                                        "description": "ND RA Prefix Policy (String)"
                                                     }
                                                 },
                                                 "required": [
@@ -9832,7 +9890,7 @@
                                                 ]
                                             },
                                             "title": "Subnets",
-                                            "description": "Subnets (List - Object)\n\nElements:\n- description\n- ip (required)\n- primary_ip\n- public\n- private\n- shared\n- virtual\n- igmp_querier\n- nd_ra_prefix\n- no_default_gateway"
+                                            "description": "Subnets (List - Object)\n\nElements:\n- description\n- ip (required)\n- primary_ip\n- public\n- private\n- shared\n- virtual\n- igmp_querier\n- nd_ra_prefix\n- no_default_gateway\n- nd_ra_prefix_policy"
                                         },
                                         "l3outs": {
                                             "type": "array",
@@ -10550,6 +10608,12 @@
                                                                     },
                                                                     "title": "IP Pools",
                                                                     "description": "IP Pools (List - Object)\n\nElements:\n- name (required)\n- start_ip\n- end_ip\n- dns_search_suffix\n- dns_server\n- dns_suffix\n- wins_server"
+                                                                },
+                                                                "nd_ra_prefix_policy": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "ND RA Prefix Policy",
+                                                                    "description": "ND RA Prefix Policy (String)"
                                                                 }
                                                             },
                                                             "required": [
@@ -10557,7 +10621,7 @@
                                                             ]
                                                         },
                                                         "title": "Subnets",
-                                                        "description": "Subnets (List - Object)\n\nElements:\n- description\n- ip (required)\n- public\n- private\n- shared\n- igmp_querier\n- nd_ra_prefix\n- no_default_gateway\n- virtual\n- next_hop_ip\n- anycast_mac\n- nlb_mode\n- nlb_group\n- nlb_mac\n- ip_pools"
+                                                        "description": "Subnets (List - Object)\n\nElements:\n- description\n- ip (required)\n- public\n- private\n- shared\n- igmp_querier\n- nd_ra_prefix\n- no_default_gateway\n- virtual\n- next_hop_ip\n- anycast_mac\n- nlb_mode\n- nlb_group\n- nlb_mac\n- ip_pools\n- nd_ra_prefix_policy"
                                                     },
                                                     "contracts": {
                                                         "type": "object",
@@ -11809,6 +11873,12 @@
                                                                     "title": "SVI",
                                                                     "description": "SVI (Boolean)\n- Default value: false"
                                                                 },
+                                                                "multipod_direct": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "Multipod Direct",
+                                                                    "description": "Multipod Direct (Boolean)\n- Default value: false"
+                                                                },
                                                                 "autostate": {
                                                                     "type": "boolean",
                                                                     "default": "false",
@@ -12126,17 +12196,36 @@
                                                                             },
                                                                             "title": "OSPF Neighbors",
                                                                             "description": "OSPF Neighbors (List - Object)\n\nElements:\n- ip (required)\n- state"
+                                                                        },
+                                                                        "bfd_neighbors": {
+                                                                            "type": "array",
+                                                                            "items": {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "properties": {
+                                                                                    "ip": {
+                                                                                        "type": "string",
+                                                                                        "title": "IP",
+                                                                                        "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                                    }
+                                                                                },
+                                                                                "required": [
+                                                                                    "ip"
+                                                                                ]
+                                                                            },
+                                                                            "title": "BFD Neighbors",
+                                                                            "description": "BFD Neighbors (List - Object)\n\nElements:\n- ip (required)"
                                                                         }
                                                                     },
                                                                     "required": [],
                                                                     "title": "Expected State",
-                                                                    "description": "Expected State (Object)\n\nElements:\n- ospf_neighbors"
+                                                                    "description": "Expected State (Object)\n\nElements:\n- ospf_neighbors\n- bfd_neighbors"
                                                                 }
                                                             },
                                                             "required": []
                                                         },
                                                         "title": "Interfaces",
-                                                        "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- port\n- module\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode\n- expected_state"
+                                                        "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- port\n- module\n- channel\n- ip\n- svi\n- multipod_direct\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode\n- expected_state"
                                                     }
                                                 },
                                                 "required": [
@@ -12615,6 +12704,12 @@
                                                                                 "title": "IP",
                                                                                 "description": "IP (String)\n- Default value: 0.0.0.0\n- IPv4 or IPv6 address"
                                                                             },
+                                                                            "multipod_direct": {
+                                                                                "type": "boolean",
+                                                                                "default": "false",
+                                                                                "title": "Multipod Direct",
+                                                                                "description": "Multipod Direct (Boolean)\n- Default value: false"
+                                                                            },
                                                                             "svi": {
                                                                                 "type": "boolean",
                                                                                 "default": "false",
@@ -12938,17 +13033,36 @@
                                                                                         },
                                                                                         "title": "OSPF Neighbors",
                                                                                         "description": "OSPF Neighbors (List - Object)\n\nElements:\n- ip (required)\n- state"
+                                                                                    },
+                                                                                    "bfd_neighbors": {
+                                                                                        "type": "array",
+                                                                                        "items": {
+                                                                                            "type": "object",
+                                                                                            "additionalProperties": false,
+                                                                                            "properties": {
+                                                                                                "ip": {
+                                                                                                    "type": "string",
+                                                                                                    "title": "IP",
+                                                                                                    "description": "IP (String)\n- IPv4 or IPv6 address"
+                                                                                                }
+                                                                                            },
+                                                                                            "required": [
+                                                                                                "ip"
+                                                                                            ]
+                                                                                        },
+                                                                                        "title": "BFD Neighbors",
+                                                                                        "description": "BFD Neighbors (List - Object)\n\nElements:\n- ip (required)"
                                                                                     }
                                                                                 },
                                                                                 "required": [],
                                                                                 "title": "Expected State",
-                                                                                "description": "Expected State (Object)\n\nElements:\n- ospf_neighbors"
+                                                                                "description": "Expected State (Object)\n\nElements:\n- ospf_neighbors\n- bfd_neighbors"
                                                                             }
                                                                         },
                                                                         "required": []
                                                                     },
                                                                     "title": "Interfaces",
-                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode\n- expected_state"
+                                                                    "description": "Interfaces (List - Object)\n\nElements:\n- description\n- node_id\n- node2_id\n- pod_id\n- module\n- port\n- channel\n- ip\n- multipod_direct\n- svi\n- autostate\n- floating_svi\n- vlan\n- mac\n- mtu\n- ip_a\n- ip_b\n- ip_shared\n- bgp_peers\n- paths\n- mode\n- expected_state"
                                                                 }
                                                             },
                                                             "required": [
@@ -17688,11 +17802,69 @@
                                         },
                                         "title": "BFD Multihop Node Policies",
                                         "description": "BFD Multihop Node Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- detection_multiplier\n- min_rx_interval\n- min_tx_interval"
+                                    },
+                                    "nd_ra_prefix_policies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Name",
+                                                    "description": "Name (String)"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                    "title": "Description",
+                                                    "description": "Description (String)"
+                                                },
+                                                "valid_lifetime": {
+                                                    "type": "integer",
+                                                    "maximum": 4294967295,
+                                                    "default": 2592000,
+                                                    "title": "Valid Lifetime",
+                                                    "description": "Valid Lifetime (Integer)\n- Default value: 2592000\n- Maximum value: 4294967295"
+                                                },
+                                                "preferred_lifetime": {
+                                                    "type": "integer",
+                                                    "maximum": 4294967295,
+                                                    "default": 604800,
+                                                    "title": "Preferred Lifetime",
+                                                    "description": "Preferred Lifetime (Integer)\n- Default value: 604800\n- Maximum value: 4294967295"
+                                                },
+                                                "auto_configuration": {
+                                                    "type": "boolean",
+                                                    "default": "true",
+                                                    "title": "Auto Configuration",
+                                                    "description": "Auto Configuration (Boolean)\n- Default value: true"
+                                                },
+                                                "on_link": {
+                                                    "type": "boolean",
+                                                    "default": "true",
+                                                    "title": "On Link",
+                                                    "description": "On Link (Boolean)\n- Default value: true"
+                                                },
+                                                "router_address": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "Router Address",
+                                                    "description": "Router Address (Boolean)\n- Default value: false"
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ]
+                                        },
+                                        "title": "ND RA Prefix Policies",
+                                        "description": "ND RA Prefix Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- valid_lifetime\n- preferred_lifetime\n- auto_configuration\n- on_link\n- router_address"
                                     }
                                 },
                                 "required": [],
                                 "title": "Policies",
-                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- ospf_timer_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies"
+                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- ospf_timer_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies\n- nd_ra_prefix_policies"
                             },
                             "services": {
                                 "type": "object",
