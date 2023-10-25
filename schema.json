@@ -20122,6 +20122,22 @@
                                             "title": "Name",
                                             "description": "Name (String)"
                                         },
+                                        "description": {
+                                            "type": "string",
+                                            "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,64}$",
+                                            "title": "Description",
+                                            "description": "Description (String)"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "multi_site",
+                                                "autonomous"
+                                            ],
+                                            "default": "multi_site",
+                                            "title": "Type",
+                                            "description": "Type (String)\n- Default value: multi_site\n- Allowed values: multi_site, autonomous"
+                                        },
                                         "tenant": {
                                             "type": "string",
                                             "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
@@ -20151,6 +20167,12 @@
                                                                     "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                                     "title": "Name",
                                                                     "description": "Name (String)"
+                                                                },
+                                                                "description": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,64}$",
+                                                                    "title": "Description",
+                                                                    "description": "Description (String)"
                                                                 },
                                                                 "useg": {
                                                                     "type": "boolean",
@@ -20752,7 +20774,7 @@
                                                             ]
                                                         },
                                                         "title": "Endpoint Groups",
-                                                        "description": "Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- useg\n- intra_epg_isolation\n- proxy_arp\n- preferred_group\n- bridge_domain\n- vrf\n- subnets\n- contracts\n- sites"
+                                                        "description": "Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- description\n- useg\n- intra_epg_isolation\n- proxy_arp\n- preferred_group\n- bridge_domain\n- vrf\n- subnets\n- contracts\n- sites"
                                                     }
                                                 },
                                                 "required": [
@@ -20995,6 +21017,12 @@
                                                         "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
                                                         "title": "Name",
                                                         "description": "Name (String)"
+                                                    },
+                                                    "description": {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,64}$",
+                                                        "title": "Description",
+                                                        "description": "Description (String)"
                                                     },
                                                     "l2_unknown_unicast": {
                                                         "type": "string",
@@ -21282,7 +21310,7 @@
                                                 ]
                                             },
                                             "title": "Bridge Domains",
-                                            "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- l2_unknown_unicast\n- intersite_bum_traffic\n- optimize_wan_bandwidth\n- l2_stretch\n- unicast_routing\n- arp_flooding\n- l3_multicast\n- virtual_mac\n- multi_destination_flooding\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- sites\n- dhcp_policies\n- dhcp_relay_policy\n- dhcp_option_policy"
+                                            "description": "Bridge Domains (List - Object)\n\nElements:\n- name (required)\n- description\n- l2_unknown_unicast\n- intersite_bum_traffic\n- optimize_wan_bandwidth\n- l2_stretch\n- unicast_routing\n- arp_flooding\n- l3_multicast\n- virtual_mac\n- multi_destination_flooding\n- unknown_ipv4_multicast\n- unknown_ipv6_multicast\n- vrf (required)\n- subnets\n- sites\n- dhcp_policies\n- dhcp_relay_policy\n- dhcp_option_policy"
                                         },
                                         "filters": {
                                             "type": "array",
@@ -22363,7 +22391,7 @@
                                     ]
                                 },
                                 "title": "Templates",
-                                "description": "Templates (List - Object)\n\nElements:\n- name (required)\n- tenant (required)\n- application_profiles\n- vrfs\n- bridge_domains\n- filters\n- contracts\n- l3outs\n- external_endpoint_groups\n- service_graphs\n- sites"
+                                "description": "Templates (List - Object)\n\nElements:\n- name (required)\n- description\n- type\n- tenant (required)\n- application_profiles\n- vrfs\n- bridge_domains\n- filters\n- contracts\n- l3outs\n- external_endpoint_groups\n- service_graphs\n- sites"
                             }
                         },
                         "required": [
