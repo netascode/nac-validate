@@ -1071,6 +1071,12 @@
                                                         "title": "Aes256 Ctr",
                                                         "description": "Aes256 Ctr (Boolean)\n- Default value: true"
                                                     },
+                                                    "aes256_gcm": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Aes256 Gcm",
+                                                        "description": "Aes256 Gcm (Boolean)\n- Default value: false"
+                                                    },
                                                     "chacha": {
                                                         "type": "boolean",
                                                         "default": "true",
@@ -1094,11 +1100,65 @@
                                                         "default": "true",
                                                         "title": "Hmac Sha2 512",
                                                         "description": "Hmac Sha2 512 (Boolean)\n- Default value: true"
+                                                    },
+                                                    "curve25519_sha256": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Curve25519 Sha256",
+                                                        "description": "Curve25519 Sha256 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "curve25519_sha256_libssh": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Curve25519 Sha256 Libssh",
+                                                        "description": "Curve25519 Sha256 Libssh (Boolean)\n- Default value: false"
+                                                    },
+                                                    "dh1_sha1": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Dh1 Sha1",
+                                                        "description": "Dh1 Sha1 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "dh14_sha1": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Dh14 Sha1",
+                                                        "description": "Dh14 Sha1 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "dh14_sha256": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Dh14 Sha256",
+                                                        "description": "Dh14 Sha256 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "dh16_sha512": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Dh16 Sha512",
+                                                        "description": "Dh16 Sha512 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "ecdh_sha2_nistp256": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Ecdh Sha2 Nistp256",
+                                                        "description": "Ecdh Sha2 Nistp256 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "ecdh_sha2_nistp384": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Ecdh Sha2 Nistp384",
+                                                        "description": "Ecdh Sha2 Nistp384 (Boolean)\n- Default value: false"
+                                                    },
+                                                    "ecdh_sha2_nistp521": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Ecdh Sha2 Nistp521",
+                                                        "description": "Ecdh Sha2 Nistp521 (Boolean)\n- Default value: false"
                                                     }
                                                 },
                                                 "required": [],
                                                 "title": "SSH",
-                                                "description": "SSH (Object)\n\nElements:\n- admin_state\n- password_auth\n- port\n- aes128_ctr\n- aes128_gcm\n- aes192_ctr\n- aes256_ctr\n- chacha\n- hmac_sha1\n- hmac_sha2_256\n- hmac_sha2_512"
+                                                "description": "SSH (Object)\n\nElements:\n- admin_state\n- password_auth\n- port\n- aes128_ctr\n- aes128_gcm\n- aes192_ctr\n- aes256_ctr\n- aes256_gcm\n- chacha\n- hmac_sha1\n- hmac_sha2_256\n- hmac_sha2_512\n- curve25519_sha256\n- curve25519_sha256_libssh\n- dh1_sha1\n- dh14_sha1\n- dh14_sha256\n- dh16_sha512\n- ecdh_sha2_nistp256\n- ecdh_sha2_nistp384\n- ecdh_sha2_nistp521"
                                             },
                                             "telnet": {
                                                 "type": "object",
@@ -1176,6 +1236,12 @@
                                                         "title": "Tlsv1 2",
                                                         "description": "Tlsv1 2 (Boolean)\n- Default value: true"
                                                     },
+                                                    "tlsv1_3": {
+                                                        "type": "boolean",
+                                                        "default": "false",
+                                                        "title": "Tlsv1 3",
+                                                        "description": "Tlsv1 3 (Boolean)\n- Default value: false"
+                                                    },
                                                     "key_ring": {
                                                         "type": "string",
                                                         "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
@@ -1186,7 +1252,7 @@
                                                 },
                                                 "required": [],
                                                 "title": "Https",
-                                                "description": "Https (Object)\n\nElements:\n- admin_state\n- client_cert_auth_state\n- dh\n- port\n- tlsv1\n- tlsv1_1\n- tlsv1_2\n- key_ring"
+                                                "description": "Https (Object)\n\nElements:\n- admin_state\n- client_cert_auth_state\n- dh\n- port\n- tlsv1\n- tlsv1_1\n- tlsv1_2\n- tlsv1_3\n- key_ring"
                                             },
                                             "http": {
                                                 "type": "object",
