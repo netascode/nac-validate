@@ -17120,15 +17120,10 @@
                                                             "description": "Description (String)"
                                                         },
                                                         "admin_state": {
-                                                            "type": "string",
-                                                            "enum": [
-                                                                "enabled",
-                                                                "disabled",
-                                                                "l2ping"
-                                                            ],
+                                                            "type": "boolean",
                                                             "default": "false",
                                                             "title": "Admin State",
-                                                            "description": "Admin State (String)\n- Default value: false\n- Allowed values: enabled, disabled, l2ping"
+                                                            "description": "Admin State (Boolean)\n- Default value: false"
                                                         },
                                                         "destination": {
                                                             "type": "string",
