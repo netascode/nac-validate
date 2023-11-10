@@ -6772,7 +6772,7 @@
                                             "properties": {
                                                 "name": {
                                                     "type": "string",
-                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "pattern": "^[a-zA-Z0-9_.,:-]{1,64}$",
                                                     "title": "Name",
                                                     "description": "Name (String)"
                                                 },
