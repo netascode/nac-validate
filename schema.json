@@ -9012,8 +9012,9 @@
                                                                 "type": "integer",
                                                                 "minimum": 1,
                                                                 "maximum": 9,
+                                                                "default": 1,
                                                                 "title": "Module",
-                                                                "description": "Module (Integer)\n- Minimum value: 1\n- Maximum value: 9"
+                                                                "description": "Module (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 9"
                                                             },
                                                             "policy_group": {
                                                                 "type": "string",
@@ -9050,6 +9051,19 @@
                                                     "title": "Sub Ports",
                                                     "description": "Sub Ports (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id\n- expected_state"
                                                 },
+                                                "breakout": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "100g-2x",
+                                                        "100g-4x",
+                                                        "10g-4x",
+                                                        "25g-4x",
+                                                        "50g-8x",
+                                                        "none"
+                                                    ],
+                                                    "title": "Breakout",
+                                                    "description": "Breakout (String)\n- Allowed values: 100g-2x, 100g-4x, 10g-4x, 25g-4x, 50g-8x, none"
+                                                },
                                                 "expected_state": {
                                                     "type": "object",
                                                     "additionalProperties": false,
@@ -9070,7 +9084,7 @@
                                             ]
                                         },
                                         "title": "Interfaces",
-                                        "description": "Interfaces (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id\n- type\n- sub_ports\n- expected_state"
+                                        "description": "Interfaces (List - Object)\n\nElements:\n- port (required)\n- description\n- module\n- policy_group\n- fex_id\n- type\n- sub_ports\n- breakout\n- expected_state"
                                     },
                                     "fexes": {
                                         "type": "array",
@@ -9108,8 +9122,9 @@
                                                                 "type": "integer",
                                                                 "minimum": 1,
                                                                 "maximum": 9,
+                                                                "default": 1,
                                                                 "title": "Module",
-                                                                "description": "Module (Integer)\n- Minimum value: 1\n- Maximum value: 9"
+                                                                "description": "Module (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 9"
                                                             },
                                                             "policy_group": {
                                                                 "type": "string",
@@ -19411,6 +19426,12 @@
                     "title": "NAE Assurance Group",
                     "description": "NAE Assurance Group (String)"
                 },
+                "new_interface_configuration": {
+                    "type": "boolean",
+                    "default": "false",
+                    "title": "New Interface Configuration",
+                    "description": "New Interface Configuration (Boolean)\n- Default value: false"
+                },
                 "expected_state": {
                     "type": "object",
                     "additionalProperties": false,
@@ -19444,7 +19465,7 @@
             },
             "required": [],
             "title": "APIC",
-            "description": "APIC (Object)\n\nElements:\n- version\n- bootstrap\n- fabric_policies\n- access_policies\n- pod_policies\n- node_policies\n- interface_policies\n- tenants\n- auto_generate_switch_pod_profiles\n- auto_generate_pod_profiles\n- auto_generate_fabric_leaf_switch_interface_profiles\n- auto_generate_fabric_spine_switch_interface_profiles\n- auto_generate_access_leaf_switch_interface_profiles\n- auto_generate_access_spine_switch_interface_profiles\n- nae_assurance_group\n- expected_state"
+            "description": "APIC (Object)\n\nElements:\n- version\n- bootstrap\n- fabric_policies\n- access_policies\n- pod_policies\n- node_policies\n- interface_policies\n- tenants\n- auto_generate_switch_pod_profiles\n- auto_generate_pod_profiles\n- auto_generate_fabric_leaf_switch_interface_profiles\n- auto_generate_fabric_spine_switch_interface_profiles\n- auto_generate_access_leaf_switch_interface_profiles\n- auto_generate_access_spine_switch_interface_profiles\n- nae_assurance_group\n- new_interface_configuration\n- expected_state"
         },
         "defaults": {
             "title": "Defaults",
