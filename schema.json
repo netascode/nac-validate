@@ -2524,7 +2524,7 @@
                                     },
                                     "delimiter": {
                                         "type": "string",
-                                        "pattern": "^[^a-zA-Z0-9;>\"-*`,-.;\\[\\]/\\\\{}:?\\s&<]$",
+                                        "pattern": "^[|~!@^+=]$",
                                         "title": "Delimiter",
                                         "description": "Delimiter (String)"
                                     },
@@ -2579,7 +2579,7 @@
                                                     "properties": {
                                                         "name": {
                                                             "type": "string",
-                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,16}$",
                                                             "title": "Name",
                                                             "description": "Name (String)"
                                                         },
@@ -3670,11 +3670,43 @@
                                     "required": [],
                                     "title": "Ldap",
                                     "description": "Ldap (Object)\n\nElements:\n- providers\n- group_map_rules\n- group_maps"
+                                },
+                                "security_domains": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                "title": "Name",
+                                                "description": "Name (String)"
+                                            },
+                                            "description": {
+                                                "type": "string",
+                                                "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                "title": "Description",
+                                                "description": "Description (String)"
+                                            },
+                                            "restricted_rbac_domain": {
+                                                "type": "boolean",
+                                                "default": "false",
+                                                "title": "Restricted Rbac Domain",
+                                                "description": "Restricted Rbac Domain (Boolean)\n- Default value: false"
+                                            }
+                                        },
+                                        "required": [
+                                            "name"
+                                        ]
+                                    },
+                                    "title": "Security Domains",
+                                    "description": "Security Domains (List - Object)\n\nElements:\n- name (required)\n- description\n- restricted_rbac_domain"
                                 }
                             },
                             "required": [],
                             "title": "AAA",
-                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap"
+                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap\n- security_domains"
                         },
                         "geolocation": {
                             "type": "object",
@@ -4965,10 +4997,10 @@
                                 "response_threshold": {
                                     "type": "integer",
                                     "minimum": 40,
-                                    "maximum": 8500,
-                                    "default": 8500,
+                                    "maximum": 85000,
+                                    "default": 85000,
                                     "title": "Response Threshold",
-                                    "description": "Response Threshold (Integer)\n- Default value: 8500\n- Minimum value: 40\n- Maximum value: 8500"
+                                    "description": "Response Threshold (Integer)\n- Default value: 85000\n- Minimum value: 40\n- Maximum value: 85000"
                                 },
                                 "top_slowest_requests": {
                                     "type": "integer",
@@ -10157,7 +10189,7 @@
                                                                 },
                                                                 "delimiter": {
                                                                     "type": "string",
-                                                                    "pattern": "^[^a-zA-Z0-9;>\"-*`,-.;\\[\\]/\\\\{}:?\\s&<]$",
+                                                                    "pattern": "^[|~!@^+=]$",
                                                                     "title": "Delimiter",
                                                                     "description": "Delimiter (String)"
                                                                 },
@@ -10241,7 +10273,7 @@
                                                                 },
                                                                 "elag": {
                                                                     "type": "string",
-                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,16}$",
                                                                     "title": "Elag",
                                                                     "description": "Elag (String)"
                                                                 },
@@ -10256,6 +10288,12 @@
                                                                     "pattern": "^(\\d+(,\\d+)*)?$",
                                                                     "title": "Standby Uplinks",
                                                                     "description": "Standby Uplinks (String)"
+                                                                },
+                                                                "custom_epg_name": {
+                                                                    "type": "string",
+                                                                    "pattern": "^.{1,80}$",
+                                                                    "title": "Custom EPG Name",
+                                                                    "description": "Custom EPG Name (String)"
                                                                 }
                                                             },
                                                             "required": [
@@ -10263,7 +10301,7 @@
                                                             ]
                                                         },
                                                         "title": "Vmware VMM Domains",
-                                                        "description": "Vmware VMM Domains (List - Object)\n\nElements:\n- name (required)\n- u_segmentation\n- delimiter\n- vlan\n- primary_vlan\n- secondary_vlan\n- netflow\n- deployment_immediacy\n- resolution_immediacy\n- allow_promiscuous\n- forged_transmits\n- mac_changes\n- elag\n- active_uplinks_order\n- standby_uplinks"
+                                                        "description": "Vmware VMM Domains (List - Object)\n\nElements:\n- name (required)\n- u_segmentation\n- delimiter\n- vlan\n- primary_vlan\n- secondary_vlan\n- netflow\n- deployment_immediacy\n- resolution_immediacy\n- allow_promiscuous\n- forged_transmits\n- mac_changes\n- elag\n- active_uplinks_order\n- standby_uplinks\n- custom_epg_name"
                                                     },
                                                     "static_ports": {
                                                         "type": "array",
@@ -10728,11 +10766,37 @@
                                                                 },
                                                                 "title": "Intra Epgs",
                                                                 "description": "Intra Epgs (List - String)"
+                                                            },
+                                                            "masters": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": false,
+                                                                    "properties": {
+                                                                        "application_profile": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                            "title": "Application Profile",
+                                                                            "description": "Application Profile (String)"
+                                                                        },
+                                                                        "endpoint_group": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                            "title": "Endpoint Group",
+                                                                            "description": "Endpoint Group (String)"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "endpoint_group"
+                                                                    ]
+                                                                },
+                                                                "title": "Masters",
+                                                                "description": "Masters (List - Object)\n\nElements:\n- application_profile\n- endpoint_group (required)"
                                                             }
                                                         },
                                                         "required": [],
                                                         "title": "Contracts",
-                                                        "description": "Contracts (Object)\n\nElements:\n- consumers\n- providers\n- imported_consumers\n- intra_epgs"
+                                                        "description": "Contracts (Object)\n\nElements:\n- consumers\n- providers\n- imported_consumers\n- intra_epgs\n- masters"
                                                     },
                                                     "qos_class": {
                                                         "type": "string",
@@ -11583,6 +11647,36 @@
                                             "title": "OSPF",
                                             "description": "OSPF (Object)\n\nElements:\n- ospf_interface_profile_name\n- area (required)\n- area_type\n- area_cost\n- auth_type\n- auth_key\n- auth_key_id\n- policy"
                                         },
+                                        "eigrp": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "interface_profile_name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Interface Profile Name",
+                                                    "description": "Interface Profile Name (String)"
+                                                },
+                                                "asn": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 65535,
+                                                    "title": "Asn",
+                                                    "description": "Asn (Integer)\n- Minimum value: 1\n- Maximum value: 65535"
+                                                },
+                                                "interface_policy": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Interface Policy",
+                                                    "description": "Interface Policy (String)"
+                                                }
+                                            },
+                                            "required": [
+                                                "asn"
+                                            ],
+                                            "title": "Eigrp",
+                                            "description": "Eigrp (Object)\n\nElements:\n- interface_profile_name\n- asn (required)\n- interface_policy"
+                                        },
                                         "bfd_policy": {
                                             "type": "string",
                                             "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
@@ -11848,11 +11942,10 @@
                                                                             },
                                                                             "preference": {
                                                                                 "type": "integer",
-                                                                                "minimum": 1,
                                                                                 "maximum": 255,
                                                                                 "default": 1,
                                                                                 "title": "Preference",
-                                                                                "description": "Preference (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 255"
+                                                                                "description": "Preference (Integer)\n- Default value: 1\n- Maximum value: 255"
                                                                             },
                                                                             "type": {
                                                                                 "type": "string",
@@ -12573,11 +12666,10 @@
                                                                                         },
                                                                                         "preference": {
                                                                                             "type": "integer",
-                                                                                            "minimum": 1,
                                                                                             "maximum": 255,
                                                                                             "default": 1,
                                                                                             "title": "Preference",
-                                                                                            "description": "Preference (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 255"
+                                                                                            "description": "Preference (Integer)\n- Default value: 1\n- Maximum value: 255"
                                                                                         },
                                                                                         "type": {
                                                                                             "type": "string",
@@ -12676,6 +12768,33 @@
                                                                     "required": [],
                                                                     "title": "OSPF",
                                                                     "description": "OSPF (Object)\n\nElements:\n- ospf_interface_profile_name\n- auth_type\n- auth_key\n- auth_key_id\n- policy"
+                                                                },
+                                                                "eigrp": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": false,
+                                                                    "properties": {
+                                                                        "interface_profile_name": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                            "title": "Interface Profile Name",
+                                                                            "description": "Interface Profile Name (String)"
+                                                                        },
+                                                                        "interface_policy": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                            "title": "Interface Policy",
+                                                                            "description": "Interface Policy (String)"
+                                                                        },
+                                                                        "keychain_policy": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                            "title": "Keychain Policy",
+                                                                            "description": "Keychain Policy (String)"
+                                                                        }
+                                                                    },
+                                                                    "required": [],
+                                                                    "title": "Eigrp",
+                                                                    "description": "Eigrp (Object)\n\nElements:\n- interface_profile_name\n- interface_policy\n- keychain_policy"
                                                                 },
                                                                 "pim_policy": {
                                                                     "type": "string",
@@ -13136,7 +13255,7 @@
                                                             ]
                                                         },
                                                         "title": "Interface Profiles",
-                                                        "description": "Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- bfd_policy\n- ospf\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- interfaces"
+                                                        "description": "Interface Profiles (List - Object)\n\nElements:\n- name (required)\n- bfd_policy\n- ospf\n- eigrp\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- interfaces"
                                                     }
                                                 },
                                                 "required": [
@@ -13783,7 +13902,7 @@
                                     ]
                                 },
                                 "title": "L3Outs",
-                                "description": "L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- target_dscp\n- vrf (required)\n- domain (required)\n- ospf\n- bfd_policy\n- bgp_peers\n- nodes\n- node_profiles\n- external_endpoint_groups\n- import_route_map\n- export_route_map\n- interleak_route_map\n- default_route_leak_policy\n- dampening_ipv4_route_map\n- dampening_ipv6_route_map\n- redistribution_route_maps\n- l3_multicast_ipv4\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- multipod\n- remote_leaf\n- expected_state\n- import_route_control_enforcement\n- export_route_control_enforcement"
+                                "description": "L3Outs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- target_dscp\n- vrf (required)\n- domain (required)\n- ospf\n- eigrp\n- bfd_policy\n- bgp_peers\n- nodes\n- node_profiles\n- external_endpoint_groups\n- import_route_map\n- export_route_map\n- interleak_route_map\n- default_route_leak_policy\n- dampening_ipv4_route_map\n- dampening_ipv6_route_map\n- redistribution_route_maps\n- l3_multicast_ipv4\n- pim_policy\n- igmp_interface_policy\n- qos_class\n- custom_qos_policy\n- multipod\n- remote_leaf\n- expected_state\n- import_route_control_enforcement\n- export_route_control_enforcement"
                             },
                             "sr_mpls_l3outs": {
                                 "type": "array",
@@ -15116,6 +15235,94 @@
                                         },
                                         "title": "OSPF Interface Policies",
                                         "description": "OSPF Interface Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- cost\n- passive_interface\n- mtu_ignore\n- advertise_subnet\n- bfd\n- hello_interval\n- dead_interval\n- network_type\n- priority\n- lsa_retransmit_interval\n- lsa_transmit_delay"
+                                    },
+                                    "eigrp_interface_policies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Name",
+                                                    "description": "Name (String)"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                    "title": "Description",
+                                                    "description": "Description (String)"
+                                                },
+                                                "passive_interface": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "Passive Interface",
+                                                    "description": "Passive Interface (Boolean)\n- Default value: false"
+                                                },
+                                                "split_horizon": {
+                                                    "type": "boolean",
+                                                    "default": "true",
+                                                    "title": "Split Horizon",
+                                                    "description": "Split Horizon (Boolean)\n- Default value: true"
+                                                },
+                                                "self_nexthop": {
+                                                    "type": "boolean",
+                                                    "default": "true",
+                                                    "title": "Self Nexthop",
+                                                    "description": "Self Nexthop (Boolean)\n- Default value: true"
+                                                },
+                                                "bfd": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "BFD",
+                                                    "description": "BFD (Boolean)\n- Default value: false"
+                                                },
+                                                "hello_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 65535,
+                                                    "default": 5,
+                                                    "title": "Hello Interval",
+                                                    "description": "Hello Interval (Integer)\n- Default value: 5\n- Minimum value: 1\n- Maximum value: 65535"
+                                                },
+                                                "hold_interval": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "maximum": 65535,
+                                                    "default": 15,
+                                                    "title": "Hold Interval",
+                                                    "description": "Hold Interval (Integer)\n- Default value: 15\n- Minimum value: 1\n- Maximum value: 65535"
+                                                },
+                                                "bandwidth": {
+                                                    "type": "integer",
+                                                    "maximum": 256000000,
+                                                    "title": "Bandwidth",
+                                                    "description": "Bandwidth (Integer)\n- Maximum value: 256000000"
+                                                },
+                                                "delay": {
+                                                    "type": "integer",
+                                                    "maximum": 4294967295,
+                                                    "title": "Delay",
+                                                    "description": "Delay (Integer)\n- Maximum value: 4294967295"
+                                                },
+                                                "delay_unit": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "tens-of-micro",
+                                                        "pico"
+                                                    ],
+                                                    "default": "tens-of-micro",
+                                                    "title": "Delay Unit",
+                                                    "description": "Delay Unit (String)\n- Default value: tens-of-micro\n- Allowed values: tens-of-micro, pico"
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ]
+                                        },
+                                        "title": "Eigrp Interface Policies",
+                                        "description": "Eigrp Interface Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- passive_interface\n- split_horizon\n- self_nexthop\n- bfd\n- hello_interval\n- hold_interval\n- bandwidth\n- delay\n- delay_unit"
                                     },
                                     "ospf_timer_policies": {
                                         "type": "array",
@@ -17925,7 +18132,7 @@
                                 },
                                 "required": [],
                                 "title": "Policies",
-                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- ospf_timer_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies\n- nd_ra_prefix_policies"
+                                "description": "Policies (Object)\n\nElements:\n- ospf_interface_policies\n- eigrp_interface_policies\n- ospf_timer_policies\n- bgp_timer_policies\n- bgp_peer_prefix_policies\n- bgp_best_path_policies\n- bgp_address_family_context_policies\n- dhcp_relay_policies\n- dhcp_option_policies\n- route_tag_policies\n- route_control_route_maps\n- match_rules\n- set_rules\n- bfd_interface_policies\n- multicast_route_maps\n- pim_policies\n- igmp_snooping_policies\n- igmp_interface_policies\n- ip_sla_policies\n- trust_control_policies\n- span\n- qos\n- mpls_custom_qos_policies\n- bfd_multihop_node_policies\n- nd_ra_prefix_policies"
                             },
                             "services": {
                                 "type": "object",
