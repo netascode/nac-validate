@@ -9012,9 +9012,8 @@
                                                                 "type": "integer",
                                                                 "minimum": 1,
                                                                 "maximum": 9,
-                                                                "default": 1,
                                                                 "title": "Module",
-                                                                "description": "Module (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 9"
+                                                                "description": "Module (Integer)\n- Minimum value: 1\n- Maximum value: 9"
                                                             },
                                                             "policy_group": {
                                                                 "type": "string",
@@ -9122,9 +9121,8 @@
                                                                 "type": "integer",
                                                                 "minimum": 1,
                                                                 "maximum": 9,
-                                                                "default": 1,
                                                                 "title": "Module",
-                                                                "description": "Module (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 9"
+                                                                "description": "Module (Integer)\n- Minimum value: 1\n- Maximum value: 9"
                                                             },
                                                             "policy_group": {
                                                                 "type": "string",
