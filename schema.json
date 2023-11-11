@@ -15406,34 +15406,34 @@
                                                 "max_lsa_reset_interval": {
                                                     "type": "integer",
                                                     "minimum": 1,
-                                                    "maximum": 1800,
+                                                    "maximum": 1440,
                                                     "default": 10,
                                                     "title": "Max LSA Reset Interval",
-                                                    "description": "Max LSA Reset Interval (Integer)\n- Default value: 10\n- Minimum value: 1\n- Maximum value: 1800"
+                                                    "description": "Max LSA Reset Interval (Integer)\n- Default value: 10\n- Minimum value: 1\n- Maximum value: 1440"
                                                 },
                                                 "max_lsa_sleep_count": {
                                                     "type": "integer",
-                                                    "minimum": 50,
-                                                    "maximum": 30000,
+                                                    "minimum": 1,
+                                                    "maximum": 4294967295,
                                                     "default": 5,
                                                     "title": "Max LSA Sleep Count",
-                                                    "description": "Max LSA Sleep Count (Integer)\n- Default value: 5\n- Minimum value: 50\n- Maximum value: 30000"
+                                                    "description": "Max LSA Sleep Count (Integer)\n- Default value: 5\n- Minimum value: 1\n- Maximum value: 4294967295"
                                                 },
                                                 "max_lsa_sleep_interval": {
                                                     "type": "integer",
-                                                    "minimum": 50,
-                                                    "maximum": 30000,
+                                                    "minimum": 1,
+                                                    "maximum": 1440,
                                                     "default": 5,
                                                     "title": "Max LSA Sleep Interval",
-                                                    "description": "Max LSA Sleep Interval (Integer)\n- Default value: 5\n- Minimum value: 50\n- Maximum value: 30000"
+                                                    "description": "Max LSA Sleep Interval (Integer)\n- Default value: 5\n- Minimum value: 1\n- Maximum value: 1440"
                                                 },
                                                 "lsa_arrival_interval": {
                                                     "type": "integer",
-                                                    "minimum": 1,
+                                                    "minimum": 10,
                                                     "maximum": 600000,
                                                     "default": 1000,
                                                     "title": "LSA Arrival Interval",
-                                                    "description": "LSA Arrival Interval (Integer)\n- Default value: 1000\n- Minimum value: 1\n- Maximum value: 600000"
+                                                    "description": "LSA Arrival Interval (Integer)\n- Default value: 1000\n- Minimum value: 10\n- Maximum value: 600000"
                                                 },
                                                 "lsa_group_pacing_interval": {
                                                     "type": "integer",
@@ -15445,26 +15445,25 @@
                                                 },
                                                 "lsa_hold_interval": {
                                                     "type": "integer",
-                                                    "minimum": 1,
+                                                    "minimum": 50,
                                                     "maximum": 30000,
                                                     "default": 5000,
                                                     "title": "LSA Hold Interval",
-                                                    "description": "LSA Hold Interval (Integer)\n- Default value: 5000\n- Minimum value: 1\n- Maximum value: 30000"
+                                                    "description": "LSA Hold Interval (Integer)\n- Default value: 5000\n- Minimum value: 50\n- Maximum value: 30000"
                                                 },
                                                 "lsa_start_interval": {
                                                     "type": "integer",
-                                                    "minimum": 1,
                                                     "maximum": 5000,
                                                     "title": "LSA Start Interval",
-                                                    "description": "LSA Start Interval (Integer)\n- Minimum value: 1\n- Maximum value: 5000"
+                                                    "description": "LSA Start Interval (Integer)\n- Maximum value: 5000"
                                                 },
                                                 "lsa_max_interval": {
                                                     "type": "integer",
-                                                    "minimum": 1,
+                                                    "minimum": 50,
                                                     "maximum": 30000,
                                                     "default": 5000,
                                                     "title": "LSA Max Interval",
-                                                    "description": "LSA Max Interval (Integer)\n- Default value: 5000\n- Minimum value: 1\n- Maximum value: 30000"
+                                                    "description": "LSA Max Interval (Integer)\n- Default value: 5000\n- Minimum value: 50\n- Maximum value: 30000"
                                                 },
                                                 "max_lsa_num": {
                                                     "type": "integer",
