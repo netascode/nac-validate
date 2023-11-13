@@ -13432,6 +13432,12 @@
                                                                     "default": "false",
                                                                     "title": "BGP Route Summarization",
                                                                     "description": "BGP Route Summarization (Boolean)\n- Default value: false"
+                                                                },
+                                                                "ospf_route_summarization": {
+                                                                    "type": "boolean",
+                                                                    "default": "false",
+                                                                    "title": "OSPF Route Summarization",
+                                                                    "description": "OSPF Route Summarization (Boolean)\n- Default value: false"
                                                                 }
                                                             },
                                                             "required": [
@@ -13439,7 +13445,7 @@
                                                             ]
                                                         },
                                                         "title": "Subnets",
-                                                        "description": "Subnets (List - Object)\n\nElements:\n- name\n- prefix (required)\n- import_route_control\n- export_route_control\n- shared_route_control\n- import_security\n- shared_security\n- aggregate_import_route_control\n- aggregate_export_route_control\n- aggregate_shared_route_control\n- bgp_route_summarization"
+                                                        "description": "Subnets (List - Object)\n\nElements:\n- name\n- prefix (required)\n- import_route_control\n- export_route_control\n- shared_route_control\n- import_security\n- shared_security\n- aggregate_import_route_control\n- aggregate_export_route_control\n- aggregate_shared_route_control\n- bgp_route_summarization\n- ospf_route_summarization"
                                                     },
                                                     "contracts": {
                                                         "type": "object",
