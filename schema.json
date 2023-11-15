@@ -3536,6 +3536,36 @@
                                                         "type": "string",
                                                         "title": "Monitoring Password",
                                                         "description": "Monitoring Password (String)"
+                                                    },
+                                                    "expected_state": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "minimum_health": {
+                                                                "type": "integer",
+                                                                "maximum": 100,
+                                                                "title": "Minimum Health",
+                                                                "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                            },
+                                                            "maximum_critical_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Critical Faults",
+                                                                "description": "Maximum Critical Faults (Integer)"
+                                                            },
+                                                            "maximum_major_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Major Faults",
+                                                                "description": "Maximum Major Faults (Integer)"
+                                                            },
+                                                            "maximum_minor_faults": {
+                                                                "type": "integer",
+                                                                "title": "Maximum Minor Faults",
+                                                                "description": "Maximum Minor Faults (Integer)"
+                                                            }
+                                                        },
+                                                        "required": [],
+                                                        "title": "Expected State",
+                                                        "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                     }
                                                 },
                                                 "required": [
@@ -3543,7 +3573,7 @@
                                                 ]
                                             },
                                             "title": "Providers",
-                                            "description": "Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- bind_dn\n- base_dn\n- password\n- timeout\n- retries\n- enable_ssl\n- filter\n- attribute\n- ssl_validation_level\n- mgmt_epg\n- server_monitoring\n- monitoring_username\n- monitoring_password"
+                                            "description": "Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- bind_dn\n- base_dn\n- password\n- timeout\n- retries\n- enable_ssl\n- filter\n- attribute\n- ssl_validation_level\n- mgmt_epg\n- server_monitoring\n- monitoring_username\n- monitoring_password\n- expected_state"
                                         },
                                         "group_map_rules": {
                                             "type": "array",
@@ -9481,6 +9511,33 @@
                                             "title": "BGP",
                                             "description": "BGP (Object)\n\nElements:\n- timer_policy\n- ipv4_address_family_context_policy\n- ipv6_address_family_context_policy\n- ipv4_import_route_target\n- ipv4_export_route_target\n- ipv6_import_route_target\n- ipv6_export_route_target"
                                         },
+                                        "ospf": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "timer_policy": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Timer Policy",
+                                                    "description": "Timer Policy (String)"
+                                                },
+                                                "ipv4_address_family_context_policy": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Ipv4 Address Family Context Policy",
+                                                    "description": "Ipv4 Address Family Context Policy (String)"
+                                                },
+                                                "ipv6_address_family_context_policy": {
+                                                    "type": "string",
+                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                    "title": "Ipv6 Address Family Context Policy",
+                                                    "description": "Ipv6 Address Family Context Policy (String)"
+                                                }
+                                            },
+                                            "required": [],
+                                            "title": "OSPF",
+                                            "description": "OSPF (Object)\n\nElements:\n- timer_policy\n- ipv4_address_family_context_policy\n- ipv6_address_family_context_policy"
+                                        },
                                         "dns_labels": {
                                             "type": "array",
                                             "items": {
@@ -9790,7 +9847,7 @@
                                     ]
                                 },
                                 "title": "VRFs",
-                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- transit_route_tag_policy\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- dns_labels\n- pim\n- expected_state"
+                                "description": "VRFs (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- data_plane_learning\n- enforcement_direction\n- enforcement_preference\n- preferred_group\n- transit_route_tag_policy\n- leaked_internal_prefixes\n- leaked_external_prefixes\n- contracts\n- bgp\n- ospf\n- dns_labels\n- pim\n- expected_state"
                             },
                             "bridge_domains": {
                                 "type": "array",
@@ -13438,6 +13495,36 @@
                                                                     "default": "false",
                                                                     "title": "OSPF Route Summarization",
                                                                     "description": "OSPF Route Summarization (Boolean)\n- Default value: false"
+                                                                },
+                                                                "route_control_profiles": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "object",
+                                                                        "additionalProperties": false,
+                                                                        "properties": {
+                                                                            "name": {
+                                                                                "type": "string",
+                                                                                "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                                "title": "Name",
+                                                                                "description": "Name (String)"
+                                                                            },
+                                                                            "direction": {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "import",
+                                                                                    "export"
+                                                                                ],
+                                                                                "default": "import",
+                                                                                "title": "Direction",
+                                                                                "description": "Direction (String)\n- Default value: import\n- Allowed values: import, export"
+                                                                            }
+                                                                        },
+                                                                        "required": [
+                                                                            "name"
+                                                                        ]
+                                                                    },
+                                                                    "title": "Route Control Profiles",
+                                                                    "description": "Route Control Profiles (List - Object)\n\nElements:\n- name (required)\n- direction"
                                                                 }
                                                             },
                                                             "required": [
@@ -13445,7 +13532,7 @@
                                                             ]
                                                         },
                                                         "title": "Subnets",
-                                                        "description": "Subnets (List - Object)\n\nElements:\n- name\n- prefix (required)\n- import_route_control\n- export_route_control\n- shared_route_control\n- import_security\n- shared_security\n- aggregate_import_route_control\n- aggregate_export_route_control\n- aggregate_shared_route_control\n- bgp_route_summarization\n- ospf_route_summarization"
+                                                        "description": "Subnets (List - Object)\n\nElements:\n- name\n- prefix (required)\n- import_route_control\n- export_route_control\n- shared_route_control\n- import_security\n- shared_security\n- aggregate_import_route_control\n- aggregate_export_route_control\n- aggregate_shared_route_control\n- bgp_route_summarization\n- ospf_route_summarization\n- route_control_profiles"
                                                     },
                                                     "contracts": {
                                                         "type": "object",
@@ -13483,6 +13570,36 @@
                                                         "title": "Contracts",
                                                         "description": "Contracts (Object)\n\nElements:\n- consumers\n- providers\n- imported_consumers"
                                                     },
+                                                    "route_control_profiles": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                                    "title": "Name",
+                                                                    "description": "Name (String)"
+                                                                },
+                                                                "direction": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "import",
+                                                                        "export"
+                                                                    ],
+                                                                    "default": "import",
+                                                                    "title": "Direction",
+                                                                    "description": "Direction (String)\n- Default value: import\n- Allowed values: import, export"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name"
+                                                            ]
+                                                        },
+                                                        "title": "Route Control Profiles",
+                                                        "description": "Route Control Profiles (List - Object)\n\nElements:\n- name (required)\n- direction"
+                                                    },
                                                     "expected_state": {
                                                         "type": "object",
                                                         "additionalProperties": false,
@@ -13519,7 +13636,7 @@
                                                 ]
                                             },
                                             "title": "External Endpoint Groups",
-                                            "description": "External Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- preferred_group\n- qos_class\n- target_dscp\n- subnets\n- contracts\n- expected_state"
+                                            "description": "External Endpoint Groups (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- preferred_group\n- qos_class\n- target_dscp\n- subnets\n- contracts\n- route_control_profiles\n- expected_state"
                                         },
                                         "import_route_map": {
                                             "type": "object",
@@ -18138,6 +18255,36 @@
                                                     "default": "false",
                                                     "title": "Router Address",
                                                     "description": "Router Address (Boolean)\n- Default value: false"
+                                                },
+                                                "expected_state": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "minimum_health": {
+                                                            "type": "integer",
+                                                            "maximum": 100,
+                                                            "title": "Minimum Health",
+                                                            "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                        },
+                                                        "maximum_critical_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Critical Faults",
+                                                            "description": "Maximum Critical Faults (Integer)"
+                                                        },
+                                                        "maximum_major_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Major Faults",
+                                                            "description": "Maximum Major Faults (Integer)"
+                                                        },
+                                                        "maximum_minor_faults": {
+                                                            "type": "integer",
+                                                            "title": "Maximum Minor Faults",
+                                                            "description": "Maximum Minor Faults (Integer)"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Expected State",
+                                                    "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
                                                 }
                                             },
                                             "required": [
@@ -18145,7 +18292,7 @@
                                             ]
                                         },
                                         "title": "ND RA Prefix Policies",
-                                        "description": "ND RA Prefix Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- valid_lifetime\n- preferred_lifetime\n- auto_configuration\n- on_link\n- router_address"
+                                        "description": "ND RA Prefix Policies (List - Object)\n\nElements:\n- name (required)\n- description\n- valid_lifetime\n- preferred_lifetime\n- auto_configuration\n- on_link\n- router_address\n- expected_state"
                                     }
                                 },
                                 "required": [],
