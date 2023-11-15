@@ -11680,6 +11680,24 @@
                                                     "title": "Area Cost",
                                                     "description": "Area Cost (Integer)\n- Default value: 1\n- Minimum value: 1\n- Maximum value: 16777215"
                                                 },
+                                                "area_control_redistribute": {
+                                                    "type": "boolean",
+                                                    "default": "true",
+                                                    "title": "Area Control Redistribute",
+                                                    "description": "Area Control Redistribute (Boolean)\n- Default value: true"
+                                                },
+                                                "area_control_summary": {
+                                                    "type": "boolean",
+                                                    "default": "true",
+                                                    "title": "Area Control Summary",
+                                                    "description": "Area Control Summary (Boolean)\n- Default value: true"
+                                                },
+                                                "area_control_suppress_fa": {
+                                                    "type": "boolean",
+                                                    "default": "false",
+                                                    "title": "Area Control Suppress Fa",
+                                                    "description": "Area Control Suppress Fa (Boolean)\n- Default value: false"
+                                                },
                                                 "auth_type": {
                                                     "type": "string",
                                                     "enum": [
@@ -11715,7 +11733,7 @@
                                                 "area"
                                             ],
                                             "title": "OSPF",
-                                            "description": "OSPF (Object)\n\nElements:\n- ospf_interface_profile_name\n- area (required)\n- area_type\n- area_cost\n- auth_type\n- auth_key\n- auth_key_id\n- policy"
+                                            "description": "OSPF (Object)\n\nElements:\n- ospf_interface_profile_name\n- area (required)\n- area_type\n- area_cost\n- area_control_redistribute\n- area_control_summary\n- area_control_suppress_fa\n- auth_type\n- auth_key\n- auth_key_id\n- policy"
                                         },
                                         "eigrp": {
                                             "type": "object",
@@ -19085,6 +19103,36 @@
                                                     "title": "Device",
                                                     "description": "Device (Object)\n\nElements:\n- name (required)\n- tenant"
                                                 },
+                                                "consumer": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "direct_connect": {
+                                                            "type": "boolean",
+                                                            "default": "false",
+                                                            "title": "Direct Connect",
+                                                            "description": "Direct Connect (Boolean)\n- Default value: false"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Consumer",
+                                                    "description": "Consumer (Object)\n\nElements:\n- direct_connect"
+                                                },
+                                                "provider": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "direct_connect": {
+                                                            "type": "boolean",
+                                                            "default": "false",
+                                                            "title": "Direct Connect",
+                                                            "description": "Direct Connect (Boolean)\n- Default value: false"
+                                                        }
+                                                    },
+                                                    "required": [],
+                                                    "title": "Provider",
+                                                    "description": "Provider (Object)\n\nElements:\n- direct_connect"
+                                                },
                                                 "expected_state": {
                                                     "type": "object",
                                                     "additionalProperties": false,
@@ -19122,7 +19170,7 @@
                                             ]
                                         },
                                         "title": "Service Graph Templates",
-                                        "description": "Service Graph Templates (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- template_type\n- redirect\n- share_encapsulation\n- device (required)\n- expected_state"
+                                        "description": "Service Graph Templates (List - Object)\n\nElements:\n- name (required)\n- alias\n- description\n- template_type\n- redirect\n- share_encapsulation\n- device (required)\n- consumer\n- provider\n- expected_state"
                                     },
                                     "device_selection_policies": {
                                         "type": "array",
@@ -19442,6 +19490,47 @@
                                                     "title": "Provider",
                                                     "description": "Provider (Object)\n\nElements:\n- l3_destination\n- permit_logging\n- logical_interface (required)\n- redirect_policy\n- bridge_domain\n- external_endpoint_group\n- service_epg_policy\n- custom_qos_policy"
                                                 },
+                                                "copy_service": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "l3_destination": {
+                                                            "type": "boolean",
+                                                            "default": "true",
+                                                            "title": "L3 Destination",
+                                                            "description": "L3 Destination (Boolean)\n- Default value: true"
+                                                        },
+                                                        "permit_logging": {
+                                                            "type": "boolean",
+                                                            "default": "false",
+                                                            "title": "Permit Logging",
+                                                            "description": "Permit Logging (Boolean)\n- Default value: false"
+                                                        },
+                                                        "logical_interface": {
+                                                            "type": "string",
+                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                            "title": "Logical Interface",
+                                                            "description": "Logical Interface (String)"
+                                                        },
+                                                        "service_epg_policy": {
+                                                            "type": "string",
+                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                            "title": "Service EPG Policy",
+                                                            "description": "Service EPG Policy (String)"
+                                                        },
+                                                        "custom_qos_policy": {
+                                                            "type": "string",
+                                                            "pattern": "^[a-zA-Z0-9_.:-]{1,64}$",
+                                                            "title": "Custom QoS Policy",
+                                                            "description": "Custom QoS Policy (String)"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "logical_interface"
+                                                    ],
+                                                    "title": "Copy Service",
+                                                    "description": "Copy Service (Object)\n\nElements:\n- l3_destination\n- permit_logging\n- logical_interface (required)\n- service_epg_policy\n- custom_qos_policy"
+                                                },
                                                 "expected_state": {
                                                     "type": "object",
                                                     "additionalProperties": false,
@@ -19475,13 +19564,11 @@
                                             },
                                             "required": [
                                                 "contract",
-                                                "service_graph_template",
-                                                "consumer",
-                                                "provider"
+                                                "service_graph_template"
                                             ]
                                         },
                                         "title": "Device Selection Policies",
-                                        "description": "Device Selection Policies (List - Object)\n\nElements:\n- contract (required)\n- service_graph_template (required)\n- consumer (required)\n- provider (required)\n- expected_state"
+                                        "description": "Device Selection Policies (List - Object)\n\nElements:\n- contract (required)\n- service_graph_template (required)\n- consumer\n- provider\n- copy_service\n- expected_state"
                                     }
                                 },
                                 "required": [],
