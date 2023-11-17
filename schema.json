@@ -2881,6 +2881,45 @@
                                     "title": "Console Login Domain",
                                     "description": "Console Login Domain (String)"
                                 },
+                                "management_settings": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "password_strength_check": {
+                                            "type": "boolean",
+                                            "default": "false",
+                                            "title": "Password Strength Check",
+                                            "description": "Password Strength Check (Boolean)\n- Default value: false"
+                                        },
+                                        "web_token_timeout": {
+                                            "type": "integer",
+                                            "minimum": 300,
+                                            "maximum": 9600,
+                                            "default": 600,
+                                            "title": "Web Token Timeout",
+                                            "description": "Web Token Timeout (Integer)\n- Default value: 600\n- Minimum value: 300\n- Maximum value: 9600"
+                                        },
+                                        "web_token_max_validity": {
+                                            "type": "integer",
+                                            "minimum": 4,
+                                            "maximum": 24,
+                                            "default": 24,
+                                            "title": "Web Token Max Validity",
+                                            "description": "Web Token Max Validity (Integer)\n- Default value: 24\n- Minimum value: 4\n- Maximum value: 24"
+                                        },
+                                        "web_session_idle_timeout": {
+                                            "type": "integer",
+                                            "minimum": 600,
+                                            "maximum": 65525,
+                                            "default": 1200,
+                                            "title": "Web Session Idle Timeout",
+                                            "description": "Web Session Idle Timeout (Integer)\n- Default value: 1200\n- Minimum value: 600\n- Maximum value: 65525"
+                                        }
+                                    },
+                                    "required": [],
+                                    "title": "Management Settings",
+                                    "description": "Management Settings (Object)\n\nElements:\n- password_strength_check\n- web_token_timeout\n- web_token_max_validity\n- web_session_idle_timeout"
+                                },
                                 "tacacs_providers": {
                                     "type": "array",
                                     "items": {
@@ -3736,7 +3775,7 @@
                             },
                             "required": [],
                             "title": "AAA",
-                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap\n- security_domains"
+                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- management_settings\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap\n- security_domains"
                         },
                         "geolocation": {
                             "type": "object",
