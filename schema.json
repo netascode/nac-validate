@@ -22948,6 +22948,13 @@
                                             },
                                             "title": "Sites",
                                             "description": "Sites (List - String)"
+                                        },
+                                        "deploy_order": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 3,
+                                            "title": "Deploy Order",
+                                            "description": "Deploy Order (Integer)\nTerraform only\n- Minimum value: 1\n- Maximum value: 3"
                                         }
                                     },
                                     "required": [
@@ -22956,7 +22963,7 @@
                                     ]
                                 },
                                 "title": "Templates",
-                                "description": "Templates (List - Object)\n\nElements:\n- name (required)\n- description\n- type\n- tenant (required)\n- application_profiles\n- vrfs\n- bridge_domains\n- filters\n- contracts\n- l3outs\n- external_endpoint_groups\n- service_graphs\n- sites"
+                                "description": "Templates (List - Object)\n\nElements:\n- name (required)\n- description\n- type\n- tenant (required)\n- application_profiles\n- vrfs\n- bridge_domains\n- filters\n- contracts\n- l3outs\n- external_endpoint_groups\n- service_graphs\n- sites\n- deploy_order"
                             }
                         },
                         "required": [
