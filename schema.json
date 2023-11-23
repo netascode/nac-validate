@@ -18821,12 +18821,11 @@
                                                             }
                                                         },
                                                         "required": [
-                                                            "ip",
-                                                            "mac"
+                                                            "ip"
                                                         ]
                                                     },
                                                     "title": "L3 Destinations",
-                                                    "description": "L3 Destinations (List - Object)\n\nElements:\n- description\n- ip (required)\n- ip_2\n- mac (required)\n- pod\n- redirect_health_group"
+                                                    "description": "L3 Destinations (List - Object)\n\nElements:\n- description\n- ip (required)\n- ip_2\n- mac\n- pod\n- redirect_health_group"
                                                 },
                                                 "ip_sla_policy": {
                                                     "type": "string",
@@ -19021,12 +19020,11 @@
                                                             }
                                                         },
                                                         "required": [
-                                                            "ip",
-                                                            "mac"
+                                                            "ip"
                                                         ]
                                                     },
                                                     "title": "L3 Destinations",
-                                                    "description": "L3 Destinations (List - Object)\n\nElements:\n- description\n- ip (required)\n- ip_2\n- destination_name\n- mac (required)\n- redirect_health_group"
+                                                    "description": "L3 Destinations (List - Object)\n\nElements:\n- description\n- ip (required)\n- ip_2\n- destination_name\n- mac\n- redirect_health_group"
                                                 },
                                                 "expected_state": {
                                                     "type": "object",
