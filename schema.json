@@ -2858,11 +2858,12 @@
                                     "enum": [
                                         "local",
                                         "tacacs",
-                                        "ldap"
+                                        "ldap",
+                                        "radius"
                                     ],
                                     "default": "local",
                                     "title": "Default Realm",
-                                    "description": "Default Realm (String)\n- Default value: local\n- Allowed values: local, tacacs, ldap"
+                                    "description": "Default Realm (String)\n- Default value: local\n- Allowed values: local, tacacs, ldap, radius"
                                 },
                                 "default_login_domain": {
                                     "type": "string",
@@ -2875,11 +2876,12 @@
                                     "enum": [
                                         "local",
                                         "tacacs",
-                                        "ldap"
+                                        "ldap",
+                                        "radius"
                                     ],
                                     "default": "local",
                                     "title": "Console Realm",
-                                    "description": "Console Realm (String)\n- Default value: local\n- Allowed values: local, tacacs, ldap"
+                                    "description": "Console Realm (String)\n- Default value: local\n- Allowed values: local, tacacs, ldap, radius"
                                 },
                                 "console_login_domain": {
                                     "type": "string",
@@ -3052,6 +3054,133 @@
                                     },
                                     "title": "Tacacs Providers",
                                     "description": "Tacacs Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- protocol\n- key\n- timeout\n- retries\n- mgmt_epg\n- monitoring\n- monitoring_username\n- monitoring_password\n- expected_state"
+                                },
+                                "radius_providers": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "hostname_ip": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-zA-Z0-9:][a-zA-Z0-9.:-]{0,254}$"
+                                                    },
+                                                    {
+                                                        "type": "string"
+                                                    }
+                                                ],
+                                                "title": "Hostname IP",
+                                                "description": "Hostname IP (String, String)"
+                                            },
+                                            "description": {
+                                                "type": "string",
+                                                "pattern": "^[a-zA-Z0-9\\\\!#$%()*,-./:;@ _{|}~?&+]{1,128}$",
+                                                "title": "Description",
+                                                "description": "Description (String)"
+                                            },
+                                            "port": {
+                                                "type": "integer",
+                                                "maximum": 65535,
+                                                "default": 1812,
+                                                "title": "Port",
+                                                "description": "Port (Integer)\n- Default value: 1812\n- Maximum value: 65535"
+                                            },
+                                            "protocol": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "pap",
+                                                    "chap",
+                                                    "mschap"
+                                                ],
+                                                "default": "pap",
+                                                "title": "Protocol",
+                                                "description": "Protocol (String)\n- Default value: pap\n- Allowed values: pap, chap, mschap"
+                                            },
+                                            "key": {
+                                                "type": "string",
+                                                "title": "Key",
+                                                "description": "Key (String)"
+                                            },
+                                            "timeout": {
+                                                "type": "integer",
+                                                "maximum": 60,
+                                                "default": 5,
+                                                "title": "Timeout",
+                                                "description": "Timeout (Integer)\n- Default value: 5\n- Maximum value: 60"
+                                            },
+                                            "retries": {
+                                                "type": "integer",
+                                                "maximum": 5,
+                                                "default": 1,
+                                                "title": "Retries",
+                                                "description": "Retries (Integer)\n- Default value: 1\n- Maximum value: 5"
+                                            },
+                                            "mgmt_epg": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "inb",
+                                                    "oob"
+                                                ],
+                                                "default": "inb",
+                                                "title": "MGMT EPG",
+                                                "description": "MGMT EPG (String)\n- Default value: inb\n- Allowed values: inb, oob"
+                                            },
+                                            "monitoring": {
+                                                "type": "boolean",
+                                                "default": "false",
+                                                "title": "Monitoring",
+                                                "description": "Monitoring (Boolean)\n- Default value: false"
+                                            },
+                                            "monitoring_username": {
+                                                "type": "string",
+                                                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.@-]{0,31}$",
+                                                "title": "Monitoring Username",
+                                                "description": "Monitoring Username (String)"
+                                            },
+                                            "monitoring_password": {
+                                                "type": "string",
+                                                "title": "Monitoring Password",
+                                                "description": "Monitoring Password (String)"
+                                            },
+                                            "expected_state": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "minimum_health": {
+                                                        "type": "integer",
+                                                        "maximum": 100,
+                                                        "title": "Minimum Health",
+                                                        "description": "Minimum Health (Integer)\n- Maximum value: 100"
+                                                    },
+                                                    "maximum_critical_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Critical Faults",
+                                                        "description": "Maximum Critical Faults (Integer)"
+                                                    },
+                                                    "maximum_major_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Major Faults",
+                                                        "description": "Maximum Major Faults (Integer)"
+                                                    },
+                                                    "maximum_minor_faults": {
+                                                        "type": "integer",
+                                                        "title": "Maximum Minor Faults",
+                                                        "description": "Maximum Minor Faults (Integer)"
+                                                    }
+                                                },
+                                                "required": [],
+                                                "title": "Expected State",
+                                                "description": "Expected State (Object)\n\nElements:\n- minimum_health\n- maximum_critical_faults\n- maximum_major_faults\n- maximum_minor_faults"
+                                            }
+                                        },
+                                        "required": [
+                                            "hostname_ip"
+                                        ]
+                                    },
+                                    "title": "Radius Providers",
+                                    "description": "Radius Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- description\n- port\n- protocol\n- key\n- timeout\n- retries\n- mgmt_epg\n- monitoring\n- monitoring_username\n- monitoring_password\n- expected_state"
                                 },
                                 "users": {
                                     "type": "array",
@@ -3273,10 +3402,11 @@
                                                 "enum": [
                                                     "local",
                                                     "tacacs",
-                                                    "ldap"
+                                                    "ldap",
+                                                    "radius"
                                                 ],
                                                 "title": "Realm",
-                                                "description": "Realm (String)\n- Allowed values: local, tacacs, ldap"
+                                                "description": "Realm (String)\n- Allowed values: local, tacacs, ldap, radius"
                                             },
                                             "description": {
                                                 "type": "string",
@@ -3365,6 +3495,39 @@
                                                 },
                                                 "title": "Ldap Providers",
                                                 "description": "Ldap Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- priority"
+                                            },
+                                            "radius_providers": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "hostname_ip": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string",
+                                                                    "pattern": "^[a-zA-Z0-9:][a-zA-Z0-9.:-]{0,254}$"
+                                                                },
+                                                                {
+                                                                    "type": "string"
+                                                                }
+                                                            ],
+                                                            "title": "Hostname IP",
+                                                            "description": "Hostname IP (String, String)"
+                                                        },
+                                                        "priority": {
+                                                            "type": "integer",
+                                                            "maximum": 16,
+                                                            "title": "Priority",
+                                                            "description": "Priority (Integer)\n- Maximum value: 16"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "hostname_ip"
+                                                    ]
+                                                },
+                                                "title": "Radius Providers",
+                                                "description": "Radius Providers (List - Object)\n\nElements:\n- hostname_ip (required)\n- priority"
                                             }
                                         },
                                         "required": [
@@ -3373,7 +3536,7 @@
                                         ]
                                     },
                                     "title": "Login Domains",
-                                    "description": "Login Domains (List - Object)\n\nElements:\n- name (required)\n- realm (required)\n- description\n- auth_choice\n- ldap_group_map\n- tacacs_providers\n- ldap_providers"
+                                    "description": "Login Domains (List - Object)\n\nElements:\n- name (required)\n- realm (required)\n- description\n- auth_choice\n- ldap_group_map\n- tacacs_providers\n- ldap_providers\n- radius_providers"
                                 },
                                 "ca_certificates": {
                                     "type": "array",
@@ -3781,7 +3944,7 @@
                             },
                             "required": [],
                             "title": "AAA",
-                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- management_settings\n- tacacs_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap\n- security_domains"
+                            "description": "AAA (Object)\n\nElements:\n- remote_user_login_policy\n- default_fallback_check\n- default_realm\n- default_login_domain\n- console_realm\n- console_login_domain\n- management_settings\n- tacacs_providers\n- radius_providers\n- users\n- login_domains\n- ca_certificates\n- key_rings\n- ldap\n- security_domains"
                         },
                         "geolocation": {
                             "type": "object",
