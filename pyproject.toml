@@ -1,14 +1,20 @@
-[tool.poetry]
-authors = ["Daniel Schmidt <danischm@cisco.com>"]
-description = "A CLI tool to perform syntactic and semantic validation of YAML files."
-documentation = "https://github.com/netascode/nac-validate"
-homepage = "https://github.com/netascode/nac-validate"
-license = "LICENSE"
-maintainers = ["Daniel Schmidt <danischm@cisco.com>"]
+[project]
 name = "nac-validate"
-readme = "README.md"
-repository = "https://github.com/netascode/nac-validate"
 version = "1.0.0"
+description = "A CLI tool to perform syntactic and semantic validation of YAML files."
+license = { text = "MPL-2.0" }
+readme = "README.md"
+authors = [
+    { name = "Daniel Schmidt", email = "danischm@cisco.com" },
+]
+maintainers = [
+    { name = "Daniel Schmidt", email = "danischm@cisco.com" },
+]
+
+[project.urls]
+homepage = "https://github.com/netascode/nac-validate"
+repository = "https://github.com/netascode/nac-validate"
+documentation = "https://github.com/netascode/nac-validate"
 
 [tool.poetry.scripts]
 iac-validate = "nac_validate.cli.main:app"
