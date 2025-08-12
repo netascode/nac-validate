@@ -160,6 +160,9 @@ def main(
     validator.validate_semantics(paths)
     if output:
         validator.write_output(paths, output)
+
+    if not error_handler.fired:
+        print("Validation successful!")
     exit()
 
 
