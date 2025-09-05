@@ -11,13 +11,19 @@ import sys
 from typing import Any
 from pathlib import Path
 
-import typer
 from ruamel import yaml
 import yamale
 from yamale.yamale_error import YamaleError
 from inspect import signature
 
 from .cli.defaults import DEFAULT_SCHEMA, DEFAULT_RULES
+from .exceptions import (
+    SchemaNotFoundError,
+    RulesDirectoryNotFoundError,
+    RuleLoadError,
+    SyntaxValidationError,
+    SemanticValidationError,
+)
 from nac_yaml.yaml import write_yaml_file, load_yaml_files
 
 logger = logging.getLogger(__name__)
@@ -39,8 +45,7 @@ class Validator:
         elif schema_path == DEFAULT_SCHEMA:
             logger.info("No schema file found")
         else:
-            logger.error("Schema file not found: {}".format(schema_path))
-            raise typer.Exit(1)
+            raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
         self.errors: list[str] = []
         self.rules = {}
         if os.path.exists(rules_path):
@@ -58,13 +63,14 @@ class Validator:
                             if spec.loader is not None:
                                 spec.loader.exec_module(mod)
                                 self.rules[mod.Rule.id] = mod.Rule
-                    except:  # noqa: E722
-                        logger.error("Failed loading rule: {}".format(filename))
+                    except Exception as e:
+                        raise RuleLoadError(filename, str(e))
         elif rules_path == DEFAULT_RULES:
             logger.info("No rules found")
         else:
-            logger.error("Rules directory not found: {}".format(rules_path))
-            raise typer.Exit(1)
+            raise RulesDirectoryNotFoundError(
+                f"Rules directory not found: {rules_path}"
+            )
 
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
         """Run syntactic validation for a single file"""
@@ -81,12 +87,7 @@ class Validator:
                 if e.problem_mark is not None:
                     line = e.problem_mark.line + 1
                     column = e.problem_mark.column + 1
-                msg = "Syntax error '{}': Line {}, Column {} - {}".format(
-                    file_path,
-                    line,
-                    column,
-                    e.problem,
-                )
+                msg = f"Syntax error '{file_path}': Line {line}, Column {column} - {e.problem}"
                 logger.error(msg)
                 self.errors.append(msg)
                 return
@@ -99,12 +100,15 @@ class Validator:
             except YamaleError as e:
                 for result in e.results:
                     for err in result.errors:
-                        msg = "Syntax error '{}': {}".format(result.data, err)
+                        msg = f"Syntax error '{result.data}': {err}"
                         logger.error(msg)
                         self.errors.append(msg)
 
-    def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> bool:
+    def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> None:
         """Run syntactic validation"""
+        # Clear any previous errors
+        self.errors.clear()
+
         for input_path in input_paths:
             if os.path.isfile(input_path):
                 self._validate_syntax_file(input_path, strict)
@@ -113,20 +117,20 @@ class Validator:
                     for filename in files:
                         file_path = Path(dir, filename)
                         self._validate_syntax_file(file_path, strict)
-        if self.errors:
-            return True
-        return False
 
-    def validate_semantics(self, input_paths: list[Path]) -> bool:
+        if self.errors:
+            raise SyntaxValidationError(self.errors.copy())
+
+    def validate_semantics(self, input_paths: list[Path]) -> None:
         """Run semantic validation"""
         if not self.rules:
-            return False
+            return
 
-        error = False
         logger.info("Loading yaml files from %s", input_paths)
         if self.data is None:
             self.data = load_yaml_files(input_paths)
 
+        semantic_errors = []
         results = {}
         for rule in self.rules.values():
             logger.info("Verifying rule id %s", rule.id)
@@ -137,15 +141,16 @@ class Validator:
                 paths = rule.match(self.data, self.schema)
             if len(paths) > 0:
                 results[rule.id] = paths
+
         if len(results) > 0:
-            error = True
             for id, paths in results.items():
-                msg = "Semantic error, rule {}: {} ({})".format(
-                    id, self.rules[id].description, paths
+                msg = (
+                    f"Semantic error, rule {id}: {self.rules[id].description} ({paths})"
                 )
                 logger.error(msg)
-                self.errors.append(msg)
-        return error
+                semantic_errors.append(msg)
+
+            raise SemanticValidationError(semantic_errors)
 
     def write_output(self, input_paths: list[Path], path: Path) -> None:
         if self.data is None:

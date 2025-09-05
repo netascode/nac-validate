@@ -9,16 +9,20 @@ from enum import Enum
 import typer
 from typing_extensions import Annotated
 from pathlib import Path
-import errorhandler
 
 import nac_validate.validator
 from .defaults import DEFAULT_SCHEMA, DEFAULT_RULES
+from ..exceptions import (
+    SchemaNotFoundError,
+    RulesDirectoryNotFoundError,
+    RuleLoadError,
+    SyntaxValidationError,
+    SemanticValidationError,
+)
 
 app = typer.Typer(add_completion=False)
 
 logger = logging.getLogger(__name__)
-
-error_handler = errorhandler.ErrorHandler()
 
 
 def configure_logging(level: str) -> None:
@@ -32,12 +36,18 @@ def configure_logging(level: str) -> None:
         lev = logging.ERROR
     else:
         lev = logging.CRITICAL
-    logger = logging.getLogger()
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
-    logger.addHandler(handler)
-    logger.setLevel(lev)
-    error_handler.reset()
+
+    root_logger = logging.getLogger()
+
+    # Clear existing handlers to avoid duplicates
+    root_logger.handlers.clear()
+
+    # Add console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
+    root_logger.addHandler(console_handler)
+
+    root_logger.setLevel(lev)
 
 
 class VerbosityLevel(str, Enum):
@@ -153,18 +163,24 @@ def main(
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
     configure_logging(verbosity)
 
-    validator = nac_validate.validator.Validator(schema, rules)
-    error = validator.validate_syntax(paths, not non_strict)
-    if error:
-        exit()
-    validator.validate_semantics(paths)
-    if output:
-        validator.write_output(paths, output)
-    exit()
+    try:
+        validator = nac_validate.validator.Validator(schema, rules)
+        validator.validate_syntax(paths, not non_strict)
+        validator.validate_semantics(paths)
+        if output:
+            validator.write_output(paths, output)
 
-
-def exit() -> None:
-    if error_handler.fired:
+    except (SchemaNotFoundError, RulesDirectoryNotFoundError, RuleLoadError) as e:
+        logger.error(str(e))
         raise typer.Exit(1)
-    else:
-        raise typer.Exit(0)
+
+    except (SyntaxValidationError, SemanticValidationError):
+        # Errors are already logged by the validator
+        raise typer.Exit(1)
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise typer.Exit(1)
+
+    # Success - exit with code 0
+    raise typer.Exit(0)

@@ -12,7 +12,6 @@ maintainers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "errorhandler~=2.0.1",
     "nac-yaml~=1.0.0",
     "ruamel-yaml~=0.18.15",
     "typer~=0.17.3",
