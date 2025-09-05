@@ -10,38 +10,16 @@ resolution-markers = [
 name = "ansible-core"
 version = "2.17.13"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.11'",
-]
 dependencies = [
-    { name = "cryptography", marker = "python_full_version < '3.11'" },
-    { name = "jinja2", marker = "python_full_version < '3.11'" },
-    { name = "packaging", marker = "python_full_version < '3.11'" },
-    { name = "pyyaml", marker = "python_full_version < '3.11'" },
-    { name = "resolvelib", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "cryptography" },
+    { name = "jinja2" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+    { name = "resolvelib" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/23/9e/cfbe230c214f93c42891e0b87d97d82d6a1085b306056241df68d553a0ba/ansible_core-2.17.13.tar.gz", hash = "sha256:2ecb85b9fc9145a24145a3027ed3c716b27eda8493dd3e1f0330a20571e63f8b", size = 3119881, upload-time = "2025-07-15T17:47:33.891Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a5/e6/0fa10e14c2a8addd6ef464c3aec58b4d65dd53aad7402df2c9025604f6c4/ansible_core-2.17.13-py3-none-any.whl", hash = "sha256:4fe5ead1d08152a44ef3994383b1d12e66e2a911621bb7cef868db6864cb14c5", size = 2189172, upload-time = "2025-07-15T17:47:31.979Z" },
-]
-
-[[package]]
-name = "ansible-core"
-version = "2.19.1"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.11'",
-]
-dependencies = [
-    { name = "cryptography", marker = "python_full_version >= '3.11'" },
-    { name = "jinja2", marker = "python_full_version >= '3.11'" },
-    { name = "packaging", marker = "python_full_version >= '3.11'" },
-    { name = "pyyaml", marker = "python_full_version >= '3.11'" },
-    { name = "resolvelib", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4e/5e/c3333cdf0a6c0512a272734f0b91602a3686ad119d75c8d22f16fd513706/ansible_core-2.19.1.tar.gz", hash = "sha256:affd33b38d32b57cfc2cd6daf3aafcb384297039e4c5600196a2ee9aa027b75d", size = 3401547, upload-time = "2025-08-25T19:18:24.129Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/9d/422fc6efbadad60ab3d9c18edc52c43fb7bc4677e83ce0908def8dd7bea5/ansible_core-2.19.1-py3-none-any.whl", hash = "sha256:ef42569dc9bb1641ef1adcc7e5bc6b4567b7383c7daf46d3a1885117c93a83e4", size = 2412931, upload-time = "2025-08-25T19:18:22.514Z" },
 ]
 
 [[package]]
@@ -394,8 +372,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "ansible-core", version = "2.17.13", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "ansible-core", version = "2.19.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "ansible-core" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -403,15 +380,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ansible-core", marker = "extra == 'dev'", specifier = "~=2.17" },
-    { name = "errorhandler", specifier = "~=2.0" },
-    { name = "nac-yaml", specifier = "~=1.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = "~=8.2" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = "~=6.0" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = "~=3.14" },
-    { name = "ruamel-yaml", specifier = "~=0.16" },
-    { name = "typer", specifier = "~=0.15" },
-    { name = "yamale", specifier = "~=6.0" },
+    { name = "ansible-core", marker = "extra == 'dev'", specifier = "~=2.17.6" },
+    { name = "errorhandler", specifier = "~=2.0.1" },
+    { name = "nac-yaml", specifier = "~=1.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = "~=8.4.2" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = "~=6.2.1" },
+    { name = "pytest-mock", marker = "extra == 'dev'", specifier = "~=3.15.0" },
+    { name = "ruamel-yaml", specifier = "~=0.18.15" },
+    { name = "typer", specifier = "~=0.17.3" },
+    { name = "yamale", specifier = "~=6.0.0" },
 ]
 provides-extras = ["dev"]
 
@@ -555,24 +532,9 @@ wheels = [
 name = "resolvelib"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.11'",
-]
 sdist = { url = "https://files.pythonhosted.org/packages/ce/10/f699366ce577423cbc3df3280063099054c23df70856465080798c6ebad6/resolvelib-1.0.1.tar.gz", hash = "sha256:04ce76cbd63fded2078ce224785da6ecd42b9564b1390793f64ddecbe997b309", size = 21065, upload-time = "2023-03-09T05:10:38.292Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d2/fc/e9ccf0521607bcd244aa0b3fbd574f71b65e9ce6a112c83af988bbbe2e23/resolvelib-1.0.1-py2.py3-none-any.whl", hash = "sha256:d2da45d1a8dfee81bdd591647783e340ef3bcb104b54c383f70d422ef5cc7dbf", size = 17194, upload-time = "2023-03-09T05:10:36.214Z" },
-]
-
-[[package]]
-name = "resolvelib"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.11'",
-]
-sdist = { url = "https://files.pythonhosted.org/packages/05/57/c5c178e21968123cf2aa90501b5fc14a48e342612695863333f4b70510ad/resolvelib-1.2.0.tar.gz", hash = "sha256:c27fbb5098acd7dfc01fb2be3724bd0881168edc2bd3b4dc876ca3f46b8e4a3d", size = 23448, upload-time = "2025-06-26T01:41:13.936Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/dd/a7bd1227a77403d894ac6c71bf55f6aff39cb485b268d285a158209d5963/resolvelib-1.2.0-py3-none-any.whl", hash = "sha256:8e3e2000beaf53fdfd8772fda1a7b1df97e803ab7c8925621bbb87c4d187a94d", size = 18691, upload-time = "2025-06-26T01:41:12.411Z" },
 ]
 
 [[package]]
