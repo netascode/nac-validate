@@ -72,7 +72,7 @@ jobs:
 
       - name: Webex Notification
         if: always()
-        uses: qsnyder/action-wxt@v0.1.0
+        uses: qsnyder/action-wxt@master
         env:
           TOKEN: ${{ secrets.WEBEX_TOKEN }}
           ROOMID: ${{ secrets.WEBEX_ROOM_ID }}
