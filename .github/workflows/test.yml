@@ -17,6 +17,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6.6.1
+        with:
+          enable-cache: true
 
       - name: Install bandit
         run: uv tool install bandit[toml]
@@ -41,6 +43,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6.6.1
+        with:
+          enable-cache: true
 
       - name: Install mypy
         run: uv tool install mypy
@@ -70,6 +74,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6.6.1
+        with:
+          enable-cache: true
 
       - name: Test
         run: |

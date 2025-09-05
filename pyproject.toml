@@ -11,11 +11,25 @@ maintainers = [
     { name = "Daniel Schmidt", email = "danischm@cisco.com" },
 ]
 requires-python = ">=3.10"
+keywords = ["validation", "yaml", "testing", "automation", "cli"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
-    "nac-yaml~=1.0.0",
-    "ruamel-yaml~=0.18.15",
-    "typer~=0.17.3",
-    "yamale~=6.0.0",
+    "nac-yaml>=1.0.0",
+    "ruamel.yaml>=0.18.15",
+    "typer>=0.17.4",
+    "yamale>=6.0.0",
 ]
 
 [project.urls]
@@ -29,13 +43,14 @@ nac-validate = "nac_validate.cli.main:app"
 
 [project.optional-dependencies]
 dev = [
-    "ansible-core~=2.17.6",
-    "pytest~=8.4.2",
-    "pytest-cov~=6.2.1",
-    "pytest-mock~=3.15.0",
-    "ruff>=0.8.0",
-    "bandit[toml]>=1.7.0",
-    "pre-commit>=3.0.0",
+    "ansible-core~=2.17",
+    "bandit[toml]>=1.8.6",
+    "mypy>=1.17",
+    "pre-commit>=4.3",
+    "pytest>=8.4",
+    "pytest-cov>=6.2",
+    "pytest-mock>=3.15",
+    "ruff>=0.12.12",
 ]
 
 [tool.coverage.run]
@@ -83,6 +98,9 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["nac_validate"]
