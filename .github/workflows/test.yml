@@ -15,13 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5.0.0
 
-      - name: Python Setup
-        uses: actions/setup-python@v6.0.0
-        with:
-          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6.6.1
 
       - name: Install mypy
-        run: pip install mypy
+        run: uv tool install mypy
 
       - name: Pre-commit Checks
         uses: pre-commit/action@v3.0.1
@@ -51,7 +49,7 @@ jobs:
 
       - name: Test
         run: |
-          uv sync --dev
+          uv sync --extra dev
           uv run pytest
 
   notification:
