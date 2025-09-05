@@ -55,10 +55,14 @@ class Rule:
 
 Python 3.10+ is required to install `nac-validate`. Don't have Python 3.10 or later? See [Python 3 Installation & Setup Guide](https://realpython.com/installing-python/).
 
-`nac-validate` can be installed in a virtual environment using `pip`:
+`nac-validate` can be installed in a virtual environment using `pip` or `uv`:
 
-```
+```bash
+# Using pip
 pip install nac-validate
+
+# Using uv (recommended)
+uv tools install nac-validate
 ```
 
 ## Pre-Commit Hook
@@ -68,7 +72,7 @@ The tool can be integrated via a [pre-commit](https://pre-commit.com/) hook with
 ```
 repos:
   - repo: https://github.com/netascode/nac-validate
-    rev: v0.3.0
+    rev: v1.0.0
     hooks:
       - id: nac-validate
 ```
@@ -78,7 +82,7 @@ In case the schema or validation rules are located somewhere else the required C
 ```
 repos:
   - repo: https://github.com/netascode/nac-validate
-    rev: v0.3.0
+    rev: v1.0.0
     hooks:
       - id: nac-validate
         args:
