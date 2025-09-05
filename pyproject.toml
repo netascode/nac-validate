@@ -10,29 +10,31 @@ authors = [
 maintainers = [
     { name = "Daniel Schmidt", email = "danischm@cisco.com" },
 ]
+requires-python = ">=3.10"
+dependencies = [
+    "errorhandler~=2.0",
+    "nac-yaml~=1.0",
+    "ruamel-yaml~=0.16",
+    "typer~=0.15",
+    "yamale~=6.0",
+]
 
 [project.urls]
 homepage = "https://github.com/netascode/nac-validate"
 repository = "https://github.com/netascode/nac-validate"
 documentation = "https://github.com/netascode/nac-validate"
 
-[tool.poetry.scripts]
+[project.scripts]
 iac-validate = "nac_validate.cli.main:app"
 nac-validate = "nac_validate.cli.main:app"
 
-[tool.poetry.dependencies]
-errorhandler = "~=2.0"
-nac-yaml = "~=1.0"
-python = "~=3.10"
-ruamel-yaml = "~=0.16"
-typer = "~=0.15"
-yamale = "~=6.0"
-
-[tool.poetry.group.dev.dependencies]
-ansible-core = "~=2.17"
-pytest = "~=8.2"
-pytest-cov = "~=6.0"
-pytest-mock = "~=3.14"
+[project.optional-dependencies]
+dev = [
+    "ansible-core~=2.17",
+    "pytest~=8.2",
+    "pytest-cov~=6.0",
+    "pytest-mock~=3.14",
+]
 
 [tool.coverage.run]
 source = ["nac_validate"]
@@ -62,5 +64,5 @@ warn_unused_ignores = false
 markers = ["unit", "integration"]
 
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry_core"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
