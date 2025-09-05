@@ -1,24 +1,23 @@
-# -*- coding: utf-8 -*-
-
 # Copyright: (c) 2022, Daniel Schmidt <danischm@cisco.com>
 
 import logging
 import sys
 from enum import Enum
+from pathlib import Path
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
-from pathlib import Path
 
 import nac_validate.validator
-from .defaults import DEFAULT_SCHEMA, DEFAULT_RULES
+
 from ..exceptions import (
-    SchemaNotFoundError,
-    RulesDirectoryNotFoundError,
     RuleLoadError,
-    SyntaxValidationError,
+    RulesDirectoryNotFoundError,
+    SchemaNotFoundError,
     SemanticValidationError,
+    SyntaxValidationError,
 )
+from .defaults import DEFAULT_RULES, DEFAULT_SCHEMA
 
 app = typer.Typer(add_completion=False)
 
@@ -26,28 +25,12 @@ logger = logging.getLogger(__name__)
 
 
 def configure_logging(level: str) -> None:
-    if level == "DEBUG":
-        lev = logging.DEBUG
-    elif level == "INFO":
-        lev = logging.INFO
-    elif level == "WARNING":
-        lev = logging.WARNING
-    elif level == "ERROR":
-        lev = logging.ERROR
-    else:
-        lev = logging.CRITICAL
-
-    root_logger = logging.getLogger()
-
-    # Clear existing handlers to avoid duplicates
-    root_logger.handlers.clear()
-
-    # Add console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
-    root_logger.addHandler(console_handler)
-
-    root_logger.setLevel(lev)
+    logging.basicConfig(
+        level=getattr(logging, level),
+        format="%(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+        force=True,  # Replaces manual handler clearing
+    )
 
 
 class VerbosityLevel(str, Enum):
@@ -172,15 +155,15 @@ def main(
 
     except (SchemaNotFoundError, RulesDirectoryNotFoundError, RuleLoadError) as e:
         logger.error(str(e))
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
-    except (SyntaxValidationError, SemanticValidationError):
+    except (SyntaxValidationError, SemanticValidationError) as e:
         # Errors are already logged by the validator
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # Success - exit with code 0
     raise typer.Exit(0)

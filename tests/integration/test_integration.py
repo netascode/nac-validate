@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
-
 # Copyright: (c) 2022, Daniel Schmidt <danischm@cisco.com>
 
 import filecmp
 import os
+from pathlib import Path
 
-from typer.testing import CliRunner
 import pytest
 from ruamel import yaml
-
-from pathlib import Path
+from typer.testing import CliRunner
 
 import nac_validate.cli.main
 
@@ -87,7 +84,7 @@ def test_validate_env(tmpdir: Path) -> None:
         ],
     )
     assert result.exit_code == 0
-    with open(output_path, "r") as file:
+    with open(output_path) as file:
         data_yaml = file.read()
     y = yaml.YAML()
     data = y.load(data_yaml)

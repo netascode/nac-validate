@@ -1,30 +1,28 @@
-# -*- coding: utf-8 -*-
-
 # Copyright: (c) 2022, Daniel Schmidt <danischm@cisco.com>
 
 import importlib
 import importlib.util
 import logging
-import warnings
 import os
 import sys
-from typing import Any
-from pathlib import Path
-
-from ruamel import yaml
-import yamale
-from yamale.yamale_error import YamaleError
+import warnings
 from inspect import signature
+from pathlib import Path
+from typing import Any
 
-from .cli.defaults import DEFAULT_SCHEMA, DEFAULT_RULES
+import yamale
+from nac_yaml.yaml import load_yaml_files, write_yaml_file
+from ruamel import yaml
+from yamale.yamale_error import YamaleError
+
+from .cli.defaults import DEFAULT_RULES, DEFAULT_SCHEMA
 from .exceptions import (
-    SchemaNotFoundError,
-    RulesDirectoryNotFoundError,
     RuleLoadError,
-    SyntaxValidationError,
+    RulesDirectoryNotFoundError,
+    SchemaNotFoundError,
     SemanticValidationError,
+    SyntaxValidationError,
 )
-from nac_yaml.yaml import write_yaml_file, load_yaml_files
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +62,7 @@ class Validator:
                                 spec.loader.exec_module(mod)
                                 self.rules[mod.Rule.id] = mod.Rule
                     except Exception as e:
-                        raise RuleLoadError(filename, str(e))
+                        raise RuleLoadError(filename, str(e)) from e
         elif rules_path == DEFAULT_RULES:
             logger.info("No rules found")
         else:
@@ -113,7 +111,7 @@ class Validator:
             if os.path.isfile(input_path):
                 self._validate_syntax_file(input_path, strict)
             else:
-                for dir, subdir, files in os.walk(input_path):
+                for dir, _subdir, files in os.walk(input_path):
                     for filename in files:
                         file_path = Path(dir, filename)
                         self._validate_syntax_file(file_path, strict)

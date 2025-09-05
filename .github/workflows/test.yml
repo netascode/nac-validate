@@ -7,6 +7,30 @@ on:
       - main
 
 jobs:
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6.6.1
+
+      - name: Install bandit
+        run: uv tool install bandit[toml]
+
+      - name: Run bandit security scan
+        run: bandit -r nac_validate/ -ll -f json -o bandit-security-report.json
+        
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-security-report.json
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -55,13 +79,13 @@ jobs:
   notification:
     name: Notification
     if: always() && github.event_name != 'pull_request'
-    needs: [lint, test]
+    needs: [security, lint, test]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check Job Success
         run: |
-          if [ ${{ needs.lint.result }} == 'success' ] && [ ${{ needs.test.result }} == 'success' ]; then
+          if [ ${{ needs.security.result }} == 'success' ] && [ ${{ needs.lint.result }} == 'success' ] && [ ${{ needs.test.result }} == 'success' ]; then
             echo "All jobs succeeded"
             echo "jobSuccess=success" >> $GITHUB_ENV
           else

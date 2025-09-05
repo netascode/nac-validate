@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright: (c) 2025, Daniel Schmidt <danischm@cisco.com>
 
 """Custom exceptions for nac-validate."""
