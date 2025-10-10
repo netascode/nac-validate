@@ -1,3 +1,9 @@
+# 1.1.0 (unreleased)
+
+- Enhance error handling and logging
+- Migrate to `uv` package manager
+- Update license references
+
 # 1.0.0
 
 - BREAKING CHANGE: Rename tool from `iac-validate` to `nac-validate`
