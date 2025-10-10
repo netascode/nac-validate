@@ -1,4 +1,4 @@
-# 1.1.0 (unreleased)
+# 1.1.0
 
 - Enhance error handling and logging
 - Migrate to `uv` package manager
