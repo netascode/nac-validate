@@ -37,9 +37,14 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write  # Required for dependabot to push lock file updates
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -48,6 +53,18 @@ jobs:
 
       - name: Install mypy
         run: uv tool install mypy
+
+      - name: Update lock file
+        if: github.actor == 'dependabot[bot]'
+        run: |
+          uv lock
+          if [[ -n $(git status --porcelain uv.lock) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add uv.lock
+            git commit -m "chore: update uv.lock [dependabot skip]"
+            git push
+          fi
 
       - name: Check License Headers
         run: bash scripts/license-headers.sh

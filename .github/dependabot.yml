@@ -6,10 +6,12 @@ updates:
     directory: '/'
     schedule:
       interval: 'daily'
-  - package-ecosystem: pip
+
+  - package-ecosystem: 'pip'
     directory: '/'
     schedule:
-      interval: daily
-    versioning-strategy: lockfile-only
+      interval: 'daily'
+    # Note: lockfile-only removed because dependabot doesn't support uv.lock
+    # The workflow will auto-update uv.lock when pyproject.toml changes
     allow:
       - dependency-type: 'all'
