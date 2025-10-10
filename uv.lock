@@ -483,7 +483,7 @@ requires-dist = [
     { name = "ansible-core", marker = "extra == 'dev'", specifier = ">=2.17.6" },
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.17.1" },
-    { name = "nac-yaml", specifier = ">=1.0.0" },
+    { name = "nac-yaml", specifier = ">=1.1.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.3.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
@@ -497,14 +497,14 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "nac-yaml"
-version = "1.0.0"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ruamel-yaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/6b/0391a0af86ca81ede2536bb9afcd18689910bf3875af24b95212dbd847bb/nac_yaml-1.0.0.tar.gz", hash = "sha256:ce2125ab1dc568e394d70dd35917fd90bc09a845bfd52737112c20fa0bfafacb", size = 8208, upload-time = "2025-05-12T15:03:21.459Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/70/f835484107248eaa5ec90078801a4fc7c233c70b290dcdfd8dbcde9b7a5e/nac_yaml-1.1.0.tar.gz", hash = "sha256:c9874afb16f1d22e1497a77d565f9b90e7ff9ab78db0fb84ece7e58f510d472f", size = 60871, upload-time = "2025-10-10T14:22:01.344Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/06/b4/8578749182bceff46ce693226042364b879c63cc319a7aefd4b98d3decd1/nac_yaml-1.0.0-py3-none-any.whl", hash = "sha256:c2fd204f799e8e298e4aefa05a9450b033548e95677b0df64c89c20e8bd158e9", size = 9044, upload-time = "2025-05-12T15:03:20.217Z" },
+    { url = "https://files.pythonhosted.org/packages/20/e6/055e53c1d6b7eec3904018d579d4f73e211fb8e38f8a05e2b004a9b30e71/nac_yaml-1.1.0-py3-none-any.whl", hash = "sha256:aab6fa8dff5ec856d131a3d24949b7f8e25a4031809b4d9609b3ae7412dda7f3", size = 9390, upload-time = "2025-10-10T14:22:00.516Z" },
 ]
 
 [[package]]
