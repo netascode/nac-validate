@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 dependencies = [
-    "nac-yaml>=1.1.0",
+    "nac-yaml>=1.1.1",
     "ruamel.yaml>=0.18.15",
     "typer>=0.17.4",
     "yamale>=6.0.0",
