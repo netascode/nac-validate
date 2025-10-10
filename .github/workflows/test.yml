@@ -53,7 +53,7 @@ jobs:
         run: bash scripts/license-headers.sh
 
       - name: Pre-commit Checks
-        uses: pre-commit/action@v3
+        uses: pre-commit/action@v3.0.1
 
   test:
     name: Tests
