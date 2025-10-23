@@ -118,7 +118,7 @@ class Validator:
                     if isinstance(current_item, dict) and current_item:
                         # Use the first key-value pair as the identifier
                         primary_key = next(iter(current_item.items()))
-                        named_path.append(f"{primary_key[1]}")
+                        named_path.append(f"[{primary_key[0]}={primary_key[1]}]")
                     current = current_item
                 elif isinstance(current, dict) and segment in current:
                     named_path.append(segment)
@@ -129,7 +129,10 @@ class Validator:
                 # Append the segment as is if an error occurs
                 named_path.append(segment)
 
-        return ".".join(named_path)
+        if named_path:
+            return ".".join(named_path)
+        else:
+            return path
 
     def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> None:
         """Run syntactic validation"""
