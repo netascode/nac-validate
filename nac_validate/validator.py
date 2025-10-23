@@ -99,9 +99,37 @@ class Validator:
             except YamaleError as e:
                 for result in e.results:
                     for err in result.errors:
-                        msg = f"Syntax error '{result.data}': {err}"
+                        # Generate a meaningful path representation
+                        named_path = self._get_named_path(data, err.split(":")[0].strip())
+                        msg = f"Syntax error '{result.data}': {err.replace(err.split(':')[0].strip(), named_path)}"
                         logger.error(msg)
                         self.errors.append(msg)
+
+    def _get_named_path(self, data: dict, path: str) -> str:
+        """Convert a numeric path to a named path for better error messages."""
+        path_segments = path.split(".")
+        named_path = []
+        current = data
+
+        for segment in path_segments:
+            try:
+                if segment.isdigit() and isinstance(current, list):
+                    current_item = current[int(segment)]
+                    if isinstance(current_item, dict) and current_item:
+                        # Use the first key-value pair as the identifier
+                        primary_key = next(iter(current_item.items()))
+                        named_path.append(f"{primary_key[1]}")
+                    current = current_item
+                elif isinstance(current, dict) and segment in current:
+                    named_path.append(segment)
+                    current = current[segment]
+                else:
+                    named_path.append(segment)
+            except (IndexError, KeyError, TypeError):
+                # Append the segment as is if an error occurs
+                named_path.append(segment)
+
+        return ".".join(named_path)
 
     def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> None:
         """Run syntactic validation"""
