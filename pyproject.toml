@@ -30,6 +30,7 @@ dependencies = [
     "ruamel.yaml>=0.18.15",
     "typer>=0.17.4",
     "yamale>=6.0.0",
+    "jmespath>=1.0.0",
 ]
 
 [project.urls]
