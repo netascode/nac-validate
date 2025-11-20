@@ -100,16 +100,18 @@ class Validator:
                 for result in e.results:
                     for err in result.errors:
                         # Generate a meaningful path representation
-                        named_path = self._get_named_path(data, err.split(":")[0].strip())
+                        named_path = self._get_named_path(
+                            data, err.split(":")[0].strip()
+                        )
                         msg = f"Syntax error '{result.data}': {err.replace(err.split(':')[0].strip(), named_path)}"
                         logger.error(msg)
                         self.errors.append(msg)
 
-    def _get_named_path(self, data: dict, path: str) -> str:
+    def _get_named_path(self, data: dict[str, Any], path: str) -> str:
         """Convert a numeric path to a named path for better error messages."""
         path_segments = path.split(".")
         named_path = []
-        current = data
+        current: Any = data
 
         for segment in path_segments:
             try:
