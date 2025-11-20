@@ -1,3 +1,8 @@
+# Unreleased
+
+- Add `jmespath` as a direct dependency
+- Enhance displayed paths in error messages by showing keys instead of indexes for list items
+
 # 1.1.0
 
 - Enhance error handling and logging
