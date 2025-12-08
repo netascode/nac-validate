@@ -81,7 +81,7 @@ class Validator:
         logger.debug(f"Running yamllint on {file_path}")
         
         try:
-            # NAC-specific yamllint configuration - only new-lines rule enabled
+            # NAC-specific yamllint configuration - only minimum checks and new-lines rule enabled
             config = "{extends: relaxed, rules: {new-lines: enable}}"
             
             result = subprocess.run(
@@ -113,7 +113,7 @@ class Validator:
         if os.path.isfile(file_path) and file_path.suffix in [".yaml", ".yml"]:
             logger.info("Validate file: %s", file_path)
 
-            # YAML syntax validation first
+            # YAML syntax validation
             data = None
             try:
                 data = load_yaml_files([file_path])
