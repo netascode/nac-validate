@@ -9,7 +9,6 @@ from typing import Annotated
 
 import typer
 
-import nac_validate
 import nac_validate.validator
 
 from ..exceptions import (

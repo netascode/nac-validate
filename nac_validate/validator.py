@@ -5,7 +5,7 @@ import importlib
 import importlib.util
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404
 import sys
 import warnings
 from inspect import signature
@@ -86,7 +86,7 @@ class Validator:
             # NAC-specific yamllint configuration - minimal validation with only new-lines and anchors
             config = "{extends: relaxed, rules: {key-duplicates: disable, new-line-at-end-of-file: disable, hyphens: disable, indentation: disable, colons: disable, commas: disable, empty-lines: disable, line-length: disable, trailing-spaces: {level: warning}, new-lines: enable}}"
 
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 B607
                 ["yamllint", "-d", config, str(file_path)],
                 capture_output=True,
                 text=True,
