@@ -160,7 +160,9 @@ def main(
     configure_logging(verbosity)
 
     try:
-        validator = nac_validate.validator.Validator(schema, rules, enable_yamllint=yamllint_on)
+        validator = nac_validate.validator.Validator(
+            schema, rules, enable_yamllint=yamllint_on
+        )
         validator.validate_syntax(paths, not non_strict)
         validator.validate_semantics(paths)
         if output:

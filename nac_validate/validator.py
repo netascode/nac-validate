@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 
 
 class Validator:
-    def __init__(self, schema_path: Path, rules_path: Path, enable_yamllint: bool = False):
+    def __init__(
+        self, schema_path: Path, rules_path: Path, enable_yamllint: bool = False
+    ):
         self.enable_yamllint = enable_yamllint
         self.data: dict[str, Any] | None = None
         self.schema = None
@@ -75,34 +77,34 @@ class Validator:
 
     def _run_yamllint(self, file_path: Path) -> None:
         """Run yamllint validation on a file"""
-        if not file_path.suffix in [".yaml", ".yml"]:
+        if file_path.suffix not in [".yaml", ".yml"]:
             return
-            
+
         logger.debug(f"Running yamllint on {file_path}")
-        
+
         try:
             # NAC-specific yamllint configuration - minimal validation with only new-lines and anchors
             config = "{extends: relaxed, rules: {key-duplicates: disable, new-line-at-end-of-file: disable, hyphens: disable, indentation: disable, colons: disable, commas: disable, empty-lines: disable, line-length: disable, trailing-spaces: {level: warning}, new-lines: enable}}"
-            
+
             result = subprocess.run(
                 ["yamllint", "-d", config, str(file_path)],
                 capture_output=True,
-                text=True
+                text=True,
             )
-            
+
             logger.debug(f"Yamllint exit code: {result.returncode}")
-            
+
             if result.returncode != 0:
                 # Parse yamllint output - log errors but don't block other validations
-                for line in result.stdout.strip().split('\n'):
-                    if line.strip() and ':' in line:
+                for line in result.stdout.strip().split("\n"):
+                    if line.strip() and ":" in line:
                         # Extract filename and error details
                         if file_path.name in line:
                             continue  # Skip filename line
                         msg = f"Yamllint error: {line.strip()}"
                         logger.error(msg)
                         # Note: NOT adding to self.errors to allow other validations to continue
-                        
+
         except FileNotFoundError:
             logger.warning("yamllint not found - skipping yamllint validation")
         except Exception as e:
