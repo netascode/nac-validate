@@ -9,6 +9,7 @@ from typing import Annotated
 
 import typer
 
+import nac_validate
 import nac_validate.validator
 
 from ..exceptions import (
@@ -123,6 +124,16 @@ NonStrict = Annotated[
 ]
 
 
+YamllintOn = Annotated[
+    bool,
+    typer.Option(
+        "--yamllint-on",
+        help="Enable yamllint validation.",
+        envvar="NAC_VALIDATE_YAMLLINT_ON",
+    ),
+]
+
+
 Version = Annotated[
     bool,
     typer.Option(
@@ -142,13 +153,14 @@ def main(
     rules: Rules = DEFAULT_RULES,
     output: Output = None,
     non_strict: NonStrict = False,
+    yamllint_on: YamllintOn = False,
     version: Version = False,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
     configure_logging(verbosity)
 
     try:
-        validator = nac_validate.validator.Validator(schema, rules)
+        validator = nac_validate.validator.Validator(schema, rules, enable_yamllint=yamllint_on)
         validator.validate_syntax(paths, not non_strict)
         validator.validate_semantics(paths)
         if output:

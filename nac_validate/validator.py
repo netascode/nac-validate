@@ -5,6 +5,7 @@ import importlib
 import importlib.util
 import logging
 import os
+import subprocess
 import sys
 import warnings
 from inspect import signature
@@ -29,7 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 class Validator:
-    def __init__(self, schema_path: Path, rules_path: Path):
+    def __init__(self, schema_path: Path, rules_path: Path, enable_yamllint: bool = False):
+        self.enable_yamllint = enable_yamllint
         self.data: dict[str, Any] | None = None
         self.schema = None
         if os.path.exists(schema_path):
@@ -71,12 +73,47 @@ class Validator:
                 f"Rules directory not found: {rules_path}"
             )
 
+    def _run_yamllint(self, file_path: Path) -> None:
+        """Run yamllint validation on a file"""
+        if not file_path.suffix in [".yaml", ".yml"]:
+            return
+            
+        logger.debug(f"Running yamllint on {file_path}")
+        
+        try:
+            # NAC-specific yamllint configuration - only new-lines rule enabled
+            config = "{extends: relaxed, rules: {new-lines: enable}}"
+            
+            result = subprocess.run(
+                ["yamllint", "-d", config, str(file_path)],
+                capture_output=True,
+                text=True
+            )
+            
+            logger.debug(f"Yamllint exit code: {result.returncode}")
+            
+            if result.returncode != 0:
+                # Parse yamllint output - log errors but don't block other validations
+                for line in result.stdout.strip().split('\n'):
+                    if line.strip() and ':' in line:
+                        # Extract filename and error details
+                        if file_path.name in line:
+                            continue  # Skip filename line
+                        msg = f"Yamllint error: {line.strip()}"
+                        logger.error(msg)
+                        # Note: NOT adding to self.errors to allow other validations to continue
+                        
+        except FileNotFoundError:
+            logger.warning("yamllint not found - skipping yamllint validation")
+        except Exception as e:
+            logger.warning(f"yamllint validation failed for {file_path}: {e}")
+
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
         """Run syntactic validation for a single file"""
         if os.path.isfile(file_path) and file_path.suffix in [".yaml", ".yml"]:
             logger.info("Validate file: %s", file_path)
 
-            # YAML syntax validation
+            # YAML syntax validation first
             data = None
             try:
                 data = load_yaml_files([file_path])
@@ -106,6 +143,10 @@ class Validator:
                         msg = f"Syntax error '{result.data}': {err.replace(err.split(':')[0].strip(), named_path)}"
                         logger.error(msg)
                         self.errors.append(msg)
+
+            # Run yamllint after other validations (if enabled)
+            if self.enable_yamllint:
+                self._run_yamllint(file_path)
 
     def _get_named_path(self, data: dict[str, Any], path: str) -> str:
         """Convert a numeric path to a named path for better error messages."""
