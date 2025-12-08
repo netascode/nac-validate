@@ -81,8 +81,8 @@ class Validator:
         logger.debug(f"Running yamllint on {file_path}")
         
         try:
-            # NAC-specific yamllint configuration - only minimum checks and new-lines rule enabled
-            config = "{extends: relaxed, rules: {new-lines: enable}}"
+            # NAC-specific yamllint configuration - minimal validation with only new-lines and anchors
+            config = "{extends: relaxed, rules: {key-duplicates: disable, new-line-at-end-of-file: disable, hyphens: disable, indentation: disable, colons: disable, commas: disable, empty-lines: disable, line-length: disable, trailing-spaces: {level: warning}, new-lines: enable}}"
             
             result = subprocess.run(
                 ["yamllint", "-d", config, str(file_path)],
