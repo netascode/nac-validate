@@ -31,6 +31,7 @@ dependencies = [
     "typer>=0.17.4",
     "yamale>=6.0.0",
     "jmespath>=1.0.0",
+    "yamllint>=1.35.1",
 ]
 
 [project.urls]
