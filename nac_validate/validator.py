@@ -176,9 +176,9 @@ class Validator:
 
         if len(results) > 0:
             for id, paths in results.items():
-                msg = (
-                    f"Semantic error, rule {id}: {self.rules[id].description} ({paths})"
-                )
+                header = f"Semantic error, rule {id}: {self.rules[id].description}:"
+                items = "\n".join(f"    - {path}" for path in paths)
+                msg = f"{header}\n{items}"
                 logger.error(msg)
                 semantic_errors.append(msg)
 
