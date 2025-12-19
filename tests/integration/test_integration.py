@@ -225,3 +225,22 @@ def test_merge(tmpdir: Path) -> None:
     )
     assert result.exit_code == 0
     assert filecmp.cmp(output_path, result_path, shallow=False)
+
+
+def test_semantic_error_output_format() -> None:
+    """Test that semantic errors are formatted as a human-readable bulleted list."""
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_semantic_error/"
+    rules_path = "tests/integration/fixtures/rules/"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        ["-r", rules_path, "-v", "ERROR", input_path],
+    )
+    assert result.exit_code == 1
+    # Verify bulleted list format with 4-space indent
+    assert "    - " in result.output
+    # Verify header ends with colon (not parentheses with list)
+    assert "Semantic error, rule 101:" in result.output
+    # Verify no Python list representation in output
+    assert '["' not in result.output
+    assert "']" not in result.output
