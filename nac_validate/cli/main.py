@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2025 Daniel Schmidt
 
+import json
 import logging
 import sys
+from dataclasses import asdict
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -40,6 +42,11 @@ class VerbosityLevel(str, Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+class OutputFormat(str, Enum):
+    TEXT = "text"
+    JSON = "json"
 
 
 def version_callback(value: bool) -> None:
@@ -134,6 +141,17 @@ Version = Annotated[
 ]
 
 
+Format = Annotated[
+    OutputFormat,
+    typer.Option(
+        "-f",
+        "--format",
+        help="Output format for validation results.",
+        envvar="NAC_VALIDATE_FORMAT",
+    ),
+]
+
+
 @app.command()
 def main(
     paths: Paths,
@@ -142,10 +160,15 @@ def main(
     rules: Rules = DEFAULT_RULES,
     output: Output = None,
     non_strict: NonStrict = False,
+    format: Format = OutputFormat.TEXT,
     version: Version = False,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
-    configure_logging(verbosity)
+    # For JSON format at default verbosity, suppress logging to keep stdout clean
+    if format == OutputFormat.JSON and verbosity == VerbosityLevel.WARNING:
+        configure_logging("CRITICAL")
+    else:
+        configure_logging(verbosity)
 
     try:
         validator = nac_validate.validator.Validator(schema, rules)
@@ -155,16 +178,52 @@ def main(
             validator.write_output(paths, output)
 
     except (SchemaNotFoundError, RulesDirectoryNotFoundError, RuleLoadError) as e:
-        logger.error(str(e))
+        if format == OutputFormat.JSON:
+            print(
+                json.dumps(
+                    {"error": str(e), "syntax_errors": [], "semantic_errors": []}
+                )
+            )
+        else:
+            logger.error(str(e))
         raise typer.Exit(1) from e
 
-    except (SyntaxValidationError, SemanticValidationError) as e:
-        # Errors are already logged by the validator
+    except SyntaxValidationError as e:
+        if format == OutputFormat.JSON:
+            json_output = {
+                "syntax_errors": [asdict(r) for r in e.structured_results],
+                "semantic_errors": [],
+            }
+            print(json.dumps(json_output, indent=2))
+        # For text format, errors are already logged by the validator
+        raise typer.Exit(1) from e
+
+    except SemanticValidationError as e:
+        if format == OutputFormat.JSON:
+            json_output = {
+                "syntax_errors": [],
+                "semantic_errors": [asdict(r) for r in e.structured_results],
+            }
+            print(json.dumps(json_output, indent=2))
+        # For text format, errors are already logged by the validator
         raise typer.Exit(1) from e
 
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        if format == OutputFormat.JSON:
+            print(
+                json.dumps(
+                    {
+                        "error": f"Unexpected error: {e}",
+                        "syntax_errors": [],
+                        "semantic_errors": [],
+                    }
+                )
+            )
+        else:
+            logger.error(f"Unexpected error: {e}")
         raise typer.Exit(1) from e
 
-    # Success - exit with code 0
+    # Success
+    if format == OutputFormat.JSON:
+        print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
     raise typer.Exit(0)

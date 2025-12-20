@@ -21,7 +21,9 @@ from .exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaNotFoundError,
+    SemanticErrorResult,
     SemanticValidationError,
+    SyntaxErrorResult,
     SyntaxValidationError,
 )
 
@@ -46,6 +48,7 @@ class Validator:
         else:
             raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
         self.errors: list[str] = []
+        self.structured_syntax_errors: list[SyntaxErrorResult] = []
         self.rules = {}
         if os.path.exists(rules_path):
             logger.info("Loading rules")
@@ -81,14 +84,24 @@ class Validator:
             try:
                 data = load_yaml_files([file_path])
             except yaml.error.MarkedYAMLError as e:
-                line = 0
-                column = 0
+                line: int | None = None
+                column: int | None = None
                 if e.problem_mark is not None:
                     line = e.problem_mark.line + 1
                     column = e.problem_mark.column + 1
-                msg = f"Syntax error '{file_path}': Line {line}, Column {column} - {e.problem}"
+                line_str = line if line is not None else 0
+                column_str = column if column is not None else 0
+                msg = f"Syntax error '{file_path}': Line {line_str}, Column {column_str} - {e.problem}"
                 logger.error(msg)
                 self.errors.append(msg)
+                self.structured_syntax_errors.append(
+                    SyntaxErrorResult(
+                        file=str(file_path),
+                        line=line,
+                        column=column,
+                        message=e.problem or "Unknown YAML syntax error",
+                    )
+                )
                 return
 
             # Schema syntax validation
@@ -103,9 +116,20 @@ class Validator:
                         named_path = self._get_named_path(
                             data, err.split(":")[0].strip()
                         )
-                        msg = f"Syntax error '{result.data}': {err.replace(err.split(':')[0].strip(), named_path)}"
+                        transformed_err = err.replace(
+                            err.split(":")[0].strip(), named_path
+                        )
+                        msg = f"Syntax error '{result.data}': {transformed_err}"
                         logger.error(msg)
                         self.errors.append(msg)
+                        self.structured_syntax_errors.append(
+                            SyntaxErrorResult(
+                                file=str(result.data),
+                                line=None,
+                                column=None,
+                                message=transformed_err,
+                            )
+                        )
 
     def _get_named_path(self, data: dict[str, Any], path: str) -> str:
         """Convert a numeric path to a named path for better error messages."""
@@ -140,6 +164,7 @@ class Validator:
         """Run syntactic validation"""
         # Clear any previous errors
         self.errors.clear()
+        self.structured_syntax_errors.clear()
 
         for input_path in input_paths:
             if os.path.isfile(input_path):
@@ -151,7 +176,9 @@ class Validator:
                         self._validate_syntax_file(file_path, strict)
 
         if self.errors:
-            raise SyntaxValidationError(self.errors.copy())
+            raise SyntaxValidationError(
+                self.errors.copy(), self.structured_syntax_errors.copy()
+            )
 
     def validate_semantics(self, input_paths: list[Path]) -> None:
         """Run semantic validation"""
@@ -162,8 +189,9 @@ class Validator:
         if self.data is None:
             self.data = load_yaml_files(input_paths)
 
-        semantic_errors = []
-        results = {}
+        semantic_errors: list[str] = []
+        structured_results: list[SemanticErrorResult] = []
+        results: dict[str, list[str]] = {}
         for rule in self.rules.values():
             logger.info("Verifying rule id %s", rule.id)
             sig = signature(rule.match)
@@ -181,8 +209,15 @@ class Validator:
                 msg = f"{header}\n{items}"
                 logger.error(msg)
                 semantic_errors.append(msg)
+                structured_results.append(
+                    SemanticErrorResult(
+                        rule_id=id,
+                        description=self.rules[id].description,
+                        errors=list(paths),
+                    )
+                )
 
-            raise SemanticValidationError(semantic_errors)
+            raise SemanticValidationError(semantic_errors, structured_results)
 
     def write_output(self, input_paths: list[Path], path: Path) -> None:
         if self.data is None:
