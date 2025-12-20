@@ -190,8 +190,13 @@ def main(
 
     except SyntaxValidationError as e:
         if format == OutputFormat.JSON:
+            # Omit None values from syntax errors (line/column not always available)
+            syntax_errors = [
+                {k: v for k, v in asdict(r).items() if v is not None}
+                for r in e.structured_results
+            ]
             json_output = {
-                "syntax_errors": [asdict(r) for r in e.structured_results],
+                "syntax_errors": syntax_errors,
                 "semantic_errors": [],
             }
             print(json.dumps(json_output, indent=2))
