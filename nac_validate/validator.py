@@ -24,6 +24,7 @@ from .exceptions import (
     SemanticValidationError,
     SyntaxValidationError,
 )
+from .output_formatter import format_checklist_summary, format_semantic_error
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,33 @@ class Validator:
         if self.errors:
             raise SyntaxValidationError(self.errors.copy())
 
+    def _count_violations_from_content(self, content: str) -> int:
+        """Extract violation count from rich formatted content.
+
+        Looks for patterns like "Found X violation" or "Found X bridge domain"
+        or counts bullet points as a fallback.
+
+        Args:
+            content: Rich formatted content string
+
+        Returns:
+            Estimated violation count
+        """
+        import re
+
+        # Try to find "Found N ..." pattern
+        match = re.search(r"Found (\d+)", content)
+        if match:
+            return int(match.group(1))
+
+        # Fallback: count bullet points (•)
+        bullet_count = content.count("•")
+        if bullet_count > 0:
+            return bullet_count
+
+        # Default to 1 if we can't determine
+        return 1
+
     def validate_semantics(self, input_paths: list[Path]) -> None:
         """Run semantic validation"""
         if not self.rules:
@@ -175,12 +203,39 @@ class Validator:
                 results[rule.id] = paths
 
         if len(results) > 0:
-            for id, paths in results.items():
-                msg = (
-                    f"Semantic error, rule {id}: {self.rules[id].description} ({paths})"
+            failed_rules = []
+            for rule_id, paths in results.items():
+                rule = self.rules[rule_id]
+                severity = getattr(rule, "severity", "HIGH")
+                formatted_msg = format_semantic_error(
+                    rule_id=rule_id,
+                    description=rule.description,
+                    severity=severity,
+                    results=paths,
                 )
-                logger.error(msg)
-                semantic_errors.append(msg)
+                # Print directly to stderr for immediate visual feedback
+                print(formatted_msg, file=sys.stderr)
+                semantic_errors.append(
+                    f"Rule {rule_id}: {rule.description}"
+                )
+
+                # Collect info for checklist summary
+                # Count violations - for rich output it's in the content, for simple it's len(paths)
+                violation_count = len(paths) if not (
+                    len(paths) == 1 and paths[0].startswith("\n")
+                ) else self._count_violations_from_content(paths[0])
+
+                failed_rules.append({
+                    "rule_id": rule_id,
+                    "description": rule.description,
+                    "severity": severity,
+                    "violation_count": violation_count,
+                })
+
+            # Print checklist summary at the end
+            checklist = format_checklist_summary(failed_rules)
+            if checklist:
+                print(checklist, file=sys.stderr)
 
             raise SemanticValidationError(semantic_errors)
 
