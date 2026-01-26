@@ -264,6 +264,10 @@ def test_json_format_semantic_errors() -> None:
     assert "description" in semantic_error
     assert "errors" in semantic_error
     assert isinstance(semantic_error["errors"], list)
+    # Verify errors are strings in "path - message" format (not dicts)
+    for error in semantic_error["errors"]:
+        assert isinstance(error, str), f"Error should be string, got {type(error)}"
+        assert " - " in error, f"Error should contain ' - ' separator: {error}"
 
 
 def test_json_format_syntax_errors() -> None:
