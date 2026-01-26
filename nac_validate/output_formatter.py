@@ -163,9 +163,7 @@ class OutputFormatter:
             lines.append(self._header(result.context.title))
             lines.append(self._separator(self.HEAVY_SEP))
             lines.append("")
-            lines.append(
-                f"Found {len(result.violations)} violation(s)."
-            )
+            lines.append(f"Found {len(result.violations)} violation(s).")
 
             # Violations list
             lines.extend(
@@ -283,7 +281,10 @@ class OutputFormatter:
             elif re.match(r"^[─]{40,}$", stripped):
                 lines.append(f"{Colors.CYAN}{line}{Colors.RESET}")
             # ALL CAPS headers
-            elif re.match(r"^[A-Z][A-Z0-9\s\-_/()]+[A-Z0-9)]$", stripped) and len(stripped) > 10:
+            elif (
+                re.match(r"^[A-Z][A-Z0-9\s\-_/()]+[A-Z0-9)]$", stripped)
+                and len(stripped) > 10
+            ):
                 lines.append(f"{Colors.BOLD}{Colors.YELLOW}{line}{Colors.RESET}")
             # Section headers ending with colon
             elif re.match(r"^[A-Z].*:$", stripped):
@@ -339,7 +340,7 @@ def format_json_result(
     Returns:
         Dictionary ready for JSON serialization
     """
-    base = {
+    base: dict[str, Any] = {
         "rule_id": rule_id,
         "description": description,
     }
@@ -353,9 +354,7 @@ def format_json_result(
         base["errors"] = errors
 
     elif isinstance(result, RuleResult):
-        base["errors"] = [
-            f"{v.path} - {v.message}" for v in result.violations
-        ]
+        base["errors"] = [f"{v.path} - {v.message}" for v in result.violations]
 
     elif isinstance(result, list):
         # String list format
@@ -364,7 +363,7 @@ def format_json_result(
     return base
 
 
-def format_checklist_summary(failed_rules: list[dict]) -> str:
+def format_checklist_summary(failed_rules: list[dict[str, Any]]) -> str:
     """Format a checklist summary of all failed rules.
 
     Args:

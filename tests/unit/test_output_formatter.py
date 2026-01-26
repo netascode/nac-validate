@@ -8,8 +8,6 @@ GroupedRuleResult, and list[str] inputs into the expected JSON structure
 with errors formatted as "path - message" strings.
 """
 
-import pytest
-
 from nac_validate.models import GroupedRuleResult, RuleContext, RuleResult, Violation
 from nac_validate.output_formatter import format_json_result
 
@@ -260,9 +258,7 @@ class TestFormatJsonResultEdgeCases:
 
     def test_severity_parameter_does_not_affect_json_output(self) -> None:
         """Severity is not included in JSON output (affects text color only)."""
-        result = RuleResult(
-            violations=[Violation(message="Test", path="test")]
-        )
+        result = RuleResult(violations=[Violation(message="Test", path="test")])
 
         for severity in ["HIGH", "MEDIUM", "LOW"]:
             output = format_json_result(
@@ -302,9 +298,7 @@ class TestFormatJsonResultEdgeCases:
         result = GroupedRuleResult(
             groups=[
                 RuleResult(violations=[]),  # empty
-                RuleResult(
-                    violations=[Violation(message="Real error", path="path.x")]
-                ),
+                RuleResult(violations=[Violation(message="Real error", path="path.x")]),
                 RuleResult(violations=[]),  # empty
                 RuleResult(
                     violations=[Violation(message="Another error", path="path.y")]

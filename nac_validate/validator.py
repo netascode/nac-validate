@@ -199,22 +199,20 @@ class Validator:
         Returns:
             Number of violations
         """
-        if isinstance(result, (RuleResult, GroupedRuleResult)):
+        if isinstance(result, RuleResult | GroupedRuleResult):
             return len(result)
-        elif isinstance(result, list):
-            # String list - try to extract count from content
-            if not result:
-                return 0
-            # For rich formatted content, try to find "Found N" pattern
-            import re
+        # String list - try to extract count from content
+        if not result:
+            return 0
+        # For rich formatted content, try to find "Found N" pattern
+        import re
 
-            for item in result:
-                match = re.search(r"Found (\d+)", str(item))
-                if match:
-                    return int(match.group(1))
-            # Fallback to list length
-            return len(result)
-        return 0
+        for item in result:
+            match = re.search(r"Found (\d+)", str(item))
+            if match:
+                return int(match.group(1))
+        # Fallback to list length
+        return len(result)
 
     def _result_has_violations(
         self, result: RuleResult | GroupedRuleResult | list[str]
@@ -227,11 +225,9 @@ class Validator:
         Returns:
             True if there are violations
         """
-        if isinstance(result, (RuleResult, GroupedRuleResult)):
+        if isinstance(result, RuleResult | GroupedRuleResult):
             return bool(result)
-        elif isinstance(result, list):
-            return len(result) > 0
-        return False
+        return len(result) > 0
 
     def validate_semantics(
         self, input_paths: list[Path], rich_output: bool = True
@@ -279,7 +275,9 @@ class Validator:
                         rule_id=rule_id,
                         description=rule.description,
                         # Store structured data instead of raw strings
-                        errors=json_result.get("violations", json_result.get("errors", [])),
+                        errors=json_result.get(
+                            "violations", json_result.get("errors", [])
+                        ),
                     )
                 )
 
