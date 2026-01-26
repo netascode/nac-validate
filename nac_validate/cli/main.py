@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2025 Daniel Schmidt
 
+import json
 import logging
 import sys
+from dataclasses import asdict
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -82,6 +84,11 @@ class VerbosityLevel(str, Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+class OutputFormat(str, Enum):
+    TEXT = "text"
+    JSON = "json"
 
 
 def version_callback(value: bool) -> None:
@@ -174,6 +181,17 @@ ListRules = Annotated[
 ]
 
 
+Format = Annotated[
+    OutputFormat,
+    typer.Option(
+        "-f",
+        "--format",
+        help="Output format for validation results.",
+        envvar="NAC_VALIDATE_FORMAT",
+    ),
+]
+
+
 @app.command()
 def main(
     paths: Annotated[
@@ -190,11 +208,16 @@ def main(
     rules: Rules = DEFAULT_RULES,
     output: Output = None,
     non_strict: NonStrict = False,
+    format: Format = OutputFormat.TEXT,
     version: Version = False,
     list_rules: ListRules = False,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
-    configure_logging(verbosity)
+    # For JSON format at default verbosity, suppress logging to keep stdout clean
+    if format == OutputFormat.JSON and verbosity == VerbosityLevel.WARNING:
+        configure_logging("CRITICAL")
+    else:
+        configure_logging(verbosity)
 
     # Handle --list-rules
     if list_rules:
@@ -212,22 +235,63 @@ def main(
 
     try:
         validator = nac_validate.validator.Validator(schema, rules)
-        validator.validate_syntax(paths, not non_strict)
-        validator.validate_semantics(paths)
+        validator.validate_syntax(paths, not non_strict, format == OutputFormat.TEXT)
+        validator.validate_semantics(paths, format == OutputFormat.TEXT)
         if output:
             validator.write_output(paths, output)
 
     except (SchemaNotFoundError, RulesDirectoryNotFoundError, RuleLoadError) as e:
-        logger.error(str(e))
+        if format == OutputFormat.JSON:
+            print(
+                json.dumps(
+                    {"error": str(e), "syntax_errors": [], "semantic_errors": []}
+                )
+            )
+        else:
+            logger.error(str(e))
         raise typer.Exit(1) from e
 
-    except (SyntaxValidationError, SemanticValidationError) as e:
-        # Errors are already logged by the validator
+    except SyntaxValidationError as e:
+        if format == OutputFormat.JSON:
+            # Omit None values from syntax errors (line/column not always available)
+            syntax_errors = [
+                {k: v for k, v in asdict(r).items() if v is not None}
+                for r in e.structured_results
+            ]
+            json_output = {
+                "syntax_errors": syntax_errors,
+                "semantic_errors": [],
+            }
+            print(json.dumps(json_output, indent=2))
+        # For text format, errors are already logged by the validator
+        raise typer.Exit(1) from e
+
+    except SemanticValidationError as e:
+        if format == OutputFormat.JSON:
+            json_output = {
+                "syntax_errors": [],
+                "semantic_errors": [asdict(r) for r in e.structured_results],
+            }
+            print(json.dumps(json_output, indent=2))
+        # For text format, errors are already logged by the validator
         raise typer.Exit(1) from e
 
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        if format == OutputFormat.JSON:
+            print(
+                json.dumps(
+                    {
+                        "error": f"Unexpected error: {e}",
+                        "syntax_errors": [],
+                        "semantic_errors": [],
+                    }
+                )
+            )
+        else:
+            logger.error(f"Unexpected error: {e}")
         raise typer.Exit(1) from e
 
-    # Success - exit with code 0
+    # Success
+    if format == OutputFormat.JSON:
+        print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
     raise typer.Exit(0)

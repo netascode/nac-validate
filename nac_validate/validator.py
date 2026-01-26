@@ -21,7 +21,9 @@ from .exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaNotFoundError,
+    SemanticErrorResult,
     SemanticValidationError,
+    SyntaxErrorResult,
     SyntaxValidationError,
 )
 from .output_formatter import format_checklist_summary, format_semantic_error
@@ -47,6 +49,7 @@ class Validator:
         else:
             raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
         self.errors: list[str] = []
+        self.structured_syntax_errors: list[SyntaxErrorResult] = []
         self.rules = {}
         if os.path.exists(rules_path):
             logger.info("Loading rules")
@@ -82,14 +85,24 @@ class Validator:
             try:
                 data = load_yaml_files([file_path])
             except yaml.error.MarkedYAMLError as e:
-                line = 0
-                column = 0
+                line: int | None = None
+                column: int | None = None
                 if e.problem_mark is not None:
                     line = e.problem_mark.line + 1
                     column = e.problem_mark.column + 1
-                msg = f"Syntax error '{file_path}': Line {line}, Column {column} - {e.problem}"
+                line_str = line if line is not None else 0
+                column_str = column if column is not None else 0
+                msg = f"Syntax error '{file_path}': Line {line_str}, Column {column_str} - {e.problem}"
                 logger.error(msg)
                 self.errors.append(msg)
+                self.structured_syntax_errors.append(
+                    SyntaxErrorResult(
+                        file=str(file_path),
+                        line=line,
+                        column=column,
+                        message=e.problem or "Unknown YAML syntax error",
+                    )
+                )
                 return
 
             # Schema syntax validation
@@ -104,9 +117,20 @@ class Validator:
                         named_path = self._get_named_path(
                             data, err.split(":")[0].strip()
                         )
-                        msg = f"Syntax error '{result.data}': {err.replace(err.split(':')[0].strip(), named_path)}"
+                        transformed_err = err.replace(
+                            err.split(":")[0].strip(), named_path
+                        )
+                        msg = f"Syntax error '{result.data}': {transformed_err}"
                         logger.error(msg)
                         self.errors.append(msg)
+                        self.structured_syntax_errors.append(
+                            SyntaxErrorResult(
+                                file=str(result.data),
+                                line=None,
+                                column=None,
+                                message=transformed_err,
+                            )
+                        )
 
     def _get_named_path(self, data: dict[str, Any], path: str) -> str:
         """Convert a numeric path to a named path for better error messages."""
@@ -137,10 +161,13 @@ class Validator:
         else:
             return path
 
-    def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> None:
+    def validate_syntax(
+        self, input_paths: list[Path], strict: bool = True, rich_output: bool = True
+    ) -> None:
         """Run syntactic validation"""
         # Clear any previous errors
         self.errors.clear()
+        self.structured_syntax_errors.clear()
 
         for input_path in input_paths:
             if os.path.isfile(input_path):
@@ -152,7 +179,9 @@ class Validator:
                         self._validate_syntax_file(file_path, strict)
 
         if self.errors:
-            raise SyntaxValidationError(self.errors.copy())
+            raise SyntaxValidationError(
+                self.errors.copy(), self.structured_syntax_errors.copy()
+            )
 
     def _count_violations_from_content(self, content: str) -> int:
         """Extract violation count from rich formatted content.
@@ -181,7 +210,9 @@ class Validator:
         # Default to 1 if we can't determine
         return 1
 
-    def validate_semantics(self, input_paths: list[Path]) -> None:
+    def validate_semantics(
+        self, input_paths: list[Path], rich_output: bool = True
+    ) -> None:
         """Run semantic validation"""
         if not self.rules:
             return
@@ -190,8 +221,9 @@ class Validator:
         if self.data is None:
             self.data = load_yaml_files(input_paths)
 
-        semantic_errors = []
-        results = {}
+        semantic_errors: list[str] = []
+        structured_results: list[SemanticErrorResult] = []
+        results: dict[str, list[str]] = {}
         for rule in self.rules.values():
             logger.info("Verifying rule id %s", rule.id)
             sig = signature(rule.match)
@@ -207,37 +239,59 @@ class Validator:
             for rule_id, paths in results.items():
                 rule = self.rules[rule_id]
                 severity = getattr(rule, "severity", "HIGH")
-                formatted_msg = format_semantic_error(
-                    rule_id=rule_id,
-                    description=rule.description,
-                    severity=severity,
-                    results=paths,
-                )
-                # Print directly to stderr for immediate visual feedback
-                print(formatted_msg, file=sys.stderr)
-                semantic_errors.append(
-                    f"Rule {rule_id}: {rule.description}"
+
+                # Always build structured results for JSON output
+                structured_results.append(
+                    SemanticErrorResult(
+                        rule_id=rule_id,
+                        description=rule.description,
+                        errors=list(paths),
+                    )
                 )
 
-                # Collect info for checklist summary
-                # Count violations - for rich output it's in the content, for simple it's len(paths)
-                violation_count = len(paths) if not (
-                    len(paths) == 1 and paths[0].startswith("\n")
-                ) else self._count_violations_from_content(paths[0])
+                if rich_output:
+                    # Rich text output with colors and formatting
+                    formatted_msg = format_semantic_error(
+                        rule_id=rule_id,
+                        description=rule.description,
+                        severity=severity,
+                        results=paths,
+                    )
+                    # Print directly to stderr for immediate visual feedback
+                    print(formatted_msg, file=sys.stderr)
+                    semantic_errors.append(f"Rule {rule_id}: {rule.description}")
 
-                failed_rules.append({
-                    "rule_id": rule_id,
-                    "description": rule.description,
-                    "severity": severity,
-                    "violation_count": violation_count,
-                })
+                    # Collect info for checklist summary
+                    # Count violations - for rich output it's in the content, for simple it's len(paths)
+                    violation_count = (
+                        len(paths)
+                        if not (len(paths) == 1 and paths[0].startswith("\n"))
+                        else self._count_violations_from_content(paths[0])
+                    )
 
-            # Print checklist summary at the end
-            checklist = format_checklist_summary(failed_rules)
-            if checklist:
-                print(checklist, file=sys.stderr)
+                    failed_rules.append(
+                        {
+                            "rule_id": rule_id,
+                            "description": rule.description,
+                            "severity": severity,
+                            "violation_count": violation_count,
+                        }
+                    )
+                else:
+                    # Simple output for JSON mode (logging suppressed)
+                    header = f"Semantic error, rule {rule_id}: {rule.description}:"
+                    items = "\n".join(f"    - {path}" for path in paths)
+                    msg = f"{header}\n{items}"
+                    logger.error(msg)
+                    semantic_errors.append(msg)
 
-            raise SemanticValidationError(semantic_errors)
+            # Print checklist summary at the end (only for rich output)
+            if rich_output:
+                checklist = format_checklist_summary(failed_rules)
+                if checklist:
+                    print(checklist, file=sys.stderr)
+
+            raise SemanticValidationError(semantic_errors, structured_results)
 
     def write_output(self, input_paths: list[Path], path: Path) -> None:
         if self.data is None:

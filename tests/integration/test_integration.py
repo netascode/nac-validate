@@ -2,6 +2,7 @@
 # Copyright (c) 2025 Daniel Schmidt
 
 import filecmp
+import json
 import os
 from pathlib import Path
 
@@ -225,3 +226,80 @@ def test_merge(tmpdir: Path) -> None:
     )
     assert result.exit_code == 0
     assert filecmp.cmp(output_path, result_path, shallow=False)
+
+
+def test_json_format_success() -> None:
+    """Test JSON output format for successful validation."""
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data/"
+    schema_path = "tests/integration/fixtures/schema/schema.yaml"
+    rules_path = "tests/integration/fixtures/rules/"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        ["-s", schema_path, "-r", rules_path, "--format", "json", input_path],
+    )
+    assert result.exit_code == 0
+    output = json.loads(result.output)
+    assert output == {"syntax_errors": [], "semantic_errors": []}
+
+
+def test_json_format_semantic_errors() -> None:
+    """Test JSON output format for semantic validation errors."""
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_semantic_error/"
+    rules_path = "tests/integration/fixtures/rules/"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        ["-r", rules_path, "--format", "json", input_path],
+    )
+    assert result.exit_code == 1
+    output = json.loads(result.output)
+    assert "syntax_errors" in output
+    assert "semantic_errors" in output
+    assert output["syntax_errors"] == []
+    assert len(output["semantic_errors"]) > 0
+    # Verify structure of semantic error
+    semantic_error = output["semantic_errors"][0]
+    assert "rule_id" in semantic_error
+    assert "description" in semantic_error
+    assert "errors" in semantic_error
+    assert isinstance(semantic_error["errors"], list)
+
+
+def test_json_format_syntax_errors() -> None:
+    """Test JSON output format for syntax validation errors."""
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_syntax_error/"
+    schema_path = "tests/integration/fixtures/schema/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        ["-s", schema_path, "--format", "json", input_path],
+    )
+    assert result.exit_code == 1
+    output = json.loads(result.output)
+    assert "syntax_errors" in output
+    assert "semantic_errors" in output
+    assert output["semantic_errors"] == []
+    assert len(output["syntax_errors"]) > 0
+    # Verify structure of syntax error
+    syntax_error = output["syntax_errors"][0]
+    assert "file" in syntax_error
+    assert "message" in syntax_error
+
+
+def test_json_format_no_logs_at_default_verbosity() -> None:
+    """Test that JSON mode suppresses logs at default verbosity."""
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_semantic_error/"
+    rules_path = "tests/integration/fixtures/rules/"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        ["-r", rules_path, "--format", "json", input_path],
+    )
+    assert result.exit_code == 1
+    # Should be valid JSON without any log prefixes
+    output = json.loads(result.output)
+    assert "semantic_errors" in output
+    # Verify no ERROR or INFO prefixes in output
+    assert "ERROR - " not in result.output
+    assert "INFO - " not in result.output
