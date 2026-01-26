@@ -157,6 +157,23 @@ class OutputFormatter:
 
         return line
 
+    def _is_rich_content(self, item: str) -> bool:
+        """Detect if a result item is rich pre-formatted content.
+
+        Rich content typically starts with a newline and contains
+        separator patterns (=== or ───).
+
+        Args:
+            item: A single result string
+
+        Returns:
+            True if the item appears to be rich formatted content
+        """
+        return (
+            item.startswith("\n")
+            and ("=" * 40 in item or "─" * 40 in item)
+        )
+
     def format_output(
         self, rule_id: str, description: str, results: list[str]
     ) -> str:
@@ -164,6 +181,7 @@ class OutputFormatter:
 
         Automatically detects whether results are simple list items or
         pre-formatted rich content and applies appropriate formatting.
+        Handles mixed results where some items are rich and others are simple.
 
         Args:
             rule_id: The rule ID
@@ -175,19 +193,26 @@ class OutputFormatter:
         """
         parts = [self.format_rule_header(rule_id, description)]
 
-        # Detect if this is rich pre-formatted content
-        # (single item starting with newline and containing separators)
-        if (
-            results
-            and len(results) == 1
-            and results[0].startswith("\n")
-            and ("=" * 40 in results[0] or "─" * 40 in results[0])
-        ):
-            # Rich formatted content
-            parts.append(self.format_rich_content(results[0]))
-        else:
-            # Simple list format
-            parts.append(self.format_simple_list(results))
+        if not results:
+            return "\n".join(parts)
+
+        # Separate rich content from simple items
+        rich_items = []
+        simple_items = []
+
+        for item in results:
+            if self._is_rich_content(item):
+                rich_items.append(item)
+            else:
+                simple_items.append(item)
+
+        # Format rich content items (apply pattern-based colorization)
+        for item in rich_items:
+            parts.append(self.format_rich_content(item))
+
+        # Format simple items as a bullet list (if any)
+        if simple_items:
+            parts.append(self.format_simple_list(simple_items))
 
         return "\n".join(parts)
 
