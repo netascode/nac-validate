@@ -11,6 +11,7 @@ import typer
 
 import nac_validate.validator
 
+from ..constants import Colors
 from ..exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
@@ -23,6 +24,47 @@ from .defaults import DEFAULT_RULES, DEFAULT_SCHEMA
 app = typer.Typer(add_completion=False)
 
 logger = logging.getLogger(__name__)
+
+
+def print_rules_list(rules_path: Path) -> None:
+    """Print all available validation rules and exit."""
+    try:
+        validator = nac_validate.validator.Validator(
+            schema_path=Path(".schema.yaml"),  # Dummy, won't be used
+            rules_path=rules_path,
+        )
+    except Exception:
+        print(f"{Colors.YELLOW}Could not load rules from {rules_path}{Colors.RESET}")
+        raise typer.Exit(1)
+
+    if not validator.rules:
+        print(f"{Colors.YELLOW}No rules found in {rules_path}{Colors.RESET}")
+        raise typer.Exit(0)
+
+    print(f"\n{Colors.CYAN}{Colors.BOLD}Available Validation Rules:{Colors.RESET}")
+    print(f"{Colors.DIM}{'─' * 60}{Colors.RESET}\n")
+
+    # Sort rules by ID
+    sorted_rules = sorted(validator.rules.items(), key=lambda x: int(x[0]))
+
+    for rule_id, rule in sorted_rules:
+        severity = getattr(rule, "severity", "MEDIUM")
+        if severity == "HIGH":
+            severity_color = Colors.RED
+        elif severity == "MEDIUM":
+            severity_color = Colors.YELLOW
+        else:
+            severity_color = Colors.CYAN
+
+        print(
+            f"  {Colors.BOLD}[{rule_id}]{Colors.RESET} "
+            f"{rule.description} "
+            f"{severity_color}({severity}){Colors.RESET}"
+        )
+
+    print(f"\n{Colors.DIM}{'─' * 60}{Colors.RESET}")
+    print(f"{Colors.DIM}Total: {len(validator.rules)} rules{Colors.RESET}\n")
+    raise typer.Exit(0)
 
 
 def configure_logging(level: str) -> None:
@@ -46,17 +88,6 @@ def version_callback(value: bool) -> None:
     if value:
         print(f"nac-validate, version {nac_validate.__version__}")
         raise typer.Exit()
-
-
-Paths = Annotated[
-    list[Path],
-    typer.Argument(
-        help="List of paths pointing to YAML files or directories.",
-        exists=True,
-        dir_okay=True,
-        file_okay=True,
-    ),
-]
 
 
 Verbosity = Annotated[
@@ -134,18 +165,50 @@ Version = Annotated[
 ]
 
 
+ListRules = Annotated[
+    bool,
+    typer.Option(
+        "--list-rules",
+        help="List all available validation rules and exit.",
+    ),
+]
+
+
 @app.command()
 def main(
-    paths: Paths,
+    paths: Annotated[
+        list[Path] | None,
+        typer.Argument(
+            help="List of paths pointing to YAML files or directories.",
+            exists=True,
+            dir_okay=True,
+            file_okay=True,
+        ),
+    ] = None,
     verbosity: Verbosity = VerbosityLevel.WARNING,
     schema: Schema = DEFAULT_SCHEMA,
     rules: Rules = DEFAULT_RULES,
     output: Output = None,
     non_strict: NonStrict = False,
     version: Version = False,
+    list_rules: ListRules = False,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
     configure_logging(verbosity)
+
+    # Handle --list-rules
+    if list_rules:
+        print_rules_list(rules)
+        # print_rules_list raises typer.Exit, but just in case:
+        raise typer.Exit(0)
+
+    # Require paths for validation
+    if not paths:
+        print(
+            f"{Colors.RED}Error: Missing argument 'PATHS...'.{Colors.RESET}\n"
+            f"Use --help for usage information, or --list-rules to see available rules."
+        )
+        raise typer.Exit(1)
 
     try:
         validator = nac_validate.validator.Validator(schema, rules)
