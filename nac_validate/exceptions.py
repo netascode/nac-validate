@@ -18,7 +18,13 @@ class SyntaxErrorResult:
 
 @dataclass
 class SemanticErrorResult:
-    """Structured semantic validation error for a single rule."""
+    """Structured semantic validation error for a single rule.
+
+    Attributes:
+        rule_id: The rule identifier (e.g., "101", "312")
+        description: Human-readable rule description
+        errors: List of error strings in "path - message" format.
+    """
 
     rule_id: str
     description: str
