@@ -37,7 +37,7 @@ def print_rules_list(rules_path: Path) -> None:
         )
     except Exception:
         print(f"{Colors.YELLOW}Could not load rules from {rules_path}{Colors.RESET}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     if not validator.rules:
         print(f"{Colors.YELLOW}No rules found in {rules_path}{Colors.RESET}")
