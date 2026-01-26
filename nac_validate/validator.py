@@ -26,7 +26,12 @@ from .exceptions import (
     SyntaxErrorResult,
     SyntaxValidationError,
 )
-from .output_formatter import format_checklist_summary, format_semantic_error
+from .models import GroupedRuleResult, RuleResult
+from .output_formatter import (
+    format_checklist_summary,
+    format_json_result,
+    format_semantic_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +58,7 @@ class Validator:
         self.rules = {}
         if os.path.exists(rules_path):
             logger.info("Loading rules")
-            for filename in os.listdir(rules_path):
+            for filename in sorted(os.listdir(rules_path)):
                 if Path(filename).suffix == ".py":
                     try:
                         file_path = Path(rules_path, filename)
@@ -183,32 +188,50 @@ class Validator:
                 self.errors.copy(), self.structured_syntax_errors.copy()
             )
 
-    def _count_violations_from_content(self, content: str) -> int:
-        """Extract violation count from rich formatted content.
-
-        Looks for patterns like "Found X violation" or "Found X bridge domain"
-        or counts bullet points as a fallback.
+    def _get_violation_count(
+        self, result: RuleResult | GroupedRuleResult | list[str]
+    ) -> int:
+        """Get the violation count from a rule result.
 
         Args:
-            content: Rich formatted content string
+            result: Structured result or string list
 
         Returns:
-            Estimated violation count
+            Number of violations
         """
-        import re
+        if isinstance(result, (RuleResult, GroupedRuleResult)):
+            return len(result)
+        elif isinstance(result, list):
+            # String list - try to extract count from content
+            if not result:
+                return 0
+            # For rich formatted content, try to find "Found N" pattern
+            import re
 
-        # Try to find "Found N ..." pattern
-        match = re.search(r"Found (\d+)", content)
-        if match:
-            return int(match.group(1))
+            for item in result:
+                match = re.search(r"Found (\d+)", str(item))
+                if match:
+                    return int(match.group(1))
+            # Fallback to list length
+            return len(result)
+        return 0
 
-        # Fallback: count bullet points (•)
-        bullet_count = content.count("•")
-        if bullet_count > 0:
-            return bullet_count
+    def _result_has_violations(
+        self, result: RuleResult | GroupedRuleResult | list[str]
+    ) -> bool:
+        """Check if a rule result contains violations.
 
-        # Default to 1 if we can't determine
-        return 1
+        Args:
+            result: Structured result or string list
+
+        Returns:
+            True if there are violations
+        """
+        if isinstance(result, (RuleResult, GroupedRuleResult)):
+            return bool(result)
+        elif isinstance(result, list):
+            return len(result) > 0
+        return False
 
     def validate_semantics(
         self, input_paths: list[Path], rich_output: bool = True
@@ -223,29 +246,40 @@ class Validator:
 
         semantic_errors: list[str] = []
         structured_results: list[SemanticErrorResult] = []
-        results: dict[str, list[str]] = {}
+        # Store raw results for JSON output
+        raw_results: dict[str, RuleResult | GroupedRuleResult | list[str]] = {}
+
         for rule in self.rules.values():
             logger.info("Verifying rule id %s", rule.id)
             sig = signature(rule.match)
             if len(sig.parameters) == 1:
-                paths = rule.match(self.data)
+                result = rule.match(self.data)
             elif len(sig.parameters) == 2:
-                paths = rule.match(self.data, self.schema)
-            if len(paths) > 0:
-                results[rule.id] = paths
+                result = rule.match(self.data, self.schema)
 
-        if len(results) > 0:
+            if self._result_has_violations(result):
+                raw_results[rule.id] = result
+
+        if raw_results:
             failed_rules = []
-            for rule_id, paths in results.items():
+            for rule_id, result in raw_results.items():
                 rule = self.rules[rule_id]
                 severity = getattr(rule, "severity", "HIGH")
+                violation_count = self._get_violation_count(result)
 
-                # Always build structured results for JSON output
+                # Build structured result for JSON output
+                json_result = format_json_result(
+                    rule_id=rule_id,
+                    description=rule.description,
+                    severity=severity,
+                    result=result,
+                )
                 structured_results.append(
                     SemanticErrorResult(
                         rule_id=rule_id,
                         description=rule.description,
-                        errors=list(paths),
+                        # Store structured data instead of raw strings
+                        errors=json_result.get("violations", json_result.get("errors", [])),
                     )
                 )
 
@@ -255,20 +289,13 @@ class Validator:
                         rule_id=rule_id,
                         description=rule.description,
                         severity=severity,
-                        results=paths,
+                        result=result,
                     )
                     # Print directly to stderr for immediate visual feedback
                     print(formatted_msg, file=sys.stderr)
                     semantic_errors.append(f"Rule {rule_id}: {rule.description}")
 
                     # Collect info for checklist summary
-                    # Count violations - for rich output it's in the content, for simple it's len(paths)
-                    violation_count = (
-                        len(paths)
-                        if not (len(paths) == 1 and paths[0].startswith("\n"))
-                        else self._count_violations_from_content(paths[0])
-                    )
-
                     failed_rules.append(
                         {
                             "rule_id": rule_id,
@@ -280,10 +307,8 @@ class Validator:
                 else:
                     # Simple output for JSON mode (logging suppressed)
                     header = f"Semantic error, rule {rule_id}: {rule.description}:"
-                    items = "\n".join(f"    - {path}" for path in paths)
-                    msg = f"{header}\n{items}"
-                    logger.error(msg)
-                    semantic_errors.append(msg)
+                    logger.error(header)
+                    semantic_errors.append(header)
 
             # Print checklist summary at the end (only for rich output)
             if rich_output:
