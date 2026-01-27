@@ -3,6 +3,52 @@
 
 """Constants and shared definitions for nac-validate."""
 
+from enum import IntEnum
+from pathlib import Path
+
+# Default paths
+DEFAULT_SCHEMA = Path(".schema.yaml")
+DEFAULT_RULES = Path(".rules/")
+
+# Output formatting widths
+HEADER_SEPARATOR_WIDTH = 80
+SUMMARY_SEPARATOR_WIDTH = 60
+MIN_SEPARATOR_LENGTH = 40
+
+# File extensions
+YAML_SUFFIXES = (".yaml", ".yml")
+
+# Rule loading
+RULE_MODULE_NAME = "nac_validate.rules"
+VALID_RULE_MATCH_PARAM_COUNTS = (1, 2)
+
+# Output formatting
+MIN_HEADER_LENGTH = 10  # Minimum length for ALL CAPS header detection
+UNKNOWN_SEVERITY_SORT_ORDER = 99  # Sort order for unknown severity levels
+
+# Severity sort order
+SEVERITY_SORT_ORDER: dict[str, int] = {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 2,
+}
+
+
+class ExitCode(IntEnum):
+    """Exit codes for CLI.
+
+    Specific exit codes help automation distinguish between error types:
+    - 0: Validation passed
+    - 1: Semantic validation failed (business rule violations)
+    - 2: Syntax validation failed (YAML syntax or schema errors)
+    - 3: Configuration error (missing schema, invalid rules, etc.)
+    """
+
+    SUCCESS = 0
+    SEMANTIC_ERROR = 1
+    SYNTAX_ERROR = 2
+    CONFIG_ERROR = 3
+
 
 class Colors:
     """ANSI escape codes for terminal colorization."""
@@ -12,30 +58,30 @@ class Colors:
     YELLOW = "\033[93m"
     GREEN = "\033[92m"
     CYAN = "\033[96m"
-    BLUE = "\033[94m"
     MAGENTA = "\033[95m"
-    WHITE = "\033[97m"
 
     # Styles
     BOLD = "\033[1m"
     DIM = "\033[2m"
-    ITALIC = "\033[3m"
-    UNDERLINE = "\033[4m"
 
     # Reset
     RESET = "\033[0m"
 
-    @classmethod
-    def colorize(cls, text: str, *styles: str) -> str:
-        """Apply one or more styles to text.
+    # Severity-to-color mapping
+    _SEVERITY_COLORS: "dict[str, str]" = {
+        "HIGH": RED,
+        "MEDIUM": YELLOW,
+        "LOW": CYAN,
+    }
+
+    @staticmethod
+    def for_severity(severity: str) -> str:
+        """Get the color code for a severity level.
 
         Args:
-            text: The text to colorize
-            *styles: One or more style codes (e.g., Colors.RED, Colors.BOLD)
+            severity: Severity level (HIGH, MEDIUM, LOW)
 
         Returns:
-            The text wrapped in ANSI codes
+            ANSI color code, defaults to CYAN for unknown severities
         """
-        if not styles:
-            return text
-        return f"{''.join(styles)}{text}{cls.RESET}"
+        return Colors._SEVERITY_COLORS.get(severity, Colors.CYAN)
