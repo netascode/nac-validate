@@ -9,7 +9,12 @@ with errors formatted as "path - message" strings.
 """
 
 from nac_validate.models import GroupedRuleResult, RuleContext, RuleResult, Violation
-from nac_validate.output_formatter import format_json_result
+from nac_validate.output_formatter import (
+    format_checklist_summary,
+    format_json_result,
+    format_rules_list,
+    format_validation_summary,
+)
 
 
 class TestFormatJsonResultWithRuleResult:
@@ -341,3 +346,286 @@ class TestFormatJsonResultEdgeCases:
         assert output["errors"] == ["config.item - Error with details"]
         # And not as a separate field
         assert "details" not in output
+
+
+class TestFormatViolation:
+    """Test format_violation() method."""
+
+    def test_violation_with_path(self) -> None:
+        """Should format violation with path."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        violation = Violation(message="Error message", path="apic.tenants[0].name")
+        lines = formatter.format_violation(violation)
+        assert len(lines) == 2
+        assert "Error message" in lines[0]
+        assert "apic.tenants[0].name" in lines[1]
+        assert "Path:" in lines[1]
+
+    def test_violation_without_path(self) -> None:
+        """Should format violation without path line."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        violation = Violation(message="Error message", path="")
+        lines = formatter.format_violation(violation)
+        assert len(lines) == 1
+        assert "Error message" in lines[0]
+
+
+class TestFormatViolationsList:
+    """Test format_violations_list() method."""
+
+    def test_empty_list_returns_empty(self) -> None:
+        """Should return empty list for no violations."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        lines = formatter.format_violations_list([])
+        assert lines == []
+
+    def test_multiple_violations(self) -> None:
+        """Should format multiple violations with header."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        violations = [
+            Violation(message="Error 1", path="path1"),
+            Violation(message="Error 2", path="path2"),
+        ]
+        lines = formatter.format_violations_list(violations, "Issues Found")
+        assert "Issues Found:" in lines[0]
+        assert any("Error 1" in line for line in lines)
+        assert any("Error 2" in line for line in lines)
+
+
+class TestFormatContext:
+    """Test format_context() method."""
+
+    def test_context_with_references(self) -> None:
+        """Should format context with references section."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        context = RuleContext(
+            title="Test Issue",
+            affected_items_label="Items",
+            explanation="Why this matters",
+            recommendation="How to fix",
+            references=["https://example.com/docs"],
+        )
+        lines = formatter.format_context(context)
+        assert any("WHY THIS MATTERS" in line for line in lines)
+        assert any("RECOMMENDED FIX" in line for line in lines)
+        assert any("https://example.com/docs" in line for line in lines)
+
+    def test_context_without_references(self) -> None:
+        """Should format context without references section."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        context = RuleContext(
+            title="Test Issue",
+            affected_items_label="Items",
+            explanation="Why this matters",
+            recommendation="How to fix",
+            references=[],
+        )
+        lines = formatter.format_context(context)
+        assert any("WHY THIS MATTERS" in line for line in lines)
+        assert any("RECOMMENDED FIX" in line for line in lines)
+        assert not any("References:" in line for line in lines)
+
+
+class TestFormatRuleResult:
+    """Test format_rule_result() method."""
+
+    def test_empty_result_returns_empty(self) -> None:
+        """Should return empty for result with no violations."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        result = RuleResult(violations=[])
+        lines = formatter.format_rule_result(result)
+        assert lines == []
+
+    def test_result_with_context(self) -> None:
+        """Should format result with rich context."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        context = RuleContext(
+            title="Configuration Issue",
+            affected_items_label="Affected Items",
+            explanation="Why this matters",
+            recommendation="How to fix",
+        )
+        result = RuleResult(
+            violations=[Violation(message="Error", path="path")], context=context
+        )
+        lines = formatter.format_rule_result(result)
+        assert any("Configuration Issue" in line for line in lines)
+        assert any("Found 1 violation" in line for line in lines)
+
+    def test_result_without_context(self) -> None:
+        """Should format result with simple output."""
+        from nac_validate.output_formatter import OutputFormatter
+
+        formatter = OutputFormatter(severity="HIGH")
+        result = RuleResult(violations=[Violation(message="Error", path="path")])
+        lines = formatter.format_rule_result(result)
+        assert any("Error" in line for line in lines)
+
+
+class TestFormatValidationSummary:
+    """Test format_validation_summary() function."""
+
+    def test_all_passed_shows_green_checkmarks(self) -> None:
+        """Should show green checkmarks when both validations pass."""
+        result = format_validation_summary(
+            syntax_passed=True,
+            semantic_passed=True,
+            file_count=5,
+        )
+        assert "PASSED" in result
+        assert "Syntax validation" in result
+        assert "Semantic validation" in result
+        assert "(5 files)" in result
+
+    def test_syntax_failed_shows_red_x(self) -> None:
+        """Should show red X when syntax validation fails."""
+        result = format_validation_summary(
+            syntax_passed=False,
+            semantic_passed=True,
+        )
+        assert "FAILED" in result
+        assert "Syntax validation" in result
+
+    def test_semantic_failed_with_severity_breakdown(self) -> None:
+        """Should show severity breakdown when semantic validation fails."""
+        from nac_validate.exceptions import SemanticErrorResult
+
+        class MockRule:
+            severity = "HIGH"
+
+        errors = [
+            SemanticErrorResult(
+                rule_id="100", description="Test", errors=["err1", "err2"]
+            ),
+        ]
+        rules = {"100": MockRule()}
+
+        result = format_validation_summary(
+            syntax_passed=True,
+            semantic_passed=False,
+            semantic_errors=errors,
+            rules=rules,
+        )
+        assert "FAILED" in result
+        assert "HIGH" in result
+        assert "2" in result  # violation count
+
+
+class TestFormatRulesList:
+    """Test format_rules_list() function."""
+
+    def test_empty_rules_shows_warning(self) -> None:
+        """Should show warning when no rules found."""
+        result = format_rules_list({})
+        assert "No rules found" in result
+
+    def test_rules_sorted_by_id(self) -> None:
+        """Should list rules sorted by numeric ID."""
+
+        class Rule100:
+            description = "Rule 100"
+            severity = "HIGH"
+
+        class Rule50:
+            description = "Rule 50"
+            severity = "LOW"
+
+        rules = {"100": Rule100, "50": Rule50}
+        result = format_rules_list(rules)
+
+        # Rule 50 should appear before Rule 100
+        pos_50 = result.find("[50]")
+        pos_100 = result.find("[100]")
+        assert pos_50 < pos_100
+
+    def test_rules_show_severity_with_color(self) -> None:
+        """Should show severity in parentheses."""
+
+        class Rule:
+            description = "Test rule"
+            severity = "MEDIUM"
+
+        result = format_rules_list({"1": Rule})
+        assert "(MEDIUM)" in result
+        assert "Test rule" in result
+
+
+class TestFormatChecklistSummary:
+    """Test format_checklist_summary() function."""
+
+    def test_empty_list_returns_empty_string(self) -> None:
+        """Should return empty string for no failed rules."""
+        result = format_checklist_summary([])
+        assert result == ""
+
+    def test_failed_rules_sorted_by_severity_then_id(self) -> None:
+        """Should sort failed rules by severity (HIGH first) then by ID."""
+        failed_rules = [
+            {
+                "rule_id": "200",
+                "description": "Low rule",
+                "severity": "LOW",
+                "violation_count": 1,
+            },
+            {
+                "rule_id": "100",
+                "description": "High rule",
+                "severity": "HIGH",
+                "violation_count": 2,
+            },
+            {
+                "rule_id": "150",
+                "description": "Medium rule",
+                "severity": "MEDIUM",
+                "violation_count": 1,
+            },
+        ]
+        result = format_checklist_summary(failed_rules)
+
+        # HIGH (100) should come before MEDIUM (150) which should come before LOW (200)
+        pos_100 = result.find("Rule 100")
+        pos_150 = result.find("Rule 150")
+        pos_200 = result.find("Rule 200")
+        assert pos_100 < pos_150 < pos_200
+
+    def test_shows_violation_count(self) -> None:
+        """Should show violation count for each rule."""
+        failed_rules = [
+            {
+                "rule_id": "100",
+                "description": "Test",
+                "severity": "HIGH",
+                "violation_count": 5,
+            },
+        ]
+        result = format_checklist_summary(failed_rules)
+        assert "5 violations" in result
+
+    def test_shows_checklist_header(self) -> None:
+        """Should show REMEDIATION CHECKLIST header."""
+        failed_rules = [
+            {
+                "rule_id": "100",
+                "description": "Test",
+                "severity": "HIGH",
+                "violation_count": 1,
+            },
+        ]
+        result = format_checklist_summary(failed_rules)
+        assert "REMEDIATION CHECKLIST" in result
