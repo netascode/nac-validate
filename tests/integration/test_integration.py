@@ -11,6 +11,7 @@ from ruamel import yaml
 from typer.testing import CliRunner
 
 import nac_validate.cli.main
+from nac_validate.constants import ExitCode
 
 pytestmark = pytest.mark.integration
 
@@ -138,7 +139,7 @@ def test_validate_additional_data() -> None:
             input_path_2,
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
 
 
 def test_validate_syntax() -> None:
@@ -153,7 +154,7 @@ def test_validate_syntax() -> None:
             input_path,
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
 
 
 def test_validate_semantics() -> None:
@@ -168,7 +169,7 @@ def test_validate_semantics() -> None:
             input_path,
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SEMANTIC_ERROR
     rules_path = "tests/integration/fixtures/rules_schema/"
     result = runner.invoke(
         nac_validate.cli.main.app,
@@ -178,7 +179,7 @@ def test_validate_semantics() -> None:
             input_path,
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SEMANTIC_ERROR
     schema_path = "tests/integration/fixtures/schema/schema.yaml"
     result = runner.invoke(
         nac_validate.cli.main.app,
@@ -252,7 +253,7 @@ def test_json_format_semantic_errors() -> None:
         nac_validate.cli.main.app,
         ["-r", rules_path, "--format", "json", input_path],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SEMANTIC_ERROR
     output = json.loads(result.output)
     assert "syntax_errors" in output
     assert "semantic_errors" in output
@@ -279,7 +280,7 @@ def test_json_format_syntax_errors() -> None:
         nac_validate.cli.main.app,
         ["-s", schema_path, "--format", "json", input_path],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
     output = json.loads(result.output)
     assert "syntax_errors" in output
     assert "semantic_errors" in output
@@ -300,7 +301,7 @@ def test_json_format_no_logs_at_default_verbosity() -> None:
         nac_validate.cli.main.app,
         ["-r", rules_path, "--format", "json", input_path],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.SEMANTIC_ERROR
     # Should be valid JSON without any log prefixes
     output = json.loads(result.output)
     assert "semantic_errors" in output
