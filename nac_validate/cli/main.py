@@ -1,11 +1,19 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2025 Daniel Schmidt
 
+"""CLI entry point for nac-validate.
+
+This module is a thin orchestration layer that:
+- Parses CLI arguments (via Typer)
+- Calls validation services
+- Formats and displays output
+- Returns appropriate exit codes
+"""
+
 import json
 import logging
 import sys
 from dataclasses import asdict
-from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -13,7 +21,7 @@ import typer
 
 import nac_validate.validator
 
-from ..constants import Colors
+from ..constants import DEFAULT_RULES, DEFAULT_SCHEMA, YAML_SUFFIXES, Colors, ExitCode
 from ..exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
@@ -21,7 +29,19 @@ from ..exceptions import (
     SemanticValidationError,
     SyntaxValidationError,
 )
-from .defaults import DEFAULT_RULES, DEFAULT_SCHEMA
+from ..output_formatter import format_rules_list, format_validation_summary
+from .options import (
+    Format,
+    ListRules,
+    NonStrict,
+    Output,
+    OutputFormat,
+    Rules,
+    Schema,
+    Verbosity,
+    VerbosityLevel,
+    Version,
+)
 
 app = typer.Typer(add_completion=False)
 
@@ -29,167 +49,34 @@ logger = logging.getLogger(__name__)
 
 
 def print_rules_list(rules_path: Path) -> None:
-    """Print all available validation rules and exit."""
+    """Load and print all available validation rules, then exit."""
     try:
-        validator = nac_validate.validator.Validator(
-            schema_path=Path(".schema.yaml"),  # Dummy, won't be used
+        validator = nac_validate.validator.Validator.from_paths(
+            schema_path=DEFAULT_SCHEMA,
             rules_path=rules_path,
         )
-    except Exception:
-        print(f"{Colors.YELLOW}Could not load rules from {rules_path}{Colors.RESET}")
-        raise typer.Exit(1) from None
+    except Exception as e:
+        print(
+            f"{Colors.YELLOW}Could not load rules from {rules_path}: {e}{Colors.RESET}"
+        )
+        raise typer.Exit(ExitCode.CONFIG_ERROR) from None
 
     if not validator.rules:
         print(f"{Colors.YELLOW}No rules found in {rules_path}{Colors.RESET}")
-        raise typer.Exit(0)
+        raise typer.Exit(ExitCode.SUCCESS)
 
-    print(f"\n{Colors.CYAN}{Colors.BOLD}Available Validation Rules:{Colors.RESET}")
-    print(f"{Colors.DIM}{'─' * 60}{Colors.RESET}\n")
-
-    # Sort rules by ID
-    sorted_rules = sorted(validator.rules.items(), key=lambda x: int(x[0]))
-
-    for rule_id, rule in sorted_rules:
-        severity = getattr(rule, "severity", "MEDIUM")
-        if severity == "HIGH":
-            severity_color = Colors.RED
-        elif severity == "MEDIUM":
-            severity_color = Colors.YELLOW
-        else:
-            severity_color = Colors.CYAN
-
-        print(
-            f"  {Colors.BOLD}[{rule_id}]{Colors.RESET} "
-            f"{rule.description} "
-            f"{severity_color}({severity}){Colors.RESET}"
-        )
-
-    print(f"\n{Colors.DIM}{'─' * 60}{Colors.RESET}")
-    print(f"{Colors.DIM}Total: {len(validator.rules)} rules{Colors.RESET}\n")
-    raise typer.Exit(0)
+    print(format_rules_list(validator.rules))
+    raise typer.Exit(ExitCode.SUCCESS)
 
 
 def configure_logging(level: str) -> None:
+    """Configure logging with the specified level."""
     logging.basicConfig(
         level=getattr(logging, level),
         format="%(levelname)s - %(message)s",
         handlers=[logging.StreamHandler(sys.stdout)],
-        force=True,  # Replaces manual handler clearing
+        force=True,
     )
-
-
-class VerbosityLevel(str, Enum):
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
-
-
-class OutputFormat(str, Enum):
-    TEXT = "text"
-    JSON = "json"
-
-
-def version_callback(value: bool) -> None:
-    if value:
-        print(f"nac-validate, version {nac_validate.__version__}")
-        raise typer.Exit()
-
-
-Verbosity = Annotated[
-    VerbosityLevel,
-    typer.Option(
-        "-v",
-        "--verbosity",
-        help="Verbosity level.",
-        envvar="NAC_VALIDATE_VERBOSITY",
-        is_eager=True,
-    ),
-]
-
-
-Schema = Annotated[
-    Path,
-    typer.Option(
-        "-s",
-        "--schema",
-        exists=False,
-        dir_okay=False,
-        file_okay=True,
-        help="Path to schema file.",
-        envvar="NAC_VALIDATE_SCHEMA",
-    ),
-]
-
-
-Rules = Annotated[
-    Path,
-    typer.Option(
-        "-r",
-        "--rules",
-        exists=False,
-        dir_okay=True,
-        file_okay=False,
-        help="Path to directory with semantic validation rules.",
-        envvar="NAC_VALIDATE_RULES",
-    ),
-]
-
-
-Output = Annotated[
-    Path | None,
-    typer.Option(
-        "-o",
-        "--output",
-        exists=False,
-        dir_okay=False,
-        file_okay=True,
-        help="Write merged content from YAML files to a new YAML file.",
-        envvar="NAC_VALIDATE_OUTPUT",
-    ),
-]
-
-
-NonStrict = Annotated[
-    bool,
-    typer.Option(
-        "--non-strict",
-        help="Accept unexpected elements in YAML files.",
-        envvar="NAC_VALIDATE_NON_STRICT",
-    ),
-]
-
-
-Version = Annotated[
-    bool,
-    typer.Option(
-        "--version",
-        callback=version_callback,
-        help="Display version number.",
-        is_eager=True,
-    ),
-]
-
-
-ListRules = Annotated[
-    bool,
-    typer.Option(
-        "--list-rules",
-        help="List all available validation rules and exit.",
-    ),
-]
-
-
-Format = Annotated[
-    OutputFormat,
-    typer.Option(
-        "-f",
-        "--format",
-        help="Output format for validation results.",
-        envvar="NAC_VALIDATE_FORMAT",
-    ),
-]
 
 
 @app.command()
@@ -223,7 +110,7 @@ def main(
     if list_rules:
         print_rules_list(rules)
         # print_rules_list raises typer.Exit, but just in case:
-        raise typer.Exit(0)
+        raise typer.Exit(ExitCode.SUCCESS)
 
     # Require paths for validation
     if not paths:
@@ -231,11 +118,24 @@ def main(
             f"{Colors.RED}Error: Missing argument 'PATHS...'.{Colors.RESET}\n"
             f"Use --help for usage information, or --list-rules to see available rules."
         )
-        raise typer.Exit(1)
+        raise typer.Exit(ExitCode.CONFIG_ERROR)
+
+    validator = None
+    file_count = 0
 
     try:
-        validator = nac_validate.validator.Validator(schema, rules)
-        validator.validate_syntax(paths, not non_strict, format == OutputFormat.TEXT)
+        validator = nac_validate.validator.Validator.from_paths(schema, rules)
+        validator.validate_syntax(paths, not non_strict)
+
+        # Count files validated
+        for path in paths:
+            if path.is_file():
+                file_count += 1
+            elif path.is_dir():
+                file_count += sum(
+                    1 for f in path.rglob("*") if f.suffix in YAML_SUFFIXES
+                )
+
         validator.validate_semantics(paths, format == OutputFormat.TEXT)
         if output:
             validator.write_output(paths, output)
@@ -249,7 +149,7 @@ def main(
             )
         else:
             logger.error(str(e))
-        raise typer.Exit(1) from e
+        raise typer.Exit(ExitCode.CONFIG_ERROR) from e
 
     except SyntaxValidationError as e:
         if format == OutputFormat.JSON:
@@ -263,8 +163,16 @@ def main(
                 "semantic_errors": [],
             }
             print(json.dumps(json_output, indent=2))
-        # For text format, errors are already logged by the validator
-        raise typer.Exit(1) from e
+        else:
+            # Print summary for text format
+            print(
+                format_validation_summary(
+                    syntax_passed=False,
+                    semantic_passed=True,  # Didn't get to semantic validation
+                    file_count=file_count,
+                )
+            )
+        raise typer.Exit(ExitCode.SYNTAX_ERROR) from e
 
     except SemanticValidationError as e:
         if format == OutputFormat.JSON:
@@ -273,8 +181,18 @@ def main(
                 "semantic_errors": [asdict(r) for r in e.structured_results],
             }
             print(json.dumps(json_output, indent=2))
-        # For text format, errors are already logged by the validator
-        raise typer.Exit(1) from e
+        else:
+            # Print summary for text format
+            print(
+                format_validation_summary(
+                    syntax_passed=True,
+                    semantic_passed=False,
+                    file_count=file_count,
+                    semantic_errors=e.structured_results,
+                    rules=validator.rules if validator else None,
+                )
+            )
+        raise typer.Exit(ExitCode.SEMANTIC_ERROR) from e
 
     except Exception as e:
         if format == OutputFormat.JSON:
@@ -289,9 +207,17 @@ def main(
             )
         else:
             logger.error(f"Unexpected error: {e}")
-        raise typer.Exit(1) from e
+        raise typer.Exit(ExitCode.CONFIG_ERROR) from e
 
     # Success
     if format == OutputFormat.JSON:
         print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
-    raise typer.Exit(0)
+    else:
+        print(
+            format_validation_summary(
+                syntax_passed=True,
+                semantic_passed=True,
+                file_count=file_count,
+            )
+        )
+    raise typer.Exit(ExitCode.SUCCESS)
