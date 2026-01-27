@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2025 Daniel Schmidt
 
-import importlib
 import importlib.util
 import logging
-import os
+import re
 import sys
 import warnings
 from inspect import signature
@@ -16,7 +15,13 @@ from nac_yaml.yaml import load_yaml_files, write_yaml_file
 from ruamel import yaml
 from yamale.yamale_error import YamaleError
 
-from .cli.defaults import DEFAULT_RULES, DEFAULT_SCHEMA
+from .constants import (
+    DEFAULT_RULES,
+    DEFAULT_SCHEMA,
+    RULE_MODULE_NAME,
+    VALID_RULE_MATCH_PARAM_COUNTS,
+    YAML_SUFFIXES,
+)
 from .exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
@@ -37,52 +42,143 @@ logger = logging.getLogger(__name__)
 
 
 class Validator:
-    def __init__(self, schema_path: Path, rules_path: Path):
-        self.data: dict[str, Any] | None = None
-        self.schema = None
-        if os.path.exists(schema_path):
-            logger.info("Loading schema")
+    @staticmethod
+    def _load_schema(schema_path: Path) -> Any | None:
+        """Load Yamale schema from file path.
+
+        Args:
+            schema_path: Path to schema.yaml file
+
+        Returns:
+            Loaded yamale.Schema or None if default path doesn't exist
+
+        Raises:
+            SchemaNotFoundError: If non-default schema path doesn't exist
+        """
+        if schema_path.exists():
+            logger.info("Loading schema from %s", schema_path)
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     action="ignore",
                     category=SyntaxWarning,
                     message="invalid escape sequence",
                 )
-                self.schema = yamale.make_schema(schema_path, parser="ruamel")
+                return yamale.make_schema(schema_path, parser="ruamel")
         elif schema_path == DEFAULT_SCHEMA:
-            logger.info("No schema file found")
+            logger.info("No schema file found at default path")
+            return None
         else:
             raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
+
+    @staticmethod
+    def _load_rules(rules_path: Path) -> dict[str, Any]:
+        """Load validation rules from directory.
+
+        Args:
+            rules_path: Path to directory containing rule .py files
+
+        Returns:
+            Dictionary mapping rule ID to Rule class (dynamically loaded)
+
+        Raises:
+            RulesDirectoryNotFoundError: If non-default rules path doesn't exist
+            RuleLoadError: If rule file has invalid structure
+        """
+        if not rules_path.exists():
+            if rules_path == DEFAULT_RULES:
+                logger.info("No rules found at default path")
+                return {}
+            else:
+                raise RulesDirectoryNotFoundError(
+                    f"Rules directory not found: {rules_path}"
+                )
+
+        logger.info("Loading rules from %s", rules_path)
+        rules: dict[str, Any] = {}
+
+        for filename in sorted(f.name for f in rules_path.iterdir()):
+            if Path(filename).suffix == ".py":
+                try:
+                    file_path = rules_path / filename
+                    spec = importlib.util.spec_from_file_location(
+                        RULE_MODULE_NAME, file_path
+                    )
+                    if spec is not None:
+                        mod = importlib.util.module_from_spec(spec)
+                        sys.modules[RULE_MODULE_NAME] = mod
+                        if spec.loader is not None:
+                            spec.loader.exec_module(mod)
+
+                            # Validate match method parameter count
+                            sig = signature(mod.Rule.match)
+                            param_count = len(sig.parameters)
+                            if param_count not in VALID_RULE_MATCH_PARAM_COUNTS:
+                                raise RuleLoadError(
+                                    filename,
+                                    f"Rule.match() must accept 1 or 2 parameters, got {param_count}",
+                                )
+                            rules[mod.Rule.id] = mod.Rule
+                except Exception as e:
+                    raise RuleLoadError(filename, str(e)) from e
+
+        return rules
+
+    def __init__(self, schema: Any | None, rules: dict[str, Any]):
+        """Initialize validator with loaded schema and rules.
+
+        Args:
+            schema: Loaded yamale.Schema or None if no schema
+            rules: Dictionary mapping rule ID to Rule class (dynamically loaded)
+        """
+        self.schema = schema
+        self.rules = rules
+        self.data: dict[str, Any] | None = None
+        self._data_paths: list[Path] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
-        self.rules = {}
-        if os.path.exists(rules_path):
-            logger.info("Loading rules")
-            for filename in sorted(os.listdir(rules_path)):
-                if Path(filename).suffix == ".py":
-                    try:
-                        file_path = Path(rules_path, filename)
-                        spec = importlib.util.spec_from_file_location(
-                            "nac_validate.rules", file_path
-                        )
-                        if spec is not None:
-                            mod = importlib.util.module_from_spec(spec)
-                            sys.modules["nac_validate.rules"] = mod
-                            if spec.loader is not None:
-                                spec.loader.exec_module(mod)
-                                self.rules[mod.Rule.id] = mod.Rule
-                    except Exception as e:
-                        raise RuleLoadError(filename, str(e)) from e
-        elif rules_path == DEFAULT_RULES:
-            logger.info("No rules found")
-        else:
-            raise RulesDirectoryNotFoundError(
-                f"Rules directory not found: {rules_path}"
-            )
+
+    @classmethod
+    def from_paths(cls, schema_path: Path, rules_path: Path) -> "Validator":
+        """Create validator by loading schema and rules from file system paths.
+
+        This is the primary way to create a Validator in production. It loads
+        the schema and rules from disk, validates their structure, and returns
+        a fully initialized Validator instance.
+
+        Args:
+            schema_path: Path to schema.yaml file
+            rules_path: Path to directory containing rule .py files
+
+        Returns:
+            Initialized Validator instance
+
+        Raises:
+            SchemaNotFoundError: If non-default schema path doesn't exist
+            RulesDirectoryNotFoundError: If non-default rules path doesn't exist
+            RuleLoadError: If rule file has invalid structure
+        """
+        schema = cls._load_schema(schema_path)
+        rules = cls._load_rules(rules_path)
+        return cls(schema, rules)
+
+    def _get_data(self, input_paths: list[Path]) -> dict[str, Any]:
+        """Get cached data or load fresh if paths changed.
+
+        Args:
+            input_paths: List of paths to load data from
+
+        Returns:
+            Merged YAML data dictionary
+        """
+        if self.data is None or self._data_paths != input_paths:
+            logger.info("Loading yaml files from %s", input_paths)
+            self.data = load_yaml_files(input_paths)
+            self._data_paths = list(input_paths)  # Store copy to avoid mutation issues
+        return self.data
 
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
         """Run syntactic validation for a single file"""
-        if os.path.isfile(file_path) and file_path.suffix in [".yaml", ".yml"]:
+        if file_path.is_file() and file_path.suffix in YAML_SUFFIXES:
             logger.info("Validate file: %s", file_path)
 
             # YAML syntax validation
@@ -166,21 +262,18 @@ class Validator:
         else:
             return path
 
-    def validate_syntax(
-        self, input_paths: list[Path], strict: bool = True, rich_output: bool = True
-    ) -> None:
+    def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> None:
         """Run syntactic validation"""
         # Clear any previous errors
         self.errors.clear()
         self.structured_syntax_errors.clear()
 
         for input_path in input_paths:
-            if os.path.isfile(input_path):
+            if input_path.is_file():
                 self._validate_syntax_file(input_path, strict)
             else:
-                for dir, _subdir, files in os.walk(input_path):
-                    for filename in files:
-                        file_path = Path(dir, filename)
+                for file_path in input_path.rglob("*"):
+                    if file_path.is_file():
                         self._validate_syntax_file(file_path, strict)
 
         if self.errors:
@@ -205,8 +298,6 @@ class Validator:
         if not result:
             return 0
         # For rich formatted content, try to find "Found N" pattern
-        import re
-
         for item in result:
             match = re.search(r"Found (\d+)", str(item))
             if match:
@@ -225,9 +316,7 @@ class Validator:
         Returns:
             True if there are violations
         """
-        if isinstance(result, RuleResult | GroupedRuleResult):
-            return bool(result)
-        return len(result) > 0
+        return self._get_violation_count(result) > 0
 
     def validate_semantics(
         self, input_paths: list[Path], rich_output: bool = True
@@ -236,9 +325,7 @@ class Validator:
         if not self.rules:
             return
 
-        logger.info("Loading yaml files from %s", input_paths)
-        if self.data is None:
-            self.data = load_yaml_files(input_paths)
+        data = self._get_data(input_paths)
 
         semantic_errors: list[str] = []
         structured_results: list[SemanticErrorResult] = []
@@ -249,9 +336,9 @@ class Validator:
             logger.info("Verifying rule id %s", rule.id)
             sig = signature(rule.match)
             if len(sig.parameters) == 1:
-                result = rule.match(self.data)
+                result = rule.match(data)
             elif len(sig.parameters) == 2:
-                result = rule.match(self.data, self.schema)
+                result = rule.match(data, self.schema)
 
             if self._result_has_violations(result):
                 raw_results[rule.id] = result
@@ -317,6 +404,6 @@ class Validator:
             raise SemanticValidationError(semantic_errors, structured_results)
 
     def write_output(self, input_paths: list[Path], path: Path) -> None:
-        if self.data is None:
-            self.data = load_yaml_files(input_paths)
-        write_yaml_file(self.data, path)
+        """Write loaded YAML data to output file."""
+        data = self._get_data(input_paths)
+        write_yaml_file(data, path)
