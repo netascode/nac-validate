@@ -13,9 +13,18 @@ Design Principles:
 - Supports both structured RuleResult objects and simple string lists
 """
 
+import re
 from typing import Any
 
-from .constants import Colors
+from .constants import (
+    HEADER_SEPARATOR_WIDTH,
+    MIN_HEADER_LENGTH,
+    MIN_SEPARATOR_LENGTH,
+    SEVERITY_SORT_ORDER,
+    SUMMARY_SEPARATOR_WIDTH,
+    UNKNOWN_SEVERITY_SORT_ORDER,
+    Colors,
+)
 from .models import GroupedRuleResult, RuleContext, RuleResult, Violation
 
 
@@ -30,7 +39,6 @@ class OutputFormatter:
     HEAVY_SEP = "="
     LIGHT_SEP = "-"
     LINE_SEP = "─"
-    DOUBLE_SEP = "━"
 
     def __init__(self, severity: str = "HIGH"):
         """Initialize formatter with severity level.
@@ -43,12 +51,7 @@ class OutputFormatter:
 
     def _set_colors(self) -> None:
         """Set colors based on severity level."""
-        if self.severity == "HIGH":
-            self.primary_color = Colors.RED
-        elif self.severity == "MEDIUM":
-            self.primary_color = Colors.YELLOW
-        else:
-            self.primary_color = Colors.CYAN
+        self.primary_color = Colors.for_severity(self.severity)
 
     def _separator(self, char: str, width: int = 80) -> str:
         """Create a colored separator line."""
@@ -59,8 +62,6 @@ class OutputFormatter:
             return f"{Colors.DIM}{sep}{Colors.RESET}"
         elif char == self.LINE_SEP:
             return f"{Colors.CYAN}{sep}{Colors.RESET}"
-        elif char == self.DOUBLE_SEP:
-            return f"{Colors.MAGENTA}{sep}{Colors.RESET}"
         return sep
 
     def _header(self, text: str) -> str:
@@ -261,29 +262,29 @@ class OutputFormatter:
 
     def _is_rich_content(self, item: str) -> bool:
         """Detect if an item is rich pre-formatted content."""
-        return item.startswith("\n") and ("=" * 40 in item or "─" * 40 in item)
+        return item.startswith("\n") and (
+            "=" * MIN_SEPARATOR_LENGTH in item or "─" * MIN_SEPARATOR_LENGTH in item
+        )
 
     def _colorize_rich_content(self, content: str) -> list[str]:
         """Apply colors to rich content based on patterns."""
-        import re
-
         lines = []
         for line in content.split("\n"):
             stripped = line.strip()
 
             # Heavy separator (===)
-            if re.match(r"^[=]{40,}$", stripped):
+            if re.match(f"^[=]{{{MIN_SEPARATOR_LENGTH},}}$", stripped):
                 lines.append(f"{self.primary_color}{line}{Colors.RESET}")
             # Light separator (---)
-            elif re.match(r"^[-]{40,}$", stripped):
+            elif re.match(f"^[-]{{{MIN_SEPARATOR_LENGTH},}}$", stripped):
                 lines.append(f"{Colors.DIM}{line}{Colors.RESET}")
             # Line separator (───)
-            elif re.match(r"^[─]{40,}$", stripped):
+            elif re.match(f"^[─]{{{MIN_SEPARATOR_LENGTH},}}$", stripped):
                 lines.append(f"{Colors.CYAN}{line}{Colors.RESET}")
             # ALL CAPS headers
             elif (
                 re.match(r"^[A-Z][A-Z0-9\s\-_/()]+[A-Z0-9)]$", stripped)
-                and len(stripped) > 10
+                and len(stripped) > MIN_HEADER_LENGTH
             ):
                 lines.append(f"{Colors.BOLD}{Colors.YELLOW}{line}{Colors.RESET}")
             # Section headers ending with colon
@@ -376,25 +377,22 @@ def format_checklist_summary(failed_rules: list[dict[str, Any]]) -> str:
         return ""
 
     lines = [
-        f"\n{Colors.MAGENTA}{'━' * 80}{Colors.RESET}",
+        f"\n{Colors.MAGENTA}{'━' * HEADER_SEPARATOR_WIDTH}{Colors.RESET}",
         f"{Colors.MAGENTA}{Colors.BOLD}  REMEDIATION CHECKLIST{Colors.RESET}",
-        f"{Colors.MAGENTA}{'━' * 80}{Colors.RESET}\n",
+        f"{Colors.MAGENTA}{'━' * HEADER_SEPARATOR_WIDTH}{Colors.RESET}\n",
     ]
 
-    severity_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     sorted_rules = sorted(
         failed_rules,
-        key=lambda x: (severity_order.get(x["severity"], 99), int(x["rule_id"])),
+        key=lambda x: (
+            SEVERITY_SORT_ORDER.get(x["severity"], UNKNOWN_SEVERITY_SORT_ORDER),
+            int(x["rule_id"]),
+        ),
     )
 
     for rule in sorted_rules:
         severity = rule["severity"]
-        if severity == "HIGH":
-            severity_color = Colors.RED
-        elif severity == "MEDIUM":
-            severity_color = Colors.YELLOW
-        else:
-            severity_color = Colors.CYAN
+        severity_color = Colors.for_severity(severity)
 
         count = rule.get("violation_count", 0)
         count_str = f"({count} violation{'s' if count != 1 else ''})" if count else ""
@@ -406,10 +404,142 @@ def format_checklist_summary(failed_rules: list[dict[str, Any]]) -> str:
             f"{severity_color}{count_str}{Colors.RESET}"
         )
 
-    lines.append(f"\n{Colors.MAGENTA}{'━' * 80}{Colors.RESET}")
+    lines.append(f"\n{Colors.MAGENTA}{'━' * HEADER_SEPARATOR_WIDTH}{Colors.RESET}")
     lines.append(
         f"{Colors.DIM}  {len(failed_rules)} rule{'s' if len(failed_rules) != 1 else ''} "
         f"failed validation. Address items above to resolve.{Colors.RESET}\n"
     )
+
+    return "\n".join(lines)
+
+
+def format_validation_summary(
+    syntax_passed: bool,
+    semantic_passed: bool,
+    file_count: int = 0,
+    semantic_errors: list[Any] | None = None,
+    rules: dict[str, Any] | None = None,
+) -> str:
+    """Format a summary of validation results.
+
+    Args:
+        syntax_passed: Whether syntax validation passed
+        semantic_passed: Whether semantic validation passed
+        file_count: Number of files validated
+        semantic_errors: List of SemanticErrorResult objects
+        rules: Dict of loaded rules (for severity lookup)
+
+    Returns:
+        Formatted summary string
+    """
+    lines = []
+    lines.append(f"\n{Colors.BOLD}{'─' * SUMMARY_SEPARATOR_WIDTH}{Colors.RESET}")
+    lines.append(f"{Colors.BOLD}Validation Summary{Colors.RESET}")
+    lines.append(f"{'─' * SUMMARY_SEPARATOR_WIDTH}")
+
+    # Syntax validation status
+    if syntax_passed:
+        file_info = f" ({file_count} files)" if file_count > 0 else ""
+        lines.append(
+            f"  {Colors.GREEN}✓{Colors.RESET} Syntax validation: "
+            f"{Colors.GREEN}PASSED{Colors.RESET}{file_info}"
+        )
+    else:
+        lines.append(
+            f"  {Colors.RED}✗{Colors.RESET} Syntax validation: "
+            f"{Colors.RED}FAILED{Colors.RESET}"
+        )
+
+    # Semantic validation status
+    if semantic_passed:
+        lines.append(
+            f"  {Colors.GREEN}✓{Colors.RESET} Semantic validation: "
+            f"{Colors.GREEN}PASSED{Colors.RESET}"
+        )
+    else:
+        lines.append(
+            f"  {Colors.RED}✗{Colors.RESET} Semantic validation: "
+            f"{Colors.RED}FAILED{Colors.RESET}"
+        )
+
+        # Count violations by severity
+        if semantic_errors and rules:
+            high_count = 0
+            medium_count = 0
+            low_count = 0
+            high_rules: list[str] = []
+            medium_rules: list[str] = []
+            low_rules: list[str] = []
+
+            for error in semantic_errors:
+                rule = rules.get(error.rule_id)
+                severity = getattr(rule, "severity", "HIGH") if rule else "HIGH"
+                if severity == "HIGH":
+                    high_count += len(error.errors)
+                    high_rules.append(error.rule_id)
+                elif severity == "MEDIUM":
+                    medium_count += len(error.errors)
+                    medium_rules.append(error.rule_id)
+                else:
+                    low_count += len(error.errors)
+                    low_rules.append(error.rule_id)
+
+            lines.append("")
+            if high_count > 0:
+                rules_str = ", ".join(high_rules)
+                lines.append(
+                    f"    {Colors.RED}•{Colors.RESET} {high_count} HIGH severity "
+                    f"violation{'s' if high_count != 1 else ''} (rules: {rules_str})"
+                )
+            if medium_count > 0:
+                rules_str = ", ".join(medium_rules)
+                lines.append(
+                    f"    {Colors.YELLOW}•{Colors.RESET} {medium_count} MEDIUM severity "
+                    f"violation{'s' if medium_count != 1 else ''} (rules: {rules_str})"
+                )
+            if low_count > 0:
+                rules_str = ", ".join(low_rules)
+                lines.append(
+                    f"    {Colors.CYAN}•{Colors.RESET} {low_count} LOW severity "
+                    f"violation{'s' if low_count != 1 else ''} (rules: {rules_str})"
+                )
+
+    lines.append(f"{'─' * SUMMARY_SEPARATOR_WIDTH}\n")
+    return "\n".join(lines)
+
+
+def format_rules_list(rules: dict[str, Any]) -> str:
+    """Format a list of validation rules for display.
+
+    Args:
+        rules: Dict of rule_id -> Rule class mappings
+
+    Returns:
+        Formatted rules list string
+    """
+    if not rules:
+        return f"{Colors.YELLOW}No rules found{Colors.RESET}"
+
+    lines = []
+    lines.append(
+        f"\n{Colors.CYAN}{Colors.BOLD}Available Validation Rules:{Colors.RESET}"
+    )
+    lines.append(f"{Colors.DIM}{'─' * SUMMARY_SEPARATOR_WIDTH}{Colors.RESET}\n")
+
+    # Sort rules by ID
+    sorted_rules = sorted(rules.items(), key=lambda x: int(x[0]))
+
+    for rule_id, rule in sorted_rules:
+        severity = getattr(rule, "severity", "HIGH")
+        severity_color = Colors.for_severity(severity)
+
+        lines.append(
+            f"  {Colors.BOLD}[{rule_id}]{Colors.RESET} "
+            f"{rule.description} "
+            f"{severity_color}({severity}){Colors.RESET}"
+        )
+
+    lines.append(f"\n{Colors.DIM}{'─' * SUMMARY_SEPARATOR_WIDTH}{Colors.RESET}")
+    lines.append(f"{Colors.DIM}Total: {len(rules)} rules{Colors.RESET}\n")
 
     return "\n".join(lines)
