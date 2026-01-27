@@ -167,8 +167,3 @@ class GroupedRuleResult:
     def __len__(self) -> int:
         """Return total number of violations across all groups."""
         return sum(len(group) for group in self.groups)
-
-    @property
-    def all_violations(self) -> list[Violation]:
-        """Flatten all violations from all groups."""
-        return [v for group in self.groups for v in group.violations]
