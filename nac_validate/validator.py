@@ -61,6 +61,13 @@ class Validator:
                             sys.modules["nac_validate.rules"] = mod
                             if spec.loader is not None:
                                 spec.loader.exec_module(mod)
+                                # Check for duplicate rule IDs
+                                if mod.Rule.id in self.rules:
+                                    existing_rule = self.rules[mod.Rule.id]
+                                    raise RuleLoadError(
+                                        filename,
+                                        f"Duplicate rule ID '{mod.Rule.id}' - already defined in rule '{existing_rule.description}'",
+                                    )
                                 self.rules[mod.Rule.id] = mod.Rule
                     except Exception as e:
                         raise RuleLoadError(filename, str(e)) from e
