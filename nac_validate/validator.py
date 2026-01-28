@@ -46,7 +46,7 @@ class Validator:
         else:
             raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
         self.errors: list[str] = []
-        self.rules = {}
+        self.rules: dict[str, Any] = {}
         if os.path.exists(rules_path):
             logger.info("Loading rules")
             for filename in os.listdir(rules_path):
