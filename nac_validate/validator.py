@@ -38,7 +38,7 @@ class Validator:
                 warnings.filterwarnings(
                     action="ignore",
                     category=SyntaxWarning,
-                    message="invalid escape sequence",
+                    message=r".*invalid escape sequence.*",
                 )
                 self.schema = yamale.make_schema(schema_path, parser="ruamel")
         elif schema_path == DEFAULT_SCHEMA:
