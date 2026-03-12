@@ -5,7 +5,6 @@ import importlib
 import importlib.util
 import logging
 import os
-import subprocess  # nosec B404
 import sys
 import warnings
 from inspect import signature
@@ -13,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 import yamale
+import yamllint.config
+import yamllint.linter
 from nac_yaml.yaml import load_yaml_files, write_yaml_file
 from ruamel import yaml
 from yamale.yamale_error import YamaleError
@@ -83,30 +84,28 @@ class Validator:
         logger.debug(f"Running yamllint on {file_path}")
 
         try:
-            # NAC-specific yamllint configuration - minimal validation with only new-lines and anchors
-            config = "{extends: relaxed, rules: {key-duplicates: disable, new-line-at-end-of-file: disable, hyphens: disable, indentation: disable, colons: disable, commas: disable, empty-lines: disable, line-length: disable, trailing-spaces: disable, new-lines: enable}}"
+            # NAC-specific yamllint configuration - only new-lines validation enabled
+            config_str = "{extends: default, rules: {anchors: disable, braces: disable, brackets: disable, colons: disable, commas: disable, comments: disable, comments-indentation: disable, document-end: disable, document-start: disable, empty-lines: disable, empty-values: disable, float-values: disable, hyphens: disable, indentation: disable, key-duplicates: disable, key-ordering: disable, line-length: disable, new-line-at-end-of-file: disable, new-lines: enable, octal-values: disable, quoted-strings: disable, trailing-spaces: disable, truthy: disable}}"
+            config = yamllint.config.YamlLintConfig(config_str)
 
-            result = subprocess.run(  # nosec B603 B607
-                ["yamllint", "-d", config, str(file_path)],
-                capture_output=True,
-                text=True,
-            )
+            # Read file as bytes to preserve original line endings
+            with open(file_path, "rb") as f:
+                content = f.read()
+            
+            problems = yamllint.linter.run(content, config, file_path)
+            problem_list = list(problems)
 
-            logger.debug(f"Yamllint exit code: {result.returncode}")
+            logger.debug(f"Yamllint found {len(problem_list)} problems")
 
-            if result.returncode != 0:
-                # Parse yamllint output - log errors but don't block other validations
-                for line in result.stdout.strip().split("\n"):
-                    if line.strip() and ":" in line:
-                        # Extract filename and error details
-                        if file_path.name in line:
-                            continue  # Skip filename line
-                        msg = f"Yamllint error: {line.strip()}"
-                        logger.error(msg)
-                        # Note: NOT adding to self.errors to allow other validations to continue
+            if problem_list:
+                # Log yamllint problems but don't block other validations
+                for problem in problem_list:
+                    msg = f"Yamllint error: {file_path}:{problem.line}:{problem.column}: {problem.message} ({problem.rule})"
+                    logger.error(msg)
+                    # Note: NOT adding to self.errors to allow other validations to continue
 
-        except FileNotFoundError:
-            logger.warning("yamllint not found - skipping yamllint validation")
+        except ImportError:
+            logger.warning("yamllint not installed - skipping yamllint validation")
         except Exception as e:
             logger.warning(f"yamllint validation failed for {file_path}: {e}")
 
