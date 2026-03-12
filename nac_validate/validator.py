@@ -91,7 +91,7 @@ class Validator:
             # Read file as bytes to preserve original line endings
             with open(file_path, "rb") as f:
                 content = f.read()
-            
+
             problems = yamllint.linter.run(content, config, file_path)
             problem_list = list(problems)
 
