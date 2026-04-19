@@ -123,6 +123,16 @@ NonStrict = Annotated[
 ]
 
 
+DisableYamllint = Annotated[
+    bool,
+    typer.Option(
+        "--disable-yamllint",
+        help="Disable yamllint validation.",
+        envvar="NAC_VALIDATE_DISABLE_YAMLLINT",
+    ),
+]
+
+
 Version = Annotated[
     bool,
     typer.Option(
@@ -142,13 +152,16 @@ def main(
     rules: Rules = DEFAULT_RULES,
     output: Output = None,
     non_strict: NonStrict = False,
+    disable_yamllint: DisableYamllint = False,
     version: Version = False,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
     configure_logging(verbosity)
 
     try:
-        validator = nac_validate.validator.Validator(schema, rules)
+        validator = nac_validate.validator.Validator(
+            schema, rules, enable_yamllint=not disable_yamllint
+        )
         validator.validate_syntax(paths, not non_strict)
         validator.validate_semantics(paths)
         if output:

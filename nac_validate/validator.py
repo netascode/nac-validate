@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 import yamale
+import yamllint.config
+import yamllint.linter
 from nac_yaml.yaml import load_yaml_files, write_yaml_file
 from ruamel import yaml
 from yamale.yamale_error import YamaleError
@@ -29,7 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class Validator:
-    def __init__(self, schema_path: Path, rules_path: Path):
+    def __init__(
+        self, schema_path: Path, rules_path: Path, enable_yamllint: bool = False
+    ):
+        self.enable_yamllint = enable_yamllint
         self.data: dict[str, Any] | None = None
         self.schema = None
         if os.path.exists(schema_path):
@@ -78,6 +83,39 @@ class Validator:
                 f"Rules directory not found: {rules_path}"
             )
 
+    def _run_yamllint(self, file_path: Path) -> None:
+        """Run yamllint validation on a file"""
+        if file_path.suffix not in [".yaml", ".yml"]:
+            return
+
+        logger.debug(f"Running yamllint on {file_path}")
+
+        try:
+            # NAC-specific yamllint configuration - only new-lines validation enabled
+            config_str = "{extends: default, rules: {anchors: disable, braces: disable, brackets: disable, colons: disable, commas: disable, comments: disable, comments-indentation: disable, document-end: disable, document-start: disable, empty-lines: disable, empty-values: disable, float-values: disable, hyphens: disable, indentation: disable, key-duplicates: disable, key-ordering: disable, line-length: disable, new-line-at-end-of-file: disable, new-lines: enable, octal-values: disable, quoted-strings: disable, trailing-spaces: disable, truthy: disable}}"
+            config = yamllint.config.YamlLintConfig(config_str)
+
+            # Read file as bytes to preserve original line endings
+            with open(file_path, "rb") as f:
+                content = f.read()
+
+            problems = yamllint.linter.run(content, config, file_path)
+            problem_list = list(problems)
+
+            logger.debug(f"Yamllint found {len(problem_list)} problems")
+
+            if problem_list:
+                # Log yamllint problems but don't block other validations
+                for problem in problem_list:
+                    msg = f"Yamllint error: {file_path}:{problem.line}:{problem.column}: {problem.message} ({problem.rule})"
+                    logger.error(msg)
+                    # Note: NOT adding to self.errors to allow other validations to continue
+
+        except ImportError:
+            logger.warning("yamllint not installed - skipping yamllint validation")
+        except Exception as e:
+            logger.warning(f"yamllint validation failed for {file_path}: {e}")
+
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
         """Run syntactic validation for a single file"""
         if os.path.isfile(file_path) and file_path.suffix in [".yaml", ".yml"]:
@@ -113,6 +151,10 @@ class Validator:
                         msg = f"Syntax error '{result.data}': {err.replace(err.split(':')[0].strip(), named_path)}"
                         logger.error(msg)
                         self.errors.append(msg)
+
+            # Run yamllint after other validations (if enabled)
+            if self.enable_yamllint:
+                self._run_yamllint(file_path)
 
     def _get_named_path(self, data: dict[str, Any], path: str) -> str:
         """Convert a numeric path to a named path for better error messages."""
