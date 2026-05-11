@@ -621,7 +621,7 @@ requires-dist = [
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "jmespath", specifier = ">=1.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.17.1" },
-    { name = "nac-yaml", specifier = ">=1.1.1" },
+    { name = "nac-yaml", specifier = ">=2.0.0b3" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.3.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
@@ -635,14 +635,14 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "nac-yaml"
-version = "1.1.1"
+version = "2.0.0b3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ruamel-yaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/fa/b3edf92821c676c24be3259acba5d7e7520453cd35da9c73fbd02849b96a/nac_yaml-1.1.1.tar.gz", hash = "sha256:8ecb89439703aa7e55018ead08e7b2ba0515cabbe8b1ff78d717f5ee15b0220e", size = 61000, upload-time = "2025-10-10T15:25:33.162Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b2/f8/46bec9136158b5931e35f0be5a528f8c73179d57b2c1b141c7cc6faaad92/nac_yaml-2.0.0b3.tar.gz", hash = "sha256:71055c4fc3440c36e247265d4fcce48ca751a94862dea605874fc854b063ee98", size = 80085, upload-time = "2026-05-11T15:30:14.822Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dc/b2/c1ee7971e6e55558ae7cb72acae19f301f06cb8d6c63ec7922eb580d2436/nac_yaml-1.1.1-py3-none-any.whl", hash = "sha256:e5c20642b3a5f745d8620eb41ea5efccc9a62b2a3568f8e08e268f89394a0862", size = 9403, upload-time = "2025-10-10T15:25:32.375Z" },
+    { url = "https://files.pythonhosted.org/packages/15/c0/0829ed3353613e653df73f1d606f5f97100c8546433a1f83f87435d2c6c0/nac_yaml-2.0.0b3-py3-none-any.whl", hash = "sha256:74fbbcbd7caa08f9f0a616d43ea43d14330ca3a36f28c222f4270dec987c7b9a", size = 13178, upload-time = "2026-05-11T15:30:12.774Z" },
 ]
 
 [[package]]
