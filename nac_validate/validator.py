@@ -71,19 +71,8 @@ class Validator:
             raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
 
     @staticmethod
-    def _load_rules(rules_path: Path) -> dict[str, Any]:
-        """Load validation rules from directory.
-
-        Args:
-            rules_path: Path to directory containing rule .py files
-
-        Returns:
-            Dictionary mapping rule ID to Rule class (dynamically loaded)
-
-        Raises:
-            RulesDirectoryNotFoundError: If non-default rules path doesn't exist
-            RuleLoadError: If rule file has invalid structure
-        """
+    def _load_rules_from_dir(rules_path: Path) -> dict[str, Any]:
+        """Load validation rules from a single directory."""
         if not rules_path.exists():
             if rules_path == DEFAULT_RULES:
                 logger.info("No rules found at default path")
@@ -109,7 +98,6 @@ class Validator:
                         if spec.loader is not None:
                             spec.loader.exec_module(mod)
 
-                            # Validate match method parameter count
                             sig = signature(mod.Rule.match)
                             param_count = len(sig.parameters)
                             if param_count not in VALID_RULE_MATCH_PARAM_COUNTS:
@@ -123,6 +111,16 @@ class Validator:
 
         return rules
 
+    @classmethod
+    def _load_rules(cls, rules_path: Path | list[Path]) -> dict[str, Any]:
+        """Load validation rules from one or more directories."""
+        if isinstance(rules_path, list):
+            rules: dict[str, Any] = {}
+            for p in rules_path:
+                rules.update(cls._load_rules_from_dir(p))
+            return rules
+        return cls._load_rules_from_dir(rules_path)
+
     def __init__(self, schema: Any | None, rules: dict[str, Any] | None = None):
         """Initialize validator with pre-loaded schema and rules.
 
@@ -133,12 +131,13 @@ class Validator:
         self.schema = schema
         self.rules: dict[str, Any] = rules if isinstance(rules, dict) else {}
         self.data: dict[str, Any] | None = None
-        self._data_paths: list[Path] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
 
     @classmethod
-    def from_paths(cls, schema_path: Path, rules_path: Path) -> "Validator":
+    def from_paths(
+        cls, schema_path: Path, rules_path: Path | list[Path]
+    ) -> "Validator":
         """Create validator by loading schema and rules from file system paths.
 
         This is the primary way to create a Validator in production. It loads
@@ -161,8 +160,19 @@ class Validator:
         rules = cls._load_rules(rules_path)
         return cls(schema, rules)
 
-    def _get_data(self, input_paths: list[Path]) -> dict[str, Any]:
-        """Get cached data or load fresh if paths changed.
+    def load_data(self, data: dict[str, Any]) -> None:
+        """Load a pre-parsed data model directly.
+
+        When data is loaded this way, validate_syntax will validate the schema
+        once against the full model instead of walking individual files.
+
+        Args:
+            data: Pre-parsed merged YAML data dictionary
+        """
+        self.data = data
+
+    def _load_data_from_paths(self, input_paths: list[Path]) -> dict[str, Any]:
+        """Load and merge YAML data from file system paths.
 
         Args:
             input_paths: List of paths to load data from
@@ -170,10 +180,8 @@ class Validator:
         Returns:
             Merged YAML data dictionary
         """
-        if self.data is None or self._data_paths != input_paths:
-            logger.info("Loading yaml files from %s", input_paths)
-            self.data = load_yaml_files(input_paths)
-            self._data_paths = list(input_paths)  # Store copy to avoid mutation issues
+        logger.info("Loading yaml files from %s", input_paths)
+        self.data = load_yaml_files(input_paths)
         return self.data
 
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
@@ -262,19 +270,52 @@ class Validator:
         else:
             return path
 
-    def validate_syntax(self, input_paths: list[Path], strict: bool = True) -> None:
+    def validate_syntax(
+        self, input_paths: list[Path] | None = None, strict: bool = True
+    ) -> None:
         """Run syntactic validation"""
-        # Clear any previous errors
         self.errors.clear()
         self.structured_syntax_errors.clear()
 
-        for input_path in input_paths:
-            if input_path.is_file():
-                self._validate_syntax_file(input_path, strict)
-            else:
-                for file_path in input_path.rglob("*"):
-                    if file_path.is_file():
-                        self._validate_syntax_file(file_path, strict)
+        if self.data is not None:
+            if self.schema is not None:
+                source = str(input_paths[0]) if input_paths else "<pre-loaded>"
+                try:
+                    yamale.validate(
+                        self.schema,
+                        [(self.data, source)],
+                        strict=strict,
+                    )
+                except YamaleError as e:
+                    for result in e.results:
+                        for err in result.errors:
+                            named_path = self._get_named_path(
+                                self.data, err.split(":")[0].strip()
+                            )
+                            transformed_err = err.replace(
+                                err.split(":")[0].strip(), named_path
+                            )
+                            msg = f"Syntax error '{result.data}': {transformed_err}"
+                            logger.error(msg)
+                            self.errors.append(msg)
+                            self.structured_syntax_errors.append(
+                                SyntaxErrorResult(
+                                    file=str(result.data),
+                                    line=None,
+                                    column=None,
+                                    message=transformed_err,
+                                )
+                            )
+        else:
+            if not input_paths:
+                return
+            for input_path in input_paths:
+                if input_path.is_file():
+                    self._validate_syntax_file(input_path, strict)
+                else:
+                    for file_path in input_path.rglob("*"):
+                        if file_path.is_file():
+                            self._validate_syntax_file(file_path, strict)
 
         if self.errors:
             raise SyntaxValidationError(
@@ -306,7 +347,9 @@ class Validator:
         if not self.rules:
             return
 
-        data = self._get_data(input_paths)
+        if self.data is None:
+            self._load_data_from_paths(input_paths)
+        data = self.data
 
         semantic_errors: list[str] = []
         structured_results: list[SemanticErrorResult] = []
@@ -378,5 +421,6 @@ class Validator:
 
     def write_output(self, input_paths: list[Path], path: Path) -> None:
         """Write loaded YAML data to output file."""
-        data = self._get_data(input_paths)
-        write_yaml_file(data, path)
+        if self.data is None:
+            self._load_data_from_paths(input_paths)
+        write_yaml_file(self.data, path)

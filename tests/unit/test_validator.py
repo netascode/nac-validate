@@ -18,8 +18,8 @@ from nac_validate.models import RuleBase, Violation
 from nac_validate.validator import Validator
 
 
-class TestValidatorGetData:
-    """Tests for _get_data() caching behavior - P0 fix regression protection."""
+class TestValidatorLoadData:
+    """Tests for load_data() and _load_data_from_paths()."""
 
     @pytest.fixture
     def validator(self) -> Validator:
@@ -30,58 +30,24 @@ class TestValidatorGetData:
                 rules_path=DEFAULT_RULES,
             )
 
+    def test_load_data_sets_data(self, validator: Validator) -> None:
+        """load_data() should set self.data directly."""
+        data = {"key": "value"}
+        validator.load_data(data)
+        assert validator.data is data
+
     @patch("nac_validate.validator.load_yaml_files")
-    def test_first_call_loads_data(
+    def test_load_data_from_paths(
         self, mock_load: MagicMock, validator: Validator
     ) -> None:
-        """First call to _get_data() should load from disk."""
+        """_load_data_from_paths() should load from disk."""
         mock_load.return_value = {"key": "value"}
         paths = [Path("/data/file.yaml")]
 
-        validator._get_data(paths)
+        validator._load_data_from_paths(paths)
 
         mock_load.assert_called_once_with(paths)
-
-    @patch("nac_validate.validator.load_yaml_files")
-    def test_same_paths_returns_cached_data(
-        self, mock_load: MagicMock, validator: Validator
-    ) -> None:
-        """Repeated calls with same paths should return cached data."""
-        mock_load.return_value = {"key": "value"}
-        paths = [Path("/data/file.yaml")]
-
-        first_result = validator._get_data(paths)
-        second_result = validator._get_data(paths)  # Second call
-
-        mock_load.assert_called_once()  # Only one load
-        assert first_result is second_result  # Cache hit: same object
-
-    @patch("nac_validate.validator.load_yaml_files")
-    def test_different_paths_invalidates_cache(
-        self, mock_load: MagicMock, validator: Validator
-    ) -> None:
-        """Different paths should trigger fresh load."""
-        mock_load.side_effect = [{"first": "data"}, {"second": "data"}]
-
-        result1 = validator._get_data([Path("/data/file1.yaml")])
-        result2 = validator._get_data([Path("/data/file2.yaml")])
-
-        assert mock_load.call_count == 2
-        assert result1 is not result2  # Cache miss: different objects
-
-    @patch("nac_validate.validator.load_yaml_files")
-    def test_input_list_mutation_does_not_affect_cache(
-        self, mock_load: MagicMock, validator: Validator
-    ) -> None:
-        """Mutating input list after call should not affect cache comparison."""
-        mock_load.return_value = {"key": "value"}
-        paths = [Path("/data/file.yaml")]
-
-        validator._get_data(paths)
-        paths.append(Path("/data/another.yaml"))  # Mutate the list
-        validator._get_data([Path("/data/file.yaml")])  # Same original path
-
-        mock_load.assert_called_once()  # Should still hit cache
+        assert validator.data == {"key": "value"}
 
 
 class TestValidatorGetViolationCount:
