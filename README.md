@@ -50,14 +50,17 @@ Syntactic validation is done by basic YAML syntax validation (e.g., indentation)
 
 ## Writing Validation Rules
 
-Each `.py` file must have a single class named `Rule`. This class must have the following attributes: `id`, `description` and `severity`. It must implement a `classmethod()` named `match` that has a single function argument `data` which is the data read from all YAML files. It can optionally also have a second argument `schema` which would then provide the `Yamale` schema.
+Each `.py` file must have a single class named `Rule` that subclasses `RuleBase`. This class must set `id` and `description` as class attributes. It must implement a `classmethod()` named `match` that has a single function argument `data` which is the data read from all YAML files. It can optionally also have a second argument `schema` which would then provide the `Yamale` schema.
 
 ### Simple Rules (String List)
 
 For simple validations, rules can return a list of strings describing each violation:
 
 ```python
-class Rule:
+from nac_validate import RuleBase
+
+
+class Rule(RuleBase):
     id = "101"
     description = "Verify child naming restrictions"
     severity = "HIGH"
@@ -76,26 +79,25 @@ class Rule:
 
 ### Structured Rules (Recommended)
 
-For richer output with context, explanations, and recommendations, use the structured data classes:
+For richer output with context, explanations, and recommendations, subclass `RuleBase` and set the rich context attributes as class-level fields:
 
 ```python
-from nac_validate import RuleContext, RuleResult, Violation
+from nac_validate import RuleBase, Violation
 
 
-class Rule:
+class Rule(RuleBase):
     id = "301"
     description = "Verify Infra VLAN Is Defined When Referenced by AAEPs"
     severity = "HIGH"
 
     # Rich context displayed in terminal output
-    CONTEXT = RuleContext(
-        title="INFRA VLAN CONFIGURATION WARNING",
-        affected_items_label="Affected AAEPs",
-        explanation="""\
+    title = "INFRA VLAN CONFIGURATION WARNING"
+    affected_items_label = "Affected AAEPs"
+    explanation = """\
 The Infrastructure VLAN (Infra VLAN) is critical for APIC-to-leaf
 communication. When infra_vlan is enabled on an AAEP, the global
-infra_vlan value must be explicitly defined.""",
-        recommendation="""\
+infra_vlan value must be explicitly defined."""
+    recommendation = """\
 Define the Infra VLAN in your access_policies configuration:
 
   apic:
@@ -103,11 +105,10 @@ Define the Infra VLAN in your access_policies configuration:
       infra_vlan: 3967
       aaeps:
         - name: INFRA-AAEP
-          infra_vlan: true""",
-        references=[
-            "https://www.cisco.com/c/en/us/td/docs/dcn/aci/apic/all/apic-fabric-access-policies.html"
-        ],
-    )
+          infra_vlan: true"""
+    references = [
+        "https://www.cisco.com/c/en/us/td/docs/dcn/aci/apic/all/apic-fabric-access-policies.html"
+    ]
 
     @classmethod
     def match(cls, inventory):
@@ -144,32 +145,31 @@ Define the Infra VLAN in your access_policies configuration:
                         )
                     )
 
-        if not violations:
-            return RuleResult()
-
-        return RuleResult(violations=violations, context=cls.CONTEXT)
+        return violations
 ```
 
-### Structured Data Classes
+### RuleBase Attributes
+
+All rules must subclass `RuleBase` and set at minimum `id` and `description`. The following class attributes are available:
+
+| Attribute | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `id` | Yes | — | Unique rule identifier |
+| `description` | Yes | — | Short description of the rule |
+| `severity` | No | `"HIGH"` | Severity level (`HIGH`, `MEDIUM`, `LOW`) |
+| `title` | No | `""` | Header displayed in violation output |
+| `explanation` | No | `""` | Detailed explanation of why this matters |
+| `recommendation` | No | `""` | How to fix the issue, with examples |
+| `affected_items_label` | No | `"Affected Items"` | Label for the violations list |
+| `references` | No | `[]` | Links to documentation |
+
+Rich terminal output (with explanation, recommendation, and references sections) is enabled automatically when `title`, `explanation`, and `recommendation` are all set.
 
 **`Violation`** - Represents a single validation failure:
 
 - `message` (str): Human-readable description of the issue
 - `path` (str): Location in the YAML structure (e.g., `apic.tenants[name=PROD].vrfs[0]`)
 - `details` (dict, optional): Machine-readable metadata for automation
-
-**`RuleContext`** - Rich context for terminal output:
-
-- `title` (str): Header displayed in violation output
-- `affected_items_label` (str): Label for the violations list (e.g., "Affected AAEPs")
-- `explanation` (str): Detailed explanation of why this matters
-- `recommendation` (str): How to fix the issue, with examples
-- `references` (list[str], optional): Links to documentation
-
-**`RuleResult`** - Container for rule output:
-
-- `violations` (list[Violation]): List of violations found
-- `context` (RuleContext, optional): Rich context for terminal display
 
 ## JSON Output
 

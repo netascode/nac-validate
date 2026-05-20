@@ -3,15 +3,15 @@
 
 from importlib.metadata import version
 
-from .models import GroupedRuleResult, RuleContext, RuleResult, Violation
+from .models import RuleBase, Violation
+from .validator import Validator
 
 __version__ = version(__name__)
 
 # Public API for rule authors
 __all__ = [
     "Violation",
-    "RuleContext",
-    "RuleResult",
-    "GroupedRuleResult",
+    "RuleBase",
+    "Validator",
     "__version__",
 ]

@@ -8,12 +8,13 @@ violation counting, and path name transformation utilities.
 """
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from nac_validate.constants import DEFAULT_RULES, DEFAULT_SCHEMA
-from nac_validate.models import GroupedRuleResult, RuleResult, Violation
+from nac_validate.models import RuleBase, Violation
 from nac_validate.validator import Validator
 
 
@@ -95,35 +96,17 @@ class TestValidatorGetViolationCount:
                 rules_path=DEFAULT_RULES,
             )
 
-    def test_rule_result_with_violations(self, validator: Validator) -> None:
-        """Should count violations in RuleResult."""
-        result = RuleResult(
-            violations=[
-                Violation(message="Error 1", path="path.a"),
-                Violation(message="Error 2", path="path.b"),
-            ]
-        )
+    def test_violation_list_with_violations(self, validator: Validator) -> None:
+        """Should count violations in list[Violation]."""
+        result = [
+            Violation(message="Error 1", path="path.a"),
+            Violation(message="Error 2", path="path.b"),
+        ]
         assert validator._get_violation_count(result) == 2
 
-    def test_rule_result_empty(self, validator: Validator) -> None:
-        """Should return 0 for empty RuleResult."""
-        result = RuleResult(violations=[])
-        assert validator._get_violation_count(result) == 0
-
-    def test_grouped_rule_result_sums_all_groups(self, validator: Validator) -> None:
-        """Should count violations across all groups."""
-        result = GroupedRuleResult(
-            groups=[
-                RuleResult(violations=[Violation(message="A", path="a")]),
-                RuleResult(
-                    violations=[
-                        Violation(message="B", path="b"),
-                        Violation(message="C", path="c"),
-                    ]
-                ),
-            ]
-        )
-        assert validator._get_violation_count(result) == 3
+    def test_empty_violation_list(self, validator: Validator) -> None:
+        """Should return 0 for empty list."""
+        assert validator._get_violation_count([]) == 0
 
     def test_empty_string_list_returns_zero(self, validator: Validator) -> None:
         """Empty list returns 0."""
@@ -191,3 +174,79 @@ class TestValidatorGetNamedPath:
         data = {"any": "data"}
         result = validator._get_named_path(data, "")
         assert result == ""
+
+
+class TestRuleBase:
+    """Tests for RuleBase subclassing."""
+
+    def test_subclass_inherits_defaults(self) -> None:
+        class MyRule(RuleBase):
+            id = "999"
+            description = "Test rule"
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[str]:
+                return []
+
+        assert MyRule.severity == "HIGH"
+        assert MyRule.title == ""
+        assert MyRule.explanation == ""
+        assert MyRule.recommendation == ""
+        assert MyRule.affected_items_label == "Affected Items"
+        assert MyRule.references == []
+
+    def test_subclass_can_override_defaults(self) -> None:
+        class MyRule(RuleBase):
+            id = "999"
+            description = "Test rule"
+            severity = "LOW"
+            title = "CUSTOM TITLE"
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[str]:
+                return []
+
+        assert MyRule.severity == "LOW"
+        assert MyRule.title == "CUSTOM TITLE"
+
+    def test_match_raises_not_implemented(self) -> None:
+        class MyRule(RuleBase):
+            id = "999"
+            description = "Test rule"
+
+        import pytest
+
+        with pytest.raises(NotImplementedError):
+            MyRule.match({})
+
+
+class TestContextInjection:
+    """Tests for context injection in validate_semantics()."""
+
+    def test_rule_result_gets_context_injected(self) -> None:
+        class Rule(RuleBase):
+            id = "900"
+            description = "Test"
+            title = "INJECTED"
+            explanation = "Why"
+            recommendation = "Fix"
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[Any]:
+                return [Violation(message="bad", path="x")]
+
+        v = Validator(schema=None, rules={"900": Rule})
+        with pytest.raises(Exception) as exc_info:
+            v.validate_semantics([Path("/fake")], rich_output=False)
+        assert exc_info.type.__name__ == "SemanticValidationError"
+
+
+class TestDirectConstructor:
+    """Tests for Validator.__init__ with pre-loaded objects."""
+
+    def test_direct_objects_set_correctly(self) -> None:
+        schema = MagicMock()
+        rules = {"100": MagicMock()}
+        v = Validator(schema, rules)
+        assert v.schema is schema
+        assert v.rules is rules

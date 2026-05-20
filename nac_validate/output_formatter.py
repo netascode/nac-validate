@@ -5,12 +5,6 @@
 
 This module is responsible for ALL presentation decisions. It takes
 structured data from rules and renders it for different output formats.
-
-Design Principles:
-- Rules provide structured data (Violation, RuleResult)
-- This formatter owns colors, layout, separators, etc.
-- Same data can be rendered as text (colored) or JSON (structured)
-- Supports both structured RuleResult objects and simple string lists
 """
 
 import re
@@ -25,14 +19,14 @@ from .constants import (
     UNKNOWN_SEVERITY_SORT_ORDER,
     Colors,
 )
-from .models import GroupedRuleResult, RuleContext, RuleResult, Violation
+from .models import RuleBase, Violation, _is_violation_list
 
 
 class OutputFormatter:
     """Formats structured validation results for terminal output.
 
-    This formatter renders RuleResult and GroupedRuleResult objects
-    as colored terminal output with rich context sections.
+    This formatter renders violation lists as colored terminal
+    output with rich context sections.
     """
 
     # Separator characters
@@ -110,11 +104,11 @@ class OutputFormatter:
             lines.extend(self.format_violation(v))
         return lines
 
-    def format_context(self, context: RuleContext) -> list[str]:
+    def format_context(self, rule: type[RuleBase]) -> list[str]:
         """Format the rich context sections.
 
         Args:
-            context: RuleContext with explanation and recommendation
+            rule: Rule class with explanation, recommendation, references attributes
 
         Returns:
             List of formatted lines
@@ -126,106 +120,85 @@ class OutputFormatter:
         lines.append(self._header("WHY THIS MATTERS:"))
         lines.append(self._separator(self.LIGHT_SEP))
         lines.append("")
-        lines.append(context.explanation)
+        lines.append(rule.explanation)
 
         # RECOMMENDED FIX section
         lines.append(f"\n{self._separator(self.LINE_SEP)}")
         lines.append(self._header("RECOMMENDED FIX:"))
         lines.append(self._separator(self.LINE_SEP))
         lines.append("")
-        lines.append(context.recommendation)
+        lines.append(rule.recommendation)
 
         # References (if any)
-        if context.references:
+        if rule.references:
             lines.append("")
             lines.append(f"{Colors.DIM}References:{Colors.RESET}")
-            for ref in context.references:
+            for ref in rule.references:
                 lines.append(f"  {Colors.CYAN}{ref}{Colors.RESET}")
 
         return lines
 
-    def format_rule_result(self, result: RuleResult) -> list[str]:
-        """Format a single RuleResult.
+    def format_rule_result(
+        self, violations: list[Violation], rule: type[RuleBase] | None = None
+    ) -> list[str]:
+        """Format a list of Violation objects.
 
         Args:
-            result: RuleResult containing violations and optional context
+            violations: List of Violation objects
+            rule: Optional rule class for rich context output
 
         Returns:
             List of formatted lines
         """
-        if not result.violations:
+        if not violations:
             return []
 
         lines = []
 
-        if result.context:
-            # Rich format with context
+        if rule:
             lines.append(f"\n{self._separator(self.HEAVY_SEP)}")
-            lines.append(self._header(result.context.title))
+            lines.append(self._header(rule.title))
             lines.append(self._separator(self.HEAVY_SEP))
             lines.append("")
-            lines.append(f"Found {len(result.violations)} violation(s).")
+            lines.append(f"Found {len(violations)} violation(s).")
 
-            # Violations list
             lines.extend(
-                self.format_violations_list(
-                    result.violations, result.context.affected_items_label
-                )
+                self.format_violations_list(violations, rule.affected_items_label)
             )
 
-            # Context sections
-            lines.extend(self.format_context(result.context))
+            lines.extend(self.format_context(rule))
 
             lines.append(f"\n{self._separator(self.HEAVY_SEP)}")
         else:
-            # Simple format without context
             lines.append(f"\n{self._separator(self.LINE_SEP)}")
-            for v in result.violations:
+            for v in violations:
                 lines.extend(self.format_violation(v))
             lines.append(self._separator(self.LINE_SEP))
 
         return lines
 
-    def format_grouped_result(self, result: GroupedRuleResult) -> list[str]:
-        """Format a GroupedRuleResult with multiple categories.
-
-        Args:
-            result: GroupedRuleResult containing multiple RuleResult groups
-
-        Returns:
-            List of formatted lines
-        """
-        lines = []
-        for group in result.groups:
-            lines.extend(self.format_rule_result(group))
-        return lines
-
     def format_output(
         self,
-        rule_id: str,
-        description: str,
-        result: RuleResult | GroupedRuleResult | list[str],
+        rule: type[RuleBase],
+        result: list[Any],
     ) -> str:
         """Format complete rule output.
 
-        Handles both structured results and simple string lists.
-
         Args:
-            rule_id: The rule ID
-            description: The rule description
-            result: RuleResult, GroupedRuleResult, or list[str]
+            rule: The rule class
+            result: list[Violation] or list[str]
 
         Returns:
             Complete formatted output string
         """
-        parts = [self._rule_header(rule_id, description)]
+        parts = [self._rule_header(rule.id, rule.description)]
 
-        if isinstance(result, GroupedRuleResult):
-            parts.extend(self.format_grouped_result(result))
-        elif isinstance(result, RuleResult):
-            parts.extend(self.format_rule_result(result))
-        elif isinstance(result, list):
-            # String list format
+        if _is_violation_list(result):
+            has_rich_context = all((rule.title, rule.explanation, rule.recommendation))
+            parts.extend(
+                self.format_rule_result(result, rule if has_rich_context else None)
+            )
+        else:
             parts.extend(self._format_string_list_output(result))
 
         return "\n".join(parts)
@@ -297,68 +270,29 @@ class OutputFormatter:
 
 
 def format_semantic_error(
-    rule_id: str,
-    description: str,
-    severity: str,
-    result: RuleResult | GroupedRuleResult | list[str],
+    rule: type[RuleBase],
+    result: list[Any],
 ) -> str:
-    """Convenience function for formatting semantic errors.
-
-    Args:
-        rule_id: The rule ID
-        description: The rule description
-        severity: Rule severity level
-        result: Structured result or string list
-
-    Returns:
-        Formatted error output
-    """
-    formatter = OutputFormatter(severity=severity)
-    return formatter.format_output(rule_id, description, result)
+    """Convenience function for formatting semantic errors."""
+    formatter = OutputFormatter(severity=rule.severity)
+    return formatter.format_output(rule, result)
 
 
 def format_json_result(
     rule_id: str,
     description: str,
     severity: str,
-    result: RuleResult | GroupedRuleResult | list[str],
+    result: list[Any],
 ) -> dict[str, Any]:
-    """Format a rule result as a JSON-serializable dictionary.
-
-    Outputs a consistent format:
-    {
-        "rule_id": "311",
-        "description": "Verify...",
-        "errors": ["path - message", ...]
-    }
-
-    Args:
-        rule_id: The rule ID
-        description: The rule description
-        severity: Rule severity level
-        result: Structured result or string list
-
-    Returns:
-        Dictionary ready for JSON serialization
-    """
+    """Format a rule result as a JSON-serializable dictionary."""
     base: dict[str, Any] = {
         "rule_id": rule_id,
         "description": description,
     }
 
-    if isinstance(result, GroupedRuleResult):
-        # Flatten all violations from all groups into simple strings
-        errors = []
-        for group in result.groups:
-            for v in group.violations:
-                errors.append(f"{v.path} - {v.message}")
-        base["errors"] = errors
-
-    elif isinstance(result, RuleResult):
-        base["errors"] = [f"{v.path} - {v.message}" for v in result.violations]
-
-    elif isinstance(result, list):
-        # String list format
+    if _is_violation_list(result):
+        base["errors"] = [f"{v.path} - {v.message}" for v in result]
+    else:
         base["errors"] = result
 
     return base

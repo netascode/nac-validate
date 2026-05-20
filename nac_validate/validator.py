@@ -31,7 +31,7 @@ from .exceptions import (
     SyntaxErrorResult,
     SyntaxValidationError,
 )
-from .models import GroupedRuleResult, RuleResult
+from .models import _is_violation_list
 from .output_formatter import (
     format_checklist_summary,
     format_json_result,
@@ -123,15 +123,15 @@ class Validator:
 
         return rules
 
-    def __init__(self, schema: Any | None, rules: dict[str, Any]):
-        """Initialize validator with loaded schema and rules.
+    def __init__(self, schema: Any | None, rules: dict[str, Any] | None = None):
+        """Initialize validator with pre-loaded schema and rules.
 
         Args:
-            schema: Loaded yamale.Schema or None if no schema
-            rules: Dictionary mapping rule ID to Rule class (dynamically loaded)
+            schema: Loaded yamale schema object, or None
+            rules: Dictionary mapping rule ID to Rule class
         """
         self.schema = schema
-        self.rules = rules
+        self.rules: dict[str, Any] = rules if isinstance(rules, dict) else {}
         self.data: dict[str, Any] | None = None
         self._data_paths: list[Path] | None = None
         self.errors: list[str] = []
@@ -281,22 +281,12 @@ class Validator:
                 self.errors.copy(), self.structured_syntax_errors.copy()
             )
 
-    def _get_violation_count(
-        self, result: RuleResult | GroupedRuleResult | list[str]
-    ) -> int:
-        """Get the violation count from a rule result.
-
-        Args:
-            result: Structured result or string list
-
-        Returns:
-            Number of violations
-        """
-        if isinstance(result, RuleResult | GroupedRuleResult):
-            return len(result)
-        # String list - try to extract count from content
+    def _get_violation_count(self, result: list[Any]) -> int:
+        """Get the violation count from a rule result."""
         if not result:
             return 0
+        if _is_violation_list(result):
+            return len(result)
         # For rich formatted content, try to find "Found N" pattern
         for item in result:
             match = re.search(r"Found (\d+)", str(item))
@@ -305,17 +295,8 @@ class Validator:
         # Fallback to list length
         return len(result)
 
-    def _result_has_violations(
-        self, result: RuleResult | GroupedRuleResult | list[str]
-    ) -> bool:
-        """Check if a rule result contains violations.
-
-        Args:
-            result: Structured result or string list
-
-        Returns:
-            True if there are violations
-        """
+    def _result_has_violations(self, result: list[Any]) -> bool:
+        """Check if a rule result contains violations."""
         return self._get_violation_count(result) > 0
 
     def validate_semantics(
@@ -330,7 +311,7 @@ class Validator:
         semantic_errors: list[str] = []
         structured_results: list[SemanticErrorResult] = []
         # Store raw results for JSON output
-        raw_results: dict[str, RuleResult | GroupedRuleResult | list[str]] = {}
+        raw_results: dict[str, list[Any]] = {}
 
         for rule in self.rules.values():
             logger.info("Verifying rule id %s", rule.id)
@@ -347,21 +328,19 @@ class Validator:
             failed_rules = []
             for rule_id, result in raw_results.items():
                 rule = self.rules[rule_id]
-                severity = getattr(rule, "severity", "HIGH")
                 violation_count = self._get_violation_count(result)
 
                 # Build structured result for JSON output
                 json_result = format_json_result(
                     rule_id=rule_id,
                     description=rule.description,
-                    severity=severity,
+                    severity=rule.severity,
                     result=result,
                 )
                 structured_results.append(
                     SemanticErrorResult(
                         rule_id=rule_id,
                         description=rule.description,
-                        # Store structured data instead of raw strings
                         errors=json_result.get(
                             "violations", json_result.get("errors", [])
                         ),
@@ -369,28 +348,22 @@ class Validator:
                 )
 
                 if rich_output:
-                    # Rich text output with colors and formatting
                     formatted_msg = format_semantic_error(
-                        rule_id=rule_id,
-                        description=rule.description,
-                        severity=severity,
+                        rule=rule,
                         result=result,
                     )
-                    # Print directly to stderr for immediate visual feedback
                     print(formatted_msg, file=sys.stderr)
                     semantic_errors.append(f"Rule {rule_id}: {rule.description}")
 
-                    # Collect info for checklist summary
                     failed_rules.append(
                         {
                             "rule_id": rule_id,
                             "description": rule.description,
-                            "severity": severity,
+                            "severity": rule.severity,
                             "violation_count": violation_count,
                         }
                     )
                 else:
-                    # Simple output for JSON mode (logging suppressed)
                     header = f"Semantic error, rule {rule_id}: {rule.description}:"
                     logger.error(header)
                     semantic_errors.append(header)
