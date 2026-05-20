@@ -1,12 +1,28 @@
 #!/bin/bash
-# Script to check or fix SPDX license identifier and copyright notice in all Python files
+# Script to check or fix SPDX license identifier and copyright notice in Python files
 #
 # Usage:
-#   ./scripts/license-headers.sh          # Check mode (default)
-#   ./scripts/license-headers.sh --fix    # Fix mode (add missing headers)
-#   ./scripts/license-headers.sh --help   # Show help
+#   ./scripts/license-headers.sh                    # Check all git-tracked Python files
+#   ./scripts/license-headers.sh --fix              # Fix mode (add missing headers)
+#   ./scripts/license-headers.sh [FILES...]         # Check specific files
+#   ./scripts/license-headers.sh --fix [FILES...]   # Fix specific files
+#   ./scripts/license-headers.sh --help             # Show help
+#
+# When called without file arguments, uses 'git ls-files' to find all tracked Python files.
+# When called with file arguments (e.g., from pre-commit), only checks those files.
 
-set -e
+set -euo pipefail
+
+# Temporary file management with cleanup trap
+TEMP_FILE=""
+cleanup() {
+    local exit_code=$?
+    if [[ -n "${TEMP_FILE:-}" && -f "$TEMP_FILE" ]]; then
+        rm -f "$TEMP_FILE"
+    fi
+    exit "$exit_code"
+}
+trap cleanup EXIT INT TERM
 
 # Configuration
 EXPECTED_SPDX="# SPDX-License-Identifier: MPL-2.0"
@@ -19,25 +35,43 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Mode selection
+# Parse arguments
 MODE="check"
-if [[ "$1" == "--fix" ]]; then
-    MODE="fix"
-elif [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
-    echo "Usage: $0 [OPTIONS]"
-    echo ""
-    echo "Check or fix SPDX license headers in Python files."
-    echo ""
-    echo "Options:"
-    echo "  (none)      Check mode - verify headers are present and correct (exit 1 if issues found)"
-    echo "  --fix       Fix mode - add missing headers to files"
-    echo "  --help, -h  Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  $0              # Check all Python files"
-    echo "  $0 --fix        # Add headers to files missing them"
-    exit 0
-fi
+FILES=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --fix)
+            MODE="fix"
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS] [FILES...]"
+            echo ""
+            echo "Check or fix SPDX license headers in Python files."
+            echo ""
+            echo "Options:"
+            echo "  (none)      Check mode - verify headers are present and correct (exit 1 if issues found)"
+            echo "  --fix       Fix mode - add missing headers to files"
+            echo "  --help, -h  Show this help message"
+            echo ""
+            echo "Arguments:"
+            echo "  FILES       Optional list of files to check. If not provided, checks all"
+            echo "              git-tracked Python files (via 'git ls-files')."
+            echo ""
+            echo "Examples:"
+            echo "  $0                        # Check all git-tracked Python files"
+            echo "  $0 --fix                  # Add headers to all files missing them"
+            echo "  $0 src/main.py src/util.py   # Check specific files"
+            echo "  $0 --fix src/main.py      # Fix specific file"
+            exit 0
+            ;;
+        *)
+            FILES+=("$1")
+            shift
+            ;;
+    esac
+done
 
 # Counters
 files_checked=0
@@ -48,26 +82,14 @@ files_fixed=0
 # Array to store files with issues (check mode only)
 declare -a failed_files
 
-# Common exclusion patterns
-EXCLUDE_PATTERNS=(
-    "./venv/*"
-    "./.venv/*"
-    "*/__pycache__/*"
-    "./.tox/*"
-    "./.eggs/*"
-    "./build/*"
-    "./dist/*"
-    "./.pytest_cache/*"
-    "./.mypy_cache/*"
-)
-
-# Build find command with exclusions
-build_find_command() {
-    local cmd="find . -name '*.py' -type f"
-    for pattern in "${EXCLUDE_PATTERNS[@]}"; do
-        cmd="$cmd -not -path '$pattern'"
-    done
-    echo "$cmd"
+# Validate file before processing
+validate_file() {
+    local file="$1"
+    [[ -f "$file" ]] || { echo "ERROR: Not a regular file: $file" >&2; return 1; }
+    [[ -r "$file" ]] || { echo "ERROR: File not readable: $file" >&2; return 1; }
+    [[ ! -L "$file" ]] || { echo "ERROR: Refusing symlink: $file" >&2; return 1; }
+    [[ -w "$file" ]] || { echo "ERROR: File not writable: $file" >&2; return 1; }
+    return 0
 }
 
 # Check if file has correct headers
@@ -96,25 +118,26 @@ check_headers() {
 # Add headers to file
 add_headers() {
     local file="$1"
-    local temp_file=$(mktemp)
+    TEMP_FILE=$(mktemp)
     local first_line=$(head -n 1 "$file")
 
     if [[ "$first_line" == "#!"* ]]; then
         # Preserve shebang, add headers after it
-        echo "$first_line" > "$temp_file"
-        echo "$EXPECTED_SPDX" >> "$temp_file"
-        echo "$EXPECTED_COPYRIGHT" >> "$temp_file"
-        echo "" >> "$temp_file"
-        tail -n +2 "$file" >> "$temp_file"
+        echo "$first_line" > "$TEMP_FILE"
+        echo "$EXPECTED_SPDX" >> "$TEMP_FILE"
+        echo "$EXPECTED_COPYRIGHT" >> "$TEMP_FILE"
+        echo "" >> "$TEMP_FILE"
+        tail -n +2 "$file" >> "$TEMP_FILE"
     else
         # No shebang, add headers at the top
-        echo "$EXPECTED_SPDX" > "$temp_file"
-        echo "$EXPECTED_COPYRIGHT" >> "$temp_file"
-        echo "" >> "$temp_file"
-        cat "$file" >> "$temp_file"
+        echo "$EXPECTED_SPDX" > "$TEMP_FILE"
+        echo "$EXPECTED_COPYRIGHT" >> "$TEMP_FILE"
+        echo "" >> "$TEMP_FILE"
+        cat "$file" >> "$TEMP_FILE"
     fi
 
-    mv "$temp_file" "$file"
+    mv "$TEMP_FILE" "$file"
+    TEMP_FILE=""
 }
 
 # Print header based on mode
@@ -125,12 +148,27 @@ else
 fi
 echo ""
 
-# Find all Python files and store in temp file
-temp_file=$(mktemp)
-eval "$(build_find_command)" > "$temp_file"
+# Get list of files to process
+if [[ ${#FILES[@]} -gt 0 ]]; then
+    # Files passed as arguments (e.g., from pre-commit)
+    file_list=("${FILES[@]}")
+else
+    # No files specified, get all git-tracked Python files
+    file_list=()
+    while IFS= read -r f; do
+        file_list+=("$f")
+    done < <(git ls-files '*.py')
+fi
 
 # Process each file
-while IFS= read -r file; do
+for file in "${file_list[@]}"; do
+    # Validate file first
+    if ! validate_file "$file"; then
+        files_failed=$((files_failed + 1))
+        failed_files+=("$file")
+        continue
+    fi
+
     # Skip empty files or files with only whitespace
     if [ ! -s "$file" ] || ! grep -q '[^[:space:]]' "$file"; then
         echo -e "${YELLOW}⊘${NC} $file (empty file, skipped)"
@@ -153,15 +191,17 @@ while IFS= read -r file; do
             failed_files+=("$file")
         else
             # Fix mode - add headers
-            add_headers "$file"
-            echo -e "${GREEN}✓${NC} $file (header added)"
-            files_fixed=$((files_fixed + 1))
+            if add_headers "$file"; then
+                echo -e "${GREEN}✓${NC} $file (header added)"
+                files_fixed=$((files_fixed + 1))
+            else
+                echo -e "${RED}✗${NC} $file (FAILED to add header)" >&2
+                files_failed=$((files_failed + 1))
+                failed_files+=("$file")
+            fi
         fi
     fi
-done < "$temp_file"
-
-# Cleanup temp file
-rm -f "$temp_file"
+done
 
 # Print summary
 echo ""
@@ -188,8 +228,17 @@ if [[ "$MODE" == "check" ]]; then
 else
     # Fix mode
     echo "Files fixed: $files_fixed"
+    if [ $files_failed -gt 0 ]; then
+        echo -e "${RED}Files failed: $files_failed${NC}"
+    fi
     echo ""
-    if [ $files_fixed -eq 0 ]; then
+    if [ $files_failed -gt 0 ]; then
+        echo -e "${RED}✗ Some files could not be processed:${NC}"
+        for file in "${failed_files[@]}"; do
+            echo "  - $file"
+        done
+        exit 1
+    elif [ $files_fixed -eq 0 ]; then
         echo -e "${GREEN}✓ All files already had correct headers!${NC}"
     else
         echo -e "${GREEN}✓ Header addition complete!${NC}"
