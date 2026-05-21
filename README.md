@@ -8,25 +8,27 @@ A CLI tool to perform syntactic and semantic validation of YAML files.
 ```
 $ nac-validate --help
 
-Usage: nac-validate [OPTIONS] PATHS...
+Usage: nac-validate [OPTIONS] [PATHS]...
 
 A CLI tool to perform syntactic and semantic validation of YAML files.
 
 Arguments:
-  PATHS...  List of paths pointing to YAML files or directories [required]
+  [PATHS]...            List of paths pointing to YAML files or directories
 
 Options:
   -v, --verbosity [DEBUG|INFO|WARNING|ERROR|CRITICAL]
                         Verbosity level [env: NAC_VALIDATE_VERBOSITY] [default: WARNING]
   -s, --schema FILE     Path to schema file [env: NAC_VALIDATE_SCHEMA] [default: .schema.yaml]
-  -r, --rules DIRECTORY Path to directory with semantic validation rules
-                        [env: NAC_VALIDATE_RULES] [default: .rules]
+  -r, --rules DIRECTORY Path(s) to directories with semantic validation rules (repeatable)
+                        [env: NAC_VALIDATE_RULES]
   -o, --output FILE     Write merged content from YAML files to a new YAML file
                         [env: NAC_VALIDATE_OUTPUT]
   --non-strict          Accept unexpected elements in YAML files
                         [env: NAC_VALIDATE_NON_STRICT]
   -f, --format [text|json]
-                        Output format for validation results [default: text]
+                        Output format for validation results
+                        [env: NAC_VALIDATE_FORMAT] [default: text]
+  --no-color            Disable colored output [env: NO_COLOR]
   --version             Display version number
   --list-rules          List all available validation rules and exit
   --help                Show this message and exit
