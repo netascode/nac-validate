@@ -78,10 +78,10 @@ class TestValidatorGetViolationCount:
         """Empty list returns 0."""
         assert validator._get_violation_count([]) == 0
 
-    def test_string_list_with_found_pattern(self, validator: Validator) -> None:
-        """String list extracts count from 'Found N' pattern."""
+    def test_string_list_uses_length(self, validator: Validator) -> None:
+        """String list uses list length as violation count."""
         result = ["Found 5 violations", "other text"]
-        assert validator._get_violation_count(result) == 5
+        assert validator._get_violation_count(result) == 2
 
     def test_string_list_fallback_to_length(self, validator: Validator) -> None:
         """String list without 'Found N' uses list length."""

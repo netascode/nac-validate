@@ -7,14 +7,11 @@ This module is responsible for ALL presentation decisions. It takes
 structured data from rules and renders it for different output formats.
 """
 
-import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from .constants import (
     HEADER_SEPARATOR_WIDTH,
-    MIN_HEADER_LENGTH,
-    MIN_SEPARATOR_LENGTH,
     SEVERITY_SORT_ORDER,
     SUMMARY_SEPARATOR_WIDTH,
     UNKNOWN_SEVERITY_SORT_ORDER,
@@ -200,65 +197,19 @@ class OutputFormatter:
                 self.format_rule_result(result, rule if has_rich_context else None)
             )
         else:
-            parts.extend(self._format_string_list_output(result))
+            parts.extend(self._format_legacy_list_output(result))
 
         return "\n".join(parts)
 
-    def _format_string_list_output(self, results: list[str]) -> list[str]:
-        """Format string-based results."""
+    def _format_legacy_list_output(self, results: list[Any]) -> list[str]:
+        """Format legacy string/dict-based results as bullet points."""
         if not results:
             return []
 
-        lines = []
-        has_rich = False
+        lines = [f"\n{self._separator(self.LINE_SEP)}"]
         for item in results:
-            if self._is_rich_content(item):
-                has_rich = True
-                lines.extend(self._colorize_rich_content(item))
-            else:
-                lines.append(f"  {Colors.YELLOW}•{Colors.RESET} {item}")
-
-        if not has_rich:
-            return [
-                f"\n{self._separator(self.LINE_SEP)}",
-                *lines,
-                self._separator(self.LINE_SEP),
-            ]
-
-        return lines
-
-    def _is_rich_content(self, item: str) -> bool:
-        """Detect if an item is rich pre-formatted content."""
-        return item.startswith("\n") and (
-            "=" * MIN_SEPARATOR_LENGTH in item or "─" * MIN_SEPARATOR_LENGTH in item
-        )
-
-    def _colorize_rich_content(self, content: str) -> list[str]:
-        """Apply colors to rich content based on patterns."""
-        lines = []
-        for line in content.split("\n"):
-            stripped = line.strip()
-
-            # Heavy separator (===)
-            if re.match(f"^[=]{{{MIN_SEPARATOR_LENGTH},}}$", stripped):
-                lines.append(f"{self.primary_color}{line}{Colors.RESET}")
-            # Light separator (---)
-            elif re.match(f"^[-]{{{MIN_SEPARATOR_LENGTH},}}$", stripped):
-                lines.append(f"{Colors.DIM}{line}{Colors.RESET}")
-            # Line separator (───)
-            elif re.match(f"^[─]{{{MIN_SEPARATOR_LENGTH},}}$", stripped):
-                lines.append(f"{Colors.CYAN}{line}{Colors.RESET}")
-            # ALL CAPS headers
-            elif (
-                re.match(r"^[A-Z][A-Z0-9\s\-_/()]+[A-Z0-9)]$", stripped)
-                and len(stripped) > MIN_HEADER_LENGTH
-            ):
-                lines.append(f"{Colors.BOLD}{Colors.YELLOW}{line}{Colors.RESET}")
-            # Section headers ending with colon
-            elif re.match(r"^[A-Z].*:$", stripped):
-                lines.append(f"{Colors.BOLD}{Colors.YELLOW}{line}{Colors.RESET}")
-            else:
-                lines.append(line)
+            lines.append(f"  {Colors.YELLOW}•{Colors.RESET} {item}")
+        lines.append(self._separator(self.LINE_SEP))
 
         return lines
 

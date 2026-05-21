@@ -3,7 +3,6 @@
 
 import importlib.util
 import logging
-import re
 import sys
 import warnings
 from inspect import signature
@@ -105,6 +104,12 @@ class Validator:
                                 raise RuleLoadError(
                                     filename,
                                     f"Rule.match() must accept 1 or 2 parameters, got {param_count}",
+                                )
+                            if mod.Rule.id in rules:
+                                existing = rules[mod.Rule.id]
+                                raise RuleLoadError(
+                                    filename,
+                                    f"Duplicate rule ID '{mod.Rule.id}' - already defined in rule '{existing.description}'",
                                 )
                             rules[mod.Rule.id] = mod.Rule
                 except Exception as e:
@@ -280,7 +285,11 @@ class Validator:
 
         if self.data is not None:
             if self.schema is not None:
-                source = str(input_paths[0]) if input_paths else "<pre-loaded>"
+                source = (
+                    str(input_paths[0])
+                    if input_paths and len(input_paths) > 0
+                    else "<pre-loaded>"
+                )
                 try:
                     yamale.validate(
                         self.schema,
@@ -329,12 +338,6 @@ class Validator:
             return 0
         if _is_violation_list(result):
             return len(result)
-        # For rich formatted content, try to find "Found N" pattern
-        for item in result:
-            match = re.search(r"Found (\d+)", str(item))
-            if match:
-                return int(match.group(1))
-        # Fallback to list length
         return len(result)
 
     def _result_has_violations(self, result: list[Any]) -> bool:

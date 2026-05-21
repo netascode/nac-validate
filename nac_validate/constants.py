@@ -7,9 +7,6 @@ import os
 from enum import IntEnum
 from pathlib import Path
 
-# Respect NO_COLOR convention (https://no-color.org/)
-_NO_COLOR = "NO_COLOR" in os.environ
-
 # Default paths
 DEFAULT_SCHEMA = Path(".schema.yaml")
 DEFAULT_RULES = Path(".rules/")
@@ -17,7 +14,6 @@ DEFAULT_RULES = Path(".rules/")
 # Output formatting widths
 HEADER_SEPARATOR_WIDTH = 80
 SUMMARY_SEPARATOR_WIDTH = 60
-MIN_SEPARATOR_LENGTH = 40
 
 # File extensions
 YAML_SUFFIXES = (".yaml", ".yml")
@@ -27,7 +23,6 @@ RULE_MODULE_NAME = "nac_validate.rules"
 VALID_RULE_MATCH_PARAM_COUNTS = (1, 2)
 
 # Output formatting
-MIN_HEADER_LENGTH = 10  # Minimum length for ALL CAPS header detection
 UNKNOWN_SEVERITY_SORT_ORDER = 99  # Sort order for unknown severity levels
 
 # Severity sort order
@@ -54,6 +49,13 @@ class ExitCode(IntEnum):
     CONFIG_ERROR = 3
 
 
+_SEVERITY_COLOR_MAP: dict[str, str] = {
+    "HIGH": "RED",
+    "MEDIUM": "YELLOW",
+    "LOW": "CYAN",
+}
+
+
 class _ColorsMeta(type):
     """Metaclass that returns empty strings when color is disabled."""
 
@@ -67,7 +69,7 @@ class _ColorsMeta(type):
         "DIM": "\033[2m",
         "RESET": "\033[0m",
     }
-    _enabled: bool = not _NO_COLOR
+    _enabled: bool = "NO_COLOR" not in os.environ
 
     def __getattr__(cls, name: str) -> str:
         if name in cls._codes:
@@ -87,14 +89,9 @@ class Colors(metaclass=_ColorsMeta):
         """Disable all color output."""
         _ColorsMeta._enabled = False
 
-    @staticmethod
-    def for_severity(severity: str) -> str:
+    @classmethod
+    def for_severity(cls, severity: str) -> str:
         """Get the color code for a severity level."""
-        if not _ColorsMeta._enabled:
-            return ""
-        mapping = {
-            "HIGH": "\033[91m",
-            "MEDIUM": "\033[93m",
-            "LOW": "\033[96m",
-        }
-        return mapping.get(severity, "\033[96m")
+        color_name = _SEVERITY_COLOR_MAP.get(severity, "CYAN")
+        result: str = getattr(cls, color_name)
+        return result
