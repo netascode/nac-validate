@@ -36,7 +36,6 @@ Options:
 
 ## Exit Codes
 
-
 The CLI uses specific exit codes to help automation distinguish between error types:
 
 | Exit Code | Meaning |
@@ -165,7 +164,7 @@ All rules must subclass `RuleBase` and set at minimum `id` and `description`. Th
 | `affected_items_label` | No | `"Affected Items"` | Label for the violations list |
 | `references` | No | `[]` | Links to documentation |
 
-Rich terminal output (with explanation, recommendation, and references sections) is enabled automatically when `title`, `explanation`, and `recommendation` are all set.
+Rich terminal output sections (title header, explanation, recommendation, references) are rendered individually for whichever attributes are set. Setting any of `title`, `explanation`, or `recommendation` enables enhanced output; only populated sections are shown.
 
 **`Violation`** - Represents a single validation failure:
 
