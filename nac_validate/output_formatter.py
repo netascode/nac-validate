@@ -103,31 +103,23 @@ class OutputFormatter:
         return lines
 
     def format_context(self, rule: type[RuleBase]) -> list[str]:
-        """Format the rich context sections.
-
-        Args:
-            rule: Rule class with explanation, recommendation, references attributes
-
-        Returns:
-            List of formatted lines
-        """
+        """Format the rich context sections, skipping any that are empty."""
         lines = []
 
-        # WHY THIS MATTERS section
-        lines.append(f"\n{self._separator(self.LIGHT_SEP)}")
-        lines.append(self._header("WHY THIS MATTERS:"))
-        lines.append(self._separator(self.LIGHT_SEP))
-        lines.append("")
-        lines.append(rule.explanation)
+        if rule.explanation:
+            lines.append(f"\n{self._separator(self.LIGHT_SEP)}")
+            lines.append(self._header("WHY THIS MATTERS:"))
+            lines.append(self._separator(self.LIGHT_SEP))
+            lines.append("")
+            lines.append(rule.explanation)
 
-        # RECOMMENDED FIX section
-        lines.append(f"\n{self._separator(self.LINE_SEP)}")
-        lines.append(self._header("RECOMMENDED FIX:"))
-        lines.append(self._separator(self.LINE_SEP))
-        lines.append("")
-        lines.append(rule.recommendation)
+        if rule.recommendation:
+            lines.append(f"\n{self._separator(self.LINE_SEP)}")
+            lines.append(self._header("RECOMMENDED FIX:"))
+            lines.append(self._separator(self.LINE_SEP))
+            lines.append("")
+            lines.append(rule.recommendation)
 
-        # References (if any)
         if rule.references:
             lines.append("")
             lines.append(f"{Colors.DIM}References:{Colors.RESET}")
@@ -139,33 +131,27 @@ class OutputFormatter:
     def format_rule_result(
         self, violations: list[Violation], rule: type[RuleBase] | None = None
     ) -> list[str]:
-        """Format a list of Violation objects.
-
-        Args:
-            violations: List of Violation objects
-            rule: Optional rule class for rich context output
-
-        Returns:
-            List of formatted lines
-        """
+        """Format a list of Violation objects."""
         if not violations:
             return []
 
         lines = []
+        has_context = rule is not None and any(
+            (rule.title, rule.explanation, rule.recommendation)
+        )
 
-        if rule:
+        if rule is not None and has_context:
             lines.append(f"\n{self._separator(self.HEAVY_SEP)}")
-            lines.append(self._header(rule.title))
-            lines.append(self._separator(self.HEAVY_SEP))
+            if rule.title:
+                lines.append(self._header(rule.title))
+                lines.append(self._separator(self.HEAVY_SEP))
             lines.append("")
             lines.append(f"Found {len(violations)} violation(s).")
 
             lines.extend(
                 self.format_violations_list(violations, rule.affected_items_label)
             )
-
             lines.extend(self.format_context(rule))
-
             lines.append(f"\n{self._separator(self.HEAVY_SEP)}")
         else:
             lines.append(f"\n{self._separator(self.LINE_SEP)}")
@@ -192,10 +178,7 @@ class OutputFormatter:
         parts = [self._rule_header(rule.id, rule.description)]
 
         if _is_violation_list(result):
-            has_rich_context = all((rule.title, rule.explanation, rule.recommendation))
-            parts.extend(
-                self.format_rule_result(result, rule if has_rich_context else None)
-            )
+            parts.extend(self.format_rule_result(result, rule))
         else:
             parts.extend(self._format_legacy_list_output(result))
 
