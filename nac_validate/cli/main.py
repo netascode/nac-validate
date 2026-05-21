@@ -33,6 +33,7 @@ from ..output_formatter import format_rules_list, format_validation_summary
 from .options import (
     Format,
     ListRules,
+    NoColor,
     NonStrict,
     Output,
     OutputFormat,
@@ -48,8 +49,10 @@ app = typer.Typer(add_completion=False)
 logger = logging.getLogger(__name__)
 
 
-def print_rules_list(rules_path: Path) -> None:
+def print_rules_list(rules_path: list[Path] | None) -> None:
     """Load and print all available validation rules, then exit."""
+    if rules_path is None:
+        rules_path = [DEFAULT_RULES]
     try:
         validator = nac_validate.validator.Validator.from_paths(
             schema_path=DEFAULT_SCHEMA,
@@ -92,14 +95,21 @@ def main(
     ] = None,
     verbosity: Verbosity = VerbosityLevel.WARNING,
     schema: Schema = DEFAULT_SCHEMA,
-    rules: Rules = DEFAULT_RULES,
+    rules: Rules = None,
     output: Output = None,
     non_strict: NonStrict = False,
     format: Format = OutputFormat.TEXT,
+    no_color: NoColor = False,
     version: Version = False,
     list_rules: ListRules = False,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
+    if rules is None:
+        rules = [DEFAULT_RULES]
+
+    if no_color:
+        Colors.disable()
+
     # For JSON format at default verbosity, suppress logging to keep stdout clean
     if format == OutputFormat.JSON and verbosity == VerbosityLevel.WARNING:
         configure_logging("CRITICAL")
@@ -206,7 +216,7 @@ def main(
                 )
             )
         else:
-            logger.error(f"Unexpected error: {e}")
+            logger.error("Unexpected error: %s", e)
         raise typer.Exit(ExitCode.CONFIG_ERROR) from e
 
     # Success

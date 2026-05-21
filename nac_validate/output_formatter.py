@@ -8,6 +8,7 @@ structured data from rules and renders it for different output formats.
 """
 
 import re
+from dataclasses import dataclass, field
 from typing import Any
 
 from .constants import (
@@ -204,27 +205,20 @@ class OutputFormatter:
         return "\n".join(parts)
 
     def _format_string_list_output(self, results: list[str]) -> list[str]:
-        """Format string-based results.
-
-        Args:
-            results: List of string results
-
-        Returns:
-            List of formatted lines
-        """
+        """Format string-based results."""
         if not results:
             return []
 
-        # Check if items look like rich pre-formatted content
         lines = []
+        has_rich = False
         for item in results:
             if self._is_rich_content(item):
+                has_rich = True
                 lines.extend(self._colorize_rich_content(item))
             else:
                 lines.append(f"  {Colors.YELLOW}•{Colors.RESET} {item}")
 
-        if not any(self._is_rich_content(item) for item in results):
-            # Wrap simple items in separators
+        if not has_rich:
             return [
                 f"\n{self._separator(self.LINE_SEP)}",
                 *lines,
@@ -296,6 +290,30 @@ def format_json_result(
         base["errors"] = result
 
     return base
+
+
+@dataclass
+class _SeverityBucket:
+    count: int = 0
+    rule_ids: list[str] = field(default_factory=list)
+
+
+def _bucket_by_severity(
+    semantic_errors: list[Any], rules: dict[str, Any]
+) -> dict[str, _SeverityBucket]:
+    """Group error counts and rule IDs by severity level."""
+    buckets: dict[str, _SeverityBucket] = {
+        "HIGH": _SeverityBucket(),
+        "MEDIUM": _SeverityBucket(),
+        "LOW": _SeverityBucket(),
+    }
+    for error in semantic_errors:
+        rule = rules.get(error.rule_id)
+        severity = getattr(rule, "severity", "HIGH") if rule else "HIGH"
+        bucket = buckets.get(severity, buckets["LOW"])
+        bucket.count += len(error.errors)
+        bucket.rule_ids.append(error.rule_id)
+    return buckets
 
 
 def format_checklist_summary(failed_rules: list[dict[str, Any]]) -> str:
@@ -398,45 +416,21 @@ def format_validation_summary(
 
         # Count violations by severity
         if semantic_errors and rules:
-            high_count = 0
-            medium_count = 0
-            low_count = 0
-            high_rules: list[str] = []
-            medium_rules: list[str] = []
-            low_rules: list[str] = []
-
-            for error in semantic_errors:
-                rule = rules.get(error.rule_id)
-                severity = getattr(rule, "severity", "HIGH") if rule else "HIGH"
-                if severity == "HIGH":
-                    high_count += len(error.errors)
-                    high_rules.append(error.rule_id)
-                elif severity == "MEDIUM":
-                    medium_count += len(error.errors)
-                    medium_rules.append(error.rule_id)
-                else:
-                    low_count += len(error.errors)
-                    low_rules.append(error.rule_id)
+            buckets = _bucket_by_severity(semantic_errors, rules)
 
             lines.append("")
-            if high_count > 0:
-                rules_str = ", ".join(high_rules)
-                lines.append(
-                    f"    {Colors.RED}•{Colors.RESET} {high_count} HIGH severity "
-                    f"violation{'s' if high_count != 1 else ''} (rules: {rules_str})"
-                )
-            if medium_count > 0:
-                rules_str = ", ".join(medium_rules)
-                lines.append(
-                    f"    {Colors.YELLOW}•{Colors.RESET} {medium_count} MEDIUM severity "
-                    f"violation{'s' if medium_count != 1 else ''} (rules: {rules_str})"
-                )
-            if low_count > 0:
-                rules_str = ", ".join(low_rules)
-                lines.append(
-                    f"    {Colors.CYAN}•{Colors.RESET} {low_count} LOW severity "
-                    f"violation{'s' if low_count != 1 else ''} (rules: {rules_str})"
-                )
+            for severity, color in (
+                ("HIGH", Colors.RED),
+                ("MEDIUM", Colors.YELLOW),
+                ("LOW", Colors.CYAN),
+            ):
+                bucket = buckets[severity]
+                if bucket.count > 0:
+                    rules_str = ", ".join(bucket.rule_ids)
+                    lines.append(
+                        f"    {color}•{Colors.RESET} {bucket.count} {severity} severity "
+                        f"violation{'s' if bucket.count != 1 else ''} (rules: {rules_str})"
+                    )
 
     lines.append(f"{'─' * SUMMARY_SEPARATOR_WIDTH}\n")
     return "\n".join(lines)

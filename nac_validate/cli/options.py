@@ -69,14 +69,14 @@ Schema = Annotated[
 
 
 Rules = Annotated[
-    Path,
+    list[Path] | None,
     typer.Option(
         "-r",
         "--rules",
         exists=False,
         dir_okay=True,
         file_okay=False,
-        help="Path to directory with semantic validation rules.",
+        help="Path(s) to directories with semantic validation rules (repeatable).",
         envvar="NAC_VALIDATE_RULES",
     ),
 ]
@@ -133,5 +133,15 @@ Format = Annotated[
         "--format",
         help="Output format for validation results.",
         envvar="NAC_VALIDATE_FORMAT",
+    ),
+]
+
+
+NoColor = Annotated[
+    bool,
+    typer.Option(
+        "--no-color",
+        help="Disable colored output.",
+        envvar="NO_COLOR",
     ),
 ]

@@ -3,8 +3,12 @@
 
 """Constants and shared definitions for nac-validate."""
 
+import os
 from enum import IntEnum
 from pathlib import Path
+
+# Respect NO_COLOR convention (https://no-color.org/)
+_NO_COLOR = "NO_COLOR" in os.environ
 
 # Default paths
 DEFAULT_SCHEMA = Path(".schema.yaml")
@@ -50,38 +54,47 @@ class ExitCode(IntEnum):
     CONFIG_ERROR = 3
 
 
-class Colors:
-    """ANSI escape codes for terminal colorization."""
+class _ColorsMeta(type):
+    """Metaclass that returns empty strings when color is disabled."""
 
-    # Standard colors
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    GREEN = "\033[92m"
-    CYAN = "\033[96m"
-    MAGENTA = "\033[95m"
-
-    # Styles
-    BOLD = "\033[1m"
-    DIM = "\033[2m"
-
-    # Reset
-    RESET = "\033[0m"
-
-    # Severity-to-color mapping
-    _SEVERITY_COLORS: "dict[str, str]" = {
-        "HIGH": RED,
-        "MEDIUM": YELLOW,
-        "LOW": CYAN,
+    _codes: "dict[str, str]" = {
+        "RED": "\033[91m",
+        "YELLOW": "\033[93m",
+        "GREEN": "\033[92m",
+        "CYAN": "\033[96m",
+        "MAGENTA": "\033[95m",
+        "BOLD": "\033[1m",
+        "DIM": "\033[2m",
+        "RESET": "\033[0m",
     }
+    _enabled: bool = not _NO_COLOR
+
+    def __getattr__(cls, name: str) -> str:
+        if name in cls._codes:
+            return cls._codes[name] if cls._enabled else ""
+        raise AttributeError(name)
+
+
+class Colors(metaclass=_ColorsMeta):
+    """ANSI escape codes for terminal colorization.
+
+    All codes become empty strings when NO_COLOR env var is set
+    or disable() is called.
+    """
+
+    @classmethod
+    def disable(cls) -> None:
+        """Disable all color output."""
+        _ColorsMeta._enabled = False
 
     @staticmethod
     def for_severity(severity: str) -> str:
-        """Get the color code for a severity level.
-
-        Args:
-            severity: Severity level (HIGH, MEDIUM, LOW)
-
-        Returns:
-            ANSI color code, defaults to CYAN for unknown severities
-        """
-        return Colors._SEVERITY_COLORS.get(severity, Colors.CYAN)
+        """Get the color code for a severity level."""
+        if not _ColorsMeta._enabled:
+            return ""
+        mapping = {
+            "HIGH": "\033[91m",
+            "MEDIUM": "\033[93m",
+            "LOW": "\033[96m",
+        }
+        return mapping.get(severity, "\033[96m")

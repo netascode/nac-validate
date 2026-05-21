@@ -55,4 +55,4 @@ class Violation:
 
 def _is_violation_list(result: list[Any]) -> bool:
     """Check if a list contains Violation objects (vs legacy strings)."""
-    return len(result) > 0 and isinstance(result[0], Violation)
+    return len(result) > 0 and all(isinstance(item, Violation) for item in result)

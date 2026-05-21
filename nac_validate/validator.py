@@ -89,12 +89,13 @@ class Validator:
             if Path(filename).suffix == ".py":
                 try:
                     file_path = rules_path / filename
+                    module_name = f"{RULE_MODULE_NAME}.{Path(filename).stem}"
                     spec = importlib.util.spec_from_file_location(
-                        RULE_MODULE_NAME, file_path
+                        module_name, file_path
                     )
                     if spec is not None:
                         mod = importlib.util.module_from_spec(spec)
-                        sys.modules[RULE_MODULE_NAME] = mod
+                        sys.modules[module_name] = mod
                         if spec.loader is not None:
                             spec.loader.exec_module(mod)
 
@@ -384,9 +385,7 @@ class Validator:
                     SemanticErrorResult(
                         rule_id=rule_id,
                         description=rule.description,
-                        errors=json_result.get(
-                            "violations", json_result.get("errors", [])
-                        ),
+                        errors=json_result["errors"],
                     )
                 )
 
