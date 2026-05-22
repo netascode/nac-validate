@@ -5,6 +5,7 @@ import importlib.util
 import logging
 import sys
 import warnings
+from collections.abc import Sequence
 from inspect import signature
 from pathlib import Path
 from typing import Any
@@ -183,7 +184,9 @@ class Validator:
         """
         self.data = data
 
-    def _load_data_from_paths(self, input_paths: list[Path]) -> dict[str, Any]:
+    def _load_data_from_paths(
+        self, input_paths: Sequence[Path | str]
+    ) -> dict[str, Any]:
         """Load and merge YAML data from file system paths.
 
         Args:
@@ -192,6 +195,7 @@ class Validator:
         Returns:
             Merged YAML data dictionary
         """
+        input_paths = [Path(p) for p in input_paths]
         logger.info("Loading yaml files from %s", input_paths)
         self.data = load_yaml_files(input_paths)
         return self.data
@@ -298,11 +302,14 @@ class Validator:
 
     def validate_syntax(
         self,
-        input_paths: list[Path] | None = None,
+        input_paths: Sequence[Path | str] | None = None,
         strict: bool = True,
         rich_output: bool = True,
     ) -> None:
         """Run syntactic validation"""
+        resolved_paths: list[Path] | None = (
+            [Path(p) for p in input_paths] if input_paths is not None else None
+        )
         self.errors.clear()
         self.structured_syntax_errors.clear()
         self.file_count = 0
@@ -310,8 +317,8 @@ class Validator:
         if self.data is not None:
             if self.schema is not None:
                 source = (
-                    str(input_paths[0])
-                    if input_paths and len(input_paths) > 0
+                    str(resolved_paths[0])
+                    if resolved_paths and len(resolved_paths) > 0
                     else "<pre-loaded>"
                 )
                 try:
@@ -341,9 +348,9 @@ class Validator:
                                 )
                             )
         else:
-            if not input_paths:
+            if not resolved_paths:
                 return
-            for input_path in input_paths:
+            for input_path in resolved_paths:
                 if input_path.is_file():
                     self._validate_syntax_file(input_path, strict)
                     if input_path.suffix in YAML_SUFFIXES:
@@ -387,7 +394,10 @@ class Validator:
         return self._get_violation_count(result) > 0
 
     def validate_semantics(
-        self, input_paths: list[Path], rich_output: bool = True, compact: bool = False
+        self,
+        input_paths: Sequence[Path | str],
+        rich_output: bool = True,
+        compact: bool = False,
     ) -> None:
         """Run semantic validation"""
         if not self.rules:
@@ -468,7 +478,7 @@ class Validator:
             file=sys.stderr,
         )
 
-    def write_output(self, input_paths: list[Path], path: Path) -> None:
+    def write_output(self, input_paths: Sequence[Path | str], path: Path) -> None:
         """Write loaded YAML data to output file."""
         if self.data is None:
             self._load_data_from_paths(input_paths)
