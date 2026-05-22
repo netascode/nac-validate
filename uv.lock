@@ -755,7 +755,7 @@ wheels = [
 
 [[package]]
 name = "nac-validate"
-version = "2.0.0b1"
+version = "2.0.0b2"
 source = { editable = "." }
 dependencies = [
     { name = "jmespath" },

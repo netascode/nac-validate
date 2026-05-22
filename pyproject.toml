@@ -1,6 +1,6 @@
 [project]
 name = "nac-validate"
-version = "2.0.0b1"
+version = "2.0.0b2"
 description = "A CLI tool to perform syntactic and semantic validation of YAML files."
 license = { text = "MPL-2.0" }
 readme = "README.md"
