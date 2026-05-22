@@ -32,9 +32,10 @@ from .exceptions import (
 )
 from .models import _is_violation_list
 from .output_formatter import (
-    format_checklist_summary,
     format_json_result,
     format_semantic_error,
+    format_syntax_errors,
+    format_validation_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,7 @@ class Validator:
         self.data: dict[str, Any] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
+        self.file_count: int = 0
 
     @classmethod
     def from_paths(
@@ -208,7 +210,7 @@ class Validator:
                 line_str = line if line is not None else 0
                 column_str = column if column is not None else 0
                 msg = f"Syntax error '{file_path}': Line {line_str}, Column {column_str} - {e.problem}"
-                logger.error(msg)
+                logger.debug(msg)
                 self.errors.append(msg)
                 self.structured_syntax_errors.append(
                     SyntaxErrorResult(
@@ -236,7 +238,7 @@ class Validator:
                             err.split(":")[0].strip(), named_path
                         )
                         msg = f"Syntax error '{result.data}': {transformed_err}"
-                        logger.error(msg)
+                        logger.debug(msg)
                         self.errors.append(msg)
                         self.structured_syntax_errors.append(
                             SyntaxErrorResult(
@@ -258,8 +260,22 @@ class Validator:
                 if segment.isdigit() and isinstance(current, list):
                     current_item = current[int(segment)]
                     if isinstance(current_item, dict) and current_item:
-                        # Use the first key-value pair as the identifier
-                        primary_key = next(iter(current_item.items()))
+                        preferred_keys = ("name", "id")
+                        primary_key = next(
+                            (
+                                (k, current_item[k])
+                                for k in preferred_keys
+                                if k in current_item
+                            ),
+                            next(
+                                (
+                                    (k, v)
+                                    for k, v in current_item.items()
+                                    if isinstance(v, str | int | float)
+                                ),
+                                next(iter(current_item.items())),
+                            ),
+                        )
                         named_path.append(f"[{primary_key[0]}={primary_key[1]}]")
                     current = current_item
                 elif isinstance(current, dict) and segment in current:
@@ -277,11 +293,15 @@ class Validator:
             return path
 
     def validate_syntax(
-        self, input_paths: list[Path] | None = None, strict: bool = True
+        self,
+        input_paths: list[Path] | None = None,
+        strict: bool = True,
+        rich_output: bool = True,
     ) -> None:
         """Run syntactic validation"""
         self.errors.clear()
         self.structured_syntax_errors.clear()
+        self.file_count = 0
 
         if self.data is not None:
             if self.schema is not None:
@@ -322,12 +342,30 @@ class Validator:
             for input_path in input_paths:
                 if input_path.is_file():
                     self._validate_syntax_file(input_path, strict)
+                    if input_path.suffix in YAML_SUFFIXES:
+                        self.file_count += 1
                 else:
                     for file_path in input_path.rglob("*"):
                         if file_path.is_file():
                             self._validate_syntax_file(file_path, strict)
+                            if file_path.suffix in YAML_SUFFIXES:
+                                self.file_count += 1
 
         if self.errors:
+            if rich_output:
+                print(
+                    format_syntax_errors(self.structured_syntax_errors),
+                    file=sys.stderr,
+                )
+                print(
+                    format_validation_summary(
+                        syntax_passed=False,
+                        semantic_passed=True,
+                        file_count=self.file_count,
+                        syntax_error_count=len(self.structured_syntax_errors),
+                    ),
+                    file=sys.stderr,
+                )
             raise SyntaxValidationError(
                 self.errors.copy(), self.structured_syntax_errors.copy()
             )
@@ -345,7 +383,7 @@ class Validator:
         return self._get_violation_count(result) > 0
 
     def validate_semantics(
-        self, input_paths: list[Path], rich_output: bool = True
+        self, input_paths: list[Path], rich_output: bool = True, compact: bool = False
     ) -> None:
         """Run semantic validation"""
         if not self.rules:
@@ -372,10 +410,8 @@ class Validator:
                 raw_results[rule.id] = result
 
         if raw_results:
-            failed_rules = []
             for rule_id, result in raw_results.items():
                 rule = self.rules[rule_id]
-                violation_count = self._get_violation_count(result)
 
                 # Build structured result for JSON output
                 json_result = format_json_result(
@@ -396,30 +432,37 @@ class Validator:
                     formatted_msg = format_semantic_error(
                         rule=rule,
                         result=result,
+                        compact=compact,
                     )
                     print(formatted_msg, file=sys.stderr)
                     semantic_errors.append(f"Rule {rule_id}: {rule.description}")
-
-                    failed_rules.append(
-                        {
-                            "rule_id": rule_id,
-                            "description": rule.description,
-                            "severity": rule.severity,
-                            "violation_count": violation_count,
-                        }
-                    )
                 else:
-                    header = f"Semantic error, rule {rule_id}: {rule.description}:"
-                    logger.error(header)
-                    semantic_errors.append(header)
+                    semantic_errors.append(f"Rule {rule_id}: {rule.description}")
 
-            # Print checklist summary at the end (only for rich output)
             if rich_output:
-                checklist = format_checklist_summary(failed_rules)
-                if checklist:
-                    print(checklist, file=sys.stderr)
+                print(
+                    format_validation_summary(
+                        syntax_passed=True,
+                        semantic_passed=False,
+                        file_count=self.file_count,
+                        semantic_errors=structured_results,
+                        rules=self.rules,
+                    ),
+                    file=sys.stderr,
+                )
 
             raise SemanticValidationError(semantic_errors, structured_results)
+
+    def print_success_summary(self) -> None:
+        """Print validation success summary to stderr."""
+        print(
+            format_validation_summary(
+                syntax_passed=True,
+                semantic_passed=True,
+                file_count=self.file_count,
+            ),
+            file=sys.stderr,
+        )
 
     def write_output(self, input_paths: list[Path], path: Path) -> None:
         """Write loaded YAML data to output file."""

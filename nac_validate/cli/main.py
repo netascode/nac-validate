@@ -21,7 +21,7 @@ import typer
 
 import nac_validate.validator
 
-from ..constants import DEFAULT_RULES, DEFAULT_SCHEMA, YAML_SUFFIXES, Colors, ExitCode
+from ..constants import DEFAULT_RULES, DEFAULT_SCHEMA, Colors, ExitCode
 from ..exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
@@ -29,8 +29,11 @@ from ..exceptions import (
     SemanticValidationError,
     SyntaxValidationError,
 )
-from ..output_formatter import format_rules_list, format_validation_summary
+from ..output_formatter import (
+    format_rules_list,
+)
 from .options import (
+    Compact,
     Format,
     ListRules,
     NoColor,
@@ -100,6 +103,7 @@ def main(
     non_strict: NonStrict = False,
     format: Format = OutputFormat.TEXT,
     no_color: NoColor = False,
+    compact: Compact = False,
     version: Version = False,
     list_rules: ListRules = False,
 ) -> None:
@@ -131,22 +135,12 @@ def main(
         raise typer.Exit(ExitCode.CONFIG_ERROR)
 
     validator = None
-    file_count = 0
+    rich_output = format == OutputFormat.TEXT
 
     try:
         validator = nac_validate.validator.Validator.from_paths(schema, rules)
-        validator.validate_syntax(paths, not non_strict)
-
-        # Count files validated
-        for path in paths:
-            if path.is_file():
-                file_count += 1
-            elif path.is_dir():
-                file_count += sum(
-                    1 for f in path.rglob("*") if f.suffix in YAML_SUFFIXES
-                )
-
-        validator.validate_semantics(paths, format == OutputFormat.TEXT)
+        validator.validate_syntax(paths, not non_strict, rich_output)
+        validator.validate_semantics(paths, rich_output, compact)
         if output:
             validator.write_output(paths, output)
 
@@ -163,7 +157,6 @@ def main(
 
     except SyntaxValidationError as e:
         if format == OutputFormat.JSON:
-            # Omit None values from syntax errors (line/column not always available)
             syntax_errors = [
                 {k: v for k, v in asdict(r).items() if v is not None}
                 for r in e.structured_results
@@ -173,15 +166,6 @@ def main(
                 "semantic_errors": [],
             }
             print(json.dumps(json_output, indent=2))
-        else:
-            # Print summary for text format
-            print(
-                format_validation_summary(
-                    syntax_passed=False,
-                    semantic_passed=True,  # Didn't get to semantic validation
-                    file_count=file_count,
-                )
-            )
         raise typer.Exit(ExitCode.SYNTAX_ERROR) from e
 
     except SemanticValidationError as e:
@@ -191,17 +175,6 @@ def main(
                 "semantic_errors": [asdict(r) for r in e.structured_results],
             }
             print(json.dumps(json_output, indent=2))
-        else:
-            # Print summary for text format
-            print(
-                format_validation_summary(
-                    syntax_passed=True,
-                    semantic_passed=False,
-                    file_count=file_count,
-                    semantic_errors=e.structured_results,
-                    rules=validator.rules if validator else None,
-                )
-            )
         raise typer.Exit(ExitCode.SEMANTIC_ERROR) from e
 
     except Exception as e:
@@ -223,11 +196,5 @@ def main(
     if format == OutputFormat.JSON:
         print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
     else:
-        print(
-            format_validation_summary(
-                syntax_passed=True,
-                semantic_passed=True,
-                file_count=file_count,
-            )
-        )
+        validator.print_success_summary()
     raise typer.Exit(ExitCode.SUCCESS)

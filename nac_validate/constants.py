@@ -13,7 +13,7 @@ DEFAULT_RULES = Path(".rules/")
 
 # Output formatting widths
 HEADER_SEPARATOR_WIDTH = 80
-SUMMARY_SEPARATOR_WIDTH = 60
+SUMMARY_SEPARATOR_WIDTH = 80
 
 # File extensions
 YAML_SUFFIXES = (".yaml", ".yml")

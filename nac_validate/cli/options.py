@@ -145,3 +145,13 @@ NoColor = Annotated[
         envvar="NO_COLOR",
     ),
 ]
+
+
+Compact = Annotated[
+    bool,
+    typer.Option(
+        "--compact",
+        help="Use compact output format without rule context details.",
+        envvar="NAC_VALIDATE_COMPACT",
+    ),
+]

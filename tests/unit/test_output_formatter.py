@@ -10,7 +10,6 @@ with errors formatted as "path - message" strings.
 
 from nac_validate.models import RuleBase, Violation
 from nac_validate.output_formatter import (
-    format_checklist_summary,
     format_json_result,
     format_rules_list,
     format_validation_summary,
@@ -420,68 +419,3 @@ class TestFormatRulesList:
         result = format_rules_list({"1": Rule})
         assert "(MEDIUM)" in result
         assert "Test rule" in result
-
-
-class TestFormatChecklistSummary:
-    """Test format_checklist_summary() function."""
-
-    def test_empty_list_returns_empty_string(self) -> None:
-        """Should return empty string for no failed rules."""
-        result = format_checklist_summary([])
-        assert result == ""
-
-    def test_failed_rules_sorted_by_severity_then_id(self) -> None:
-        """Should sort failed rules by severity (HIGH first) then by ID."""
-        failed_rules = [
-            {
-                "rule_id": "200",
-                "description": "Low rule",
-                "severity": "LOW",
-                "violation_count": 1,
-            },
-            {
-                "rule_id": "100",
-                "description": "High rule",
-                "severity": "HIGH",
-                "violation_count": 2,
-            },
-            {
-                "rule_id": "150",
-                "description": "Medium rule",
-                "severity": "MEDIUM",
-                "violation_count": 1,
-            },
-        ]
-        result = format_checklist_summary(failed_rules)
-
-        # HIGH (100) should come before MEDIUM (150) which should come before LOW (200)
-        pos_100 = result.find("Rule 100")
-        pos_150 = result.find("Rule 150")
-        pos_200 = result.find("Rule 200")
-        assert pos_100 < pos_150 < pos_200
-
-    def test_shows_violation_count(self) -> None:
-        """Should show violation count for each rule."""
-        failed_rules = [
-            {
-                "rule_id": "100",
-                "description": "Test",
-                "severity": "HIGH",
-                "violation_count": 5,
-            },
-        ]
-        result = format_checklist_summary(failed_rules)
-        assert "5 violations" in result
-
-    def test_shows_checklist_header(self) -> None:
-        """Should show REMEDIATION CHECKLIST header."""
-        failed_rules = [
-            {
-                "rule_id": "100",
-                "description": "Test",
-                "severity": "HIGH",
-                "violation_count": 1,
-            },
-        ]
-        result = format_checklist_summary(failed_rules)
-        assert "REMEDIATION CHECKLIST" in result

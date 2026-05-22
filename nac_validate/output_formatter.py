@@ -7,17 +7,19 @@ This module is responsible for ALL presentation decisions. It takes
 structured data from rules and renders it for different output formats.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .constants import (
-    HEADER_SEPARATOR_WIDTH,
-    SEVERITY_SORT_ORDER,
     SUMMARY_SEPARATOR_WIDTH,
-    UNKNOWN_SEVERITY_SORT_ORDER,
     Colors,
 )
 from .models import RuleBase, Violation, _is_violation_list
+
+if TYPE_CHECKING:
+    from .exceptions import SyntaxErrorResult
 
 
 class OutputFormatter:
@@ -165,6 +167,7 @@ class OutputFormatter:
         self,
         rule: type[RuleBase],
         result: list[Any],
+        compact: bool = False,
     ) -> str:
         """Format complete rule output.
 
@@ -177,8 +180,10 @@ class OutputFormatter:
         """
         parts = [self._rule_header(rule.id, rule.description)]
 
-        if _is_violation_list(result):
+        if _is_violation_list(result) and not compact:
             parts.extend(self.format_rule_result(result, rule))
+        elif _is_violation_list(result):
+            parts.extend(self._format_violation_list_compact(result))
         else:
             parts.extend(self._format_legacy_list_output(result))
 
@@ -196,14 +201,28 @@ class OutputFormatter:
 
         return lines
 
+    def _format_violation_list_compact(self, violations: list[Violation]) -> list[str]:
+        """Format Violation objects as simple bullet points without rich context."""
+        if not violations:
+            return []
+
+        lines = [f"\n{self._separator(self.LINE_SEP)}"]
+        for v in violations:
+            text = f"{v.path} - {v.message}" if v.path else v.message
+            lines.append(f"  {Colors.YELLOW}•{Colors.RESET} {text}")
+        lines.append(self._separator(self.LINE_SEP))
+
+        return lines
+
 
 def format_semantic_error(
     rule: type[RuleBase],
     result: list[Any],
+    compact: bool = False,
 ) -> str:
     """Convenience function for formatting semantic errors."""
     formatter = OutputFormatter(severity=rule.severity)
-    return formatter.format_output(rule, result)
+    return formatter.format_output(rule, result, compact=compact)
 
 
 def format_json_result(
@@ -224,6 +243,22 @@ def format_json_result(
         base["errors"] = result
 
     return base
+
+
+def format_syntax_errors(errors: list[SyntaxErrorResult]) -> str:
+    """Format syntax errors with color."""
+
+    if not errors:
+        return ""
+
+    lines = [""]
+    for err in errors:
+        lines.append(
+            f"  {Colors.RED}•{Colors.RESET} "
+            f"{Colors.DIM}{err.file}{Colors.RESET}: {err.message}"
+        )
+
+    return "\n".join(lines)
 
 
 @dataclass
@@ -250,59 +285,11 @@ def _bucket_by_severity(
     return buckets
 
 
-def format_checklist_summary(failed_rules: list[dict[str, Any]]) -> str:
-    """Format a checklist summary of all failed rules.
-
-    Args:
-        failed_rules: List of dicts with rule info
-
-    Returns:
-        Formatted checklist summary string
-    """
-    if not failed_rules:
-        return ""
-
-    lines = [
-        f"\n{Colors.MAGENTA}{'━' * HEADER_SEPARATOR_WIDTH}{Colors.RESET}",
-        f"{Colors.MAGENTA}{Colors.BOLD}  REMEDIATION CHECKLIST{Colors.RESET}",
-        f"{Colors.MAGENTA}{'━' * HEADER_SEPARATOR_WIDTH}{Colors.RESET}\n",
-    ]
-
-    sorted_rules = sorted(
-        failed_rules,
-        key=lambda x: (
-            SEVERITY_SORT_ORDER.get(x["severity"], UNKNOWN_SEVERITY_SORT_ORDER),
-            int(x["rule_id"]),
-        ),
-    )
-
-    for rule in sorted_rules:
-        severity = rule["severity"]
-        severity_color = Colors.for_severity(severity)
-
-        count = rule.get("violation_count", 0)
-        count_str = f"({count} violation{'s' if count != 1 else ''})" if count else ""
-
-        lines.append(
-            f"  {Colors.MAGENTA}[ ]{Colors.RESET} "
-            f"{Colors.BOLD}Rule {rule['rule_id']}{Colors.RESET}: "
-            f"{rule['description']} "
-            f"{severity_color}{count_str}{Colors.RESET}"
-        )
-
-    lines.append(f"\n{Colors.MAGENTA}{'━' * HEADER_SEPARATOR_WIDTH}{Colors.RESET}")
-    lines.append(
-        f"{Colors.DIM}  {len(failed_rules)} rule{'s' if len(failed_rules) != 1 else ''} "
-        f"failed validation. Address items above to resolve.{Colors.RESET}\n"
-    )
-
-    return "\n".join(lines)
-
-
 def format_validation_summary(
     syntax_passed: bool,
     semantic_passed: bool,
     file_count: int = 0,
+    syntax_error_count: int = 0,
     semantic_errors: list[Any] | None = None,
     rules: dict[str, Any] | None = None,
 ) -> str:
@@ -312,6 +299,7 @@ def format_validation_summary(
         syntax_passed: Whether syntax validation passed
         semantic_passed: Whether semantic validation passed
         file_count: Number of files validated
+        syntax_error_count: Number of syntax errors found
         semantic_errors: List of SemanticErrorResult objects
         rules: Dict of loaded rules (for severity lookup)
 
@@ -331,40 +319,54 @@ def format_validation_summary(
             f"{Colors.GREEN}PASSED{Colors.RESET}{file_info}"
         )
     else:
+        error_info = (
+            f" ({syntax_error_count} error{'s' if syntax_error_count != 1 else ''})"
+            if syntax_error_count > 0
+            else ""
+        )
         lines.append(
             f"  {Colors.RED}✗{Colors.RESET} Syntax validation: "
-            f"{Colors.RED}FAILED{Colors.RESET}"
+            f"{Colors.RED}FAILED{Colors.RESET}{error_info}"
         )
 
-    # Semantic validation status
-    if semantic_passed:
-        lines.append(
-            f"  {Colors.GREEN}✓{Colors.RESET} Semantic validation: "
-            f"{Colors.GREEN}PASSED{Colors.RESET}"
-        )
-    else:
-        lines.append(
-            f"  {Colors.RED}✗{Colors.RESET} Semantic validation: "
-            f"{Colors.RED}FAILED{Colors.RESET}"
-        )
+    # Semantic validation status (only shown if syntax passed)
+    if syntax_passed:
+        if semantic_passed:
+            lines.append(
+                f"  {Colors.GREEN}✓{Colors.RESET} Semantic validation: "
+                f"{Colors.GREEN}PASSED{Colors.RESET}"
+            )
+        else:
+            semantic_total = (
+                sum(len(e.errors) for e in semantic_errors) if semantic_errors else 0
+            )
+            error_info = (
+                f" ({semantic_total} violation{'s' if semantic_total != 1 else ''})"
+                if semantic_total > 0
+                else ""
+            )
+            lines.append(
+                f"  {Colors.RED}✗{Colors.RESET} Semantic validation: "
+                f"{Colors.RED}FAILED{Colors.RESET}{error_info}"
+            )
 
-        # Count violations by severity
-        if semantic_errors and rules:
-            buckets = _bucket_by_severity(semantic_errors, rules)
+            # Count violations by severity
+            if semantic_errors and rules:
+                buckets = _bucket_by_severity(semantic_errors, rules)
 
-            lines.append("")
-            for severity, color in (
-                ("HIGH", Colors.RED),
-                ("MEDIUM", Colors.YELLOW),
-                ("LOW", Colors.CYAN),
-            ):
-                bucket = buckets[severity]
-                if bucket.count > 0:
-                    rules_str = ", ".join(bucket.rule_ids)
-                    lines.append(
-                        f"    {color}•{Colors.RESET} {bucket.count} {severity} severity "
-                        f"violation{'s' if bucket.count != 1 else ''} (rules: {rules_str})"
-                    )
+                lines.append("")
+                for severity, color in (
+                    ("HIGH", Colors.RED),
+                    ("MEDIUM", Colors.YELLOW),
+                    ("LOW", Colors.CYAN),
+                ):
+                    bucket = buckets[severity]
+                    if bucket.count > 0:
+                        rules_str = ", ".join(bucket.rule_ids)
+                        lines.append(
+                            f"    {color}•{Colors.RESET} {bucket.count} {severity} severity "
+                            f"violation{'s' if bucket.count != 1 else ''} (rules: {rules_str})"
+                        )
 
     lines.append(f"{'─' * SUMMARY_SEPARATOR_WIDTH}\n")
     return "\n".join(lines)

@@ -29,6 +29,8 @@ Options:
                         Output format for validation results
                         [env: NAC_VALIDATE_FORMAT] [default: text]
   --no-color            Disable colored output [env: NO_COLOR]
+  --compact             Use compact output format without rule context details
+                        [env: NAC_VALIDATE_COMPACT]
   --version             Display version number
   --list-rules          List all available validation rules and exit
   --help                Show this message and exit
