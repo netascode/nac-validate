@@ -128,15 +128,19 @@ class Validator:
             return rules
         return cls._load_rules_from_dir(rules_path)
 
-    def __init__(self, schema: Any | None, rules: dict[str, Any] | None = None):
-        """Initialize validator with pre-loaded schema and rules.
-
-        Args:
-            schema: Loaded yamale schema object, or None
-            rules: Dictionary mapping rule ID to Rule class
-        """
-        self.schema = schema
-        self.rules: dict[str, Any] = rules if isinstance(rules, dict) else {}
+    def __init__(self, schema: Any | None, rules: Any | None = None):
+        self.schema: Any | None = None
+        self.rules: dict[str, Any] = {}
+        if isinstance(schema, (str | Path)):
+            inst = self.from_paths(
+                Path(schema), Path(rules) if rules else DEFAULT_RULES
+            )
+            self.schema = inst.schema
+            self.rules = inst.rules
+        else:
+            self.schema = schema
+            if isinstance(rules, dict):
+                self.rules = rules
         self.data: dict[str, Any] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
