@@ -1,3 +1,14 @@
+# Unreleased
+
+- Add `RuleBase` base class for semantic validation rules
+- Overhaul CLI output: validation results now show structured errors with file paths, line context, and rule identifiers, followed by a checklist-style summary per rule
+- Add `--json` CLI option for machine-readable JSON validation output
+- Add `--list-rules` CLI option to display available validation rules
+- Add `--no-color` CLI option to disable colored terminal output
+- Add `--compact` CLI option to reduce output verbosity
+- BREAKING CHANGE (via `nac-yaml`): Rework list merge logic — within-file duplicates are now preserved; if any file contains duplicate dict items in a list, merging is disabled for that entire list and items are concatenated instead
+- BREAKING CHANGE (via `nac-yaml`): Two dict items in a list now merge when all shared primitive fields match, even if both sides have additional unique primitive fields
+
 # 1.2.0
 
 - Add `jmespath` as a direct dependency
