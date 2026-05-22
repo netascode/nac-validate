@@ -1,0 +1,218 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2025 Daniel Schmidt
+
+"""Unit tests for nac_validate.validator module.
+
+Tests verify the Validator class methods including data caching,
+violation counting, and path name transformation utilities.
+"""
+
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from nac_validate.constants import DEFAULT_RULES, DEFAULT_SCHEMA
+from nac_validate.models import RuleBase, Violation
+from nac_validate.validator import Validator
+
+
+class TestValidatorLoadData:
+    """Tests for load_data() and _load_data_from_paths()."""
+
+    @pytest.fixture
+    def validator(self) -> Validator:
+        """Create Validator with mocked file system to avoid I/O."""
+        with patch.object(Path, "exists", return_value=False):
+            return Validator.from_paths(
+                schema_path=DEFAULT_SCHEMA,
+                rules_path=DEFAULT_RULES,
+            )
+
+    def test_load_data_sets_data(self, validator: Validator) -> None:
+        """load_data() should set self.data directly."""
+        data = {"key": "value"}
+        validator.load_data(data)
+        assert validator.data is data
+
+    @patch("nac_validate.validator.load_yaml_files")
+    def test_load_data_from_paths(
+        self, mock_load: MagicMock, validator: Validator
+    ) -> None:
+        """_load_data_from_paths() should load from disk."""
+        mock_load.return_value = {"key": "value"}
+        paths = [Path("/data/file.yaml")]
+
+        validator._load_data_from_paths(paths)
+
+        mock_load.assert_called_once_with(paths)
+        assert validator.data == {"key": "value"}
+
+
+class TestValidatorGetViolationCount:
+    """Tests for _get_violation_count() method."""
+
+    @pytest.fixture
+    def validator(self) -> Validator:
+        """Create Validator with mocked file system."""
+        with patch.object(Path, "exists", return_value=False):
+            return Validator.from_paths(
+                schema_path=DEFAULT_SCHEMA,
+                rules_path=DEFAULT_RULES,
+            )
+
+    def test_violation_list_with_violations(self, validator: Validator) -> None:
+        """Should count violations in list[Violation]."""
+        result = [
+            Violation(message="Error 1", path="path.a"),
+            Violation(message="Error 2", path="path.b"),
+        ]
+        assert validator._get_violation_count(result) == 2
+
+    def test_empty_violation_list(self, validator: Validator) -> None:
+        """Should return 0 for empty list."""
+        assert validator._get_violation_count([]) == 0
+
+    def test_empty_string_list_returns_zero(self, validator: Validator) -> None:
+        """Empty list returns 0."""
+        assert validator._get_violation_count([]) == 0
+
+    def test_string_list_uses_length(self, validator: Validator) -> None:
+        """String list uses list length as violation count."""
+        result = ["Found 5 violations", "other text"]
+        assert validator._get_violation_count(result) == 2
+
+    def test_string_list_fallback_to_length(self, validator: Validator) -> None:
+        """String list without 'Found N' uses list length."""
+        result = ["error 1", "error 2", "error 3"]
+        assert validator._get_violation_count(result) == 3
+
+
+class TestValidatorGetNamedPath:
+    """Tests for _get_named_path() method."""
+
+    @pytest.fixture
+    def validator(self) -> Validator:
+        """Create Validator with mocked file system."""
+        with patch.object(Path, "exists", return_value=False):
+            return Validator.from_paths(
+                schema_path=DEFAULT_SCHEMA,
+                rules_path=DEFAULT_RULES,
+            )
+
+    def test_numeric_index_replaced_with_key_value(self, validator: Validator) -> None:
+        """Numeric path segments become [key=value] for list items."""
+        data = {
+            "tenants": [
+                {"name": "Production", "id": 1},
+                {"name": "Development", "id": 2},
+            ]
+        }
+        result = validator._get_named_path(data, "tenants.0.name")
+        assert result == "tenants.[name=Production].name"
+
+    def test_second_list_item_named_correctly(self, validator: Validator) -> None:
+        """Second list item uses its own first key-value pair."""
+        data = {
+            "tenants": [
+                {"name": "Production"},
+                {"name": "Development"},
+            ]
+        }
+        result = validator._get_named_path(data, "tenants.1.name")
+        assert result == "tenants.[name=Development].name"
+
+    def test_dict_path_preserved(self, validator: Validator) -> None:
+        """Non-numeric segments are preserved."""
+        data = {"root": {"child": {"leaf": "value"}}}
+        result = validator._get_named_path(data, "root.child.leaf")
+        assert result == "root.child.leaf"
+
+    def test_missing_key_preserved(self, validator: Validator) -> None:
+        """Missing keys are preserved as-is."""
+        data: dict[str, dict[str, str]] = {"config": {}}
+        result = validator._get_named_path(data, "config.missing.key")
+        assert result == "config.missing.key"
+
+    def test_empty_path_returns_original(self, validator: Validator) -> None:
+        """Empty path input returns empty path."""
+        data = {"any": "data"}
+        result = validator._get_named_path(data, "")
+        assert result == ""
+
+
+class TestRuleBase:
+    """Tests for RuleBase subclassing."""
+
+    def test_subclass_inherits_defaults(self) -> None:
+        class MyRule(RuleBase):
+            id = "999"
+            description = "Test rule"
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[str]:
+                return []
+
+        assert MyRule.severity == "HIGH"
+        assert MyRule.title == ""
+        assert MyRule.explanation == ""
+        assert MyRule.recommendation == ""
+        assert MyRule.affected_items_label == "Affected Items"
+        assert MyRule.references == []
+
+    def test_subclass_can_override_defaults(self) -> None:
+        class MyRule(RuleBase):
+            id = "999"
+            description = "Test rule"
+            severity = "LOW"
+            title = "CUSTOM TITLE"
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[str]:
+                return []
+
+        assert MyRule.severity == "LOW"
+        assert MyRule.title == "CUSTOM TITLE"
+
+    def test_match_raises_not_implemented(self) -> None:
+        class MyRule(RuleBase):
+            id = "999"
+            description = "Test rule"
+
+        import pytest
+
+        with pytest.raises(NotImplementedError):
+            MyRule.match({})
+
+
+class TestContextInjection:
+    """Tests for context injection in validate_semantics()."""
+
+    def test_rule_result_gets_context_injected(self) -> None:
+        class Rule(RuleBase):
+            id = "900"
+            description = "Test"
+            title = "INJECTED"
+            explanation = "Why"
+            recommendation = "Fix"
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[Any]:
+                return [Violation(message="bad", path="x")]
+
+        v = Validator(schema=None, rules={"900": Rule})
+        with pytest.raises(Exception) as exc_info:
+            v.validate_semantics([Path("/fake")], rich_output=False)
+        assert exc_info.type.__name__ == "SemanticValidationError"
+
+
+class TestDirectConstructor:
+    """Tests for Validator.__init__ with pre-loaded objects."""
+
+    def test_direct_objects_set_correctly(self) -> None:
+        schema = MagicMock()
+        rules = {"100": MagicMock()}
+        v = Validator(schema, rules)
+        assert v.schema is schema
+        assert v.rules is rules
