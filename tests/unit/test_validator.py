@@ -46,7 +46,7 @@ class TestValidatorLoadData:
 
         validator._load_data_from_paths(paths)
 
-        mock_load.assert_called_once_with(paths)
+        mock_load.assert_called_once_with(paths, typ="safe")
         assert validator.data == {"key": "value"}
 
 

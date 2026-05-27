@@ -197,7 +197,7 @@ class Validator:
         """
         input_paths = [Path(p) for p in input_paths]
         logger.info("Loading yaml files from %s", input_paths)
-        self.data = load_yaml_files(input_paths)
+        self.data = load_yaml_files(input_paths, typ="safe")
         return self.data
 
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
@@ -208,7 +208,7 @@ class Validator:
             # YAML syntax validation
             data = None
             try:
-                data = load_yaml_files([file_path])
+                data = load_yaml_files([file_path], typ="safe")
             except yaml.error.MarkedYAMLError as e:
                 line: int | None = None
                 column: int | None = None
