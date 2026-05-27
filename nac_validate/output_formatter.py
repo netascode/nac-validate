@@ -226,21 +226,36 @@ def format_semantic_error(
 
 
 def format_json_result(
-    rule_id: str,
-    description: str,
-    severity: str,
+    rule: type[RuleBase],
     result: list[Any],
 ) -> dict[str, Any]:
     """Format a rule result as a JSON-serializable dictionary."""
     base: dict[str, Any] = {
-        "rule_id": rule_id,
-        "description": description,
+        "rule_id": rule.id,
+        "severity": getattr(rule, "severity", "HIGH"),
+        "description": rule.description,
     }
 
+    title = getattr(rule, "title", "")
+    explanation = getattr(rule, "explanation", "")
+    recommendation = getattr(rule, "recommendation", "")
+    references = getattr(rule, "references", [])
+
+    if title:
+        base["title"] = title
+    if explanation:
+        base["explanation"] = explanation
+    if recommendation:
+        base["recommendation"] = recommendation
+    if references:
+        base["references"] = references
+
     if _is_violation_list(result):
-        base["errors"] = [f"{v.path} - {v.message}" for v in result]
+        base["errors"] = [
+            {"message": v.message, "path": v.path, "details": v.details} for v in result
+        ]
     else:
-        base["errors"] = result
+        base["errors"] = [{"message": s} for s in result]
 
     return base
 

@@ -429,16 +429,19 @@ class Validator:
 
                 # Build structured result for JSON output
                 json_result = format_json_result(
-                    rule_id=rule_id,
-                    description=rule.description,
-                    severity=rule.severity,
+                    rule=rule,
                     result=result,
                 )
                 structured_results.append(
                     SemanticErrorResult(
                         rule_id=rule_id,
                         description=rule.description,
+                        severity=json_result.get("severity", "HIGH"),
                         errors=json_result["errors"],
+                        title=json_result.get("title", ""),
+                        explanation=json_result.get("explanation", ""),
+                        recommendation=json_result.get("recommendation", ""),
+                        references=json_result.get("references"),
                     )
                 )
 

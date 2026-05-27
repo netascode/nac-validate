@@ -263,15 +263,52 @@ def test_json_format_semantic_errors() -> None:
     semantic_error = output["semantic_errors"][0]
     assert "rule_id" in semantic_error
     assert "description" in semantic_error
+    assert "severity" in semantic_error
     assert "errors" in semantic_error
     assert isinstance(semantic_error["errors"], list)
-    # Verify errors are strings in "path - message" format (not dicts)
+    # Errors are always dicts with at least a message key
     for error in semantic_error["errors"]:
-        assert isinstance(error, str), f"Error should be string, got {type(error)}"
-        assert " - " in error, f"Error should contain ' - ' separator: {error}"
+        assert isinstance(error, dict), f"Error should be dict, got {type(error)}"
+        assert "message" in error, f"Error dict should have 'message' key: {error}"
 
 
-def test_json_format_syntax_errors() -> None:
+def test_json_format_rich_rule_fields() -> None:
+    """Test JSON output includes rich fields from RuleBase-derived rules."""
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_semantic_error/"
+    rules_path = "tests/integration/fixtures/rules/"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        ["-r", rules_path, "--format", "json", input_path],
+    )
+    assert result.exit_code == ExitCode.SEMANTIC_ERROR
+    output = json.loads(result.output)
+    # Find the rich rule (102) which extends RuleBase
+    rich_errors = [e for e in output["semantic_errors"] if e["rule_id"] == "102"]
+    assert len(rich_errors) == 1
+    rich = rich_errors[0]
+    assert rich["severity"] == "MEDIUM"
+    assert rich["title"] == "Lowercase Child Names"
+    assert (
+        rich["explanation"] == "Child names should be lowercase to ensure consistency."
+    )
+    assert rich["recommendation"] == "Rename children to use lowercase names only."
+    assert rich["references"] == ["https://example.com/naming-conventions"]
+    # Errors should be structured dicts
+    assert len(rich["errors"]) > 0
+    for error in rich["errors"]:
+        assert isinstance(error, dict)
+        assert "message" in error
+        assert "path" in error
+        assert "details" in error
+    # Verify the legacy rule (101) does NOT have rich fields
+    legacy_errors = [e for e in output["semantic_errors"] if e["rule_id"] == "101"]
+    assert len(legacy_errors) == 1
+    legacy = legacy_errors[0]
+    assert "title" not in legacy
+    assert "explanation" not in legacy
+    assert "recommendation" not in legacy
+    assert "references" not in legacy
     """Test JSON output format for syntax validation errors."""
     runner = CliRunner()
     input_path = "tests/integration/fixtures/data_syntax_error/"

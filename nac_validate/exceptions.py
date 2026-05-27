@@ -23,12 +23,22 @@ class SemanticErrorResult:
     Attributes:
         rule_id: The rule identifier (e.g., "101", "312")
         description: Human-readable rule description
-        errors: List of error strings in "path - message" format.
+        severity: Rule severity level (HIGH, MEDIUM, LOW)
+        errors: List of violation dicts or legacy strings.
+        title: Optional rule title
+        explanation: Optional explanation of why this rule matters
+        recommendation: Optional recommended fix
+        references: Optional list of reference URLs
     """
 
     rule_id: str
     description: str
-    errors: list[str]
+    severity: str
+    errors: list[dict[str, object]]
+    title: str = ""
+    explanation: str = ""
+    recommendation: str = ""
+    references: list[str] | None = None
 
 
 class ValidationError(Exception):

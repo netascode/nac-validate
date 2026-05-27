@@ -172,7 +172,14 @@ def main(
         if format == OutputFormat.JSON:
             json_output = {
                 "syntax_errors": [],
-                "semantic_errors": [asdict(r) for r in e.structured_results],
+                "semantic_errors": [
+                    {
+                        k: v
+                        for k, v in asdict(r).items()
+                        if v is not None and v != "" and v != []
+                    }
+                    for r in e.structured_results
+                ],
             }
             print(json.dumps(json_output, indent=2))
         raise typer.Exit(ExitCode.SEMANTIC_ERROR) from e
