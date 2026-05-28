@@ -203,14 +203,14 @@ Output structure:
 
 Python 3.10+ is required to install `nac-validate`. Don't have Python 3.10 or later? See [Python 3 Installation & Setup Guide](https://realpython.com/installing-python/).
 
-`nac-validate` can be installed in a virtual environment using `pip` or `uv`:
+`nac-validate` can be installed in a virtual environment using `uv` or `pip`:
 
 ```bash
-# Using pip
-pip install nac-validate
-
 # Using uv (recommended)
 uv tools install nac-validate
+
+# Using pip
+pip install nac-validate
 ```
 
 ## Pre-Commit Hook
