@@ -1,6 +1,6 @@
 [project]
 name = "nac-validate"
-version = "2.0.0b3"
+version = "2.0.0"
 description = "A CLI tool to perform syntactic and semantic validation of YAML files."
 license = { text = "MPL-2.0" }
 readme = "README.md"
@@ -23,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Testing",
 ]
 dependencies = [

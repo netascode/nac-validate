@@ -1,4 +1,4 @@
-# Unreleased
+# 2.0.0
 
 - Add `RuleBase` base class for semantic validation rules
 - Overhaul CLI output: validation results now show structured errors with file paths, line context, and rule identifiers, followed by a checklist-style summary per rule
