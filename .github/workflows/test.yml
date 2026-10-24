@@ -1,3 +1,5 @@
+# Actions are pinned to commit SHAs (not version tags) to prevent supply chain attacks.
+# Version comments (e.g., "# v7") allow Dependabot to track and update to newer versions.
 name: Tests
 on:
   workflow_dispatch:
@@ -5,12 +7,15 @@ on:
   push:
     branches:
       - main
+  workflow_call:
 
 jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -25,7 +30,7 @@ jobs:
 
       - name: Run bandit security scan
         run: bandit -r nac_validate/ -ll -f json -o bandit-security-report.json
-        
+
       - name: Upload security report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()
@@ -59,10 +64,16 @@ jobs:
 
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    permissions:
+      contents: read
     strategy:
       matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
         python:
           - "3.10"
           - "3.11"
@@ -84,37 +95,95 @@ jobs:
           enable-cache: true
 
       - name: Test
+        shell: bash
         run: |
           uv sync --extra dev
           uv run pytest
 
   notification:
     name: Notification
-    if: always() && github.event_name != 'pull_request'
+    # github.workflow is the caller's name when run via workflow_call, so this
+    # skips the release run (reusable workflows don't receive the Webex secrets)
+    if: always() && github.event_name != 'pull_request' && github.workflow == 'Tests' && github.actor != 'dependabot[bot]'
     needs: [security, lint, test]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions: {}
     steps:
       - name: Check Job Success
         run: |
           if [ ${{ needs.security.result }} == 'success' ] && [ ${{ needs.lint.result }} == 'success' ] && [ ${{ needs.test.result }} == 'success' ]; then
             echo "All jobs succeeded"
-            echo "jobSuccess=success" >> $GITHUB_ENV
+            echo "JOB_SUCCESS=success" >> $GITHUB_ENV
           else
             echo "Not all jobs succeeded"
-            echo "jobSuccess=fail" >> $GITHUB_ENV
+            echo "JOB_SUCCESS=fail" >> $GITHUB_ENV
           fi
         id: print_status
 
+      - name: Sanitize notification variables
+        env:
+          # Pass through env to avoid shell injection from server-side expression expansion
+          RAW_COMMIT_MSG: ${{ github.event.head_commit.message }}
+          RAW_PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Truncate to stay within Webex message size limits (500 chars for commit
+          # messages, 200 chars for PR titles are generous practical limits)
+          COMMIT_MSG=$(echo "$RAW_COMMIT_MSG" | head -c 500)
+          PR_TITLE=$(echo "$RAW_PR_TITLE" | head -c 200)
+
+          {
+            echo "SAFE_COMMIT_MSG<<EOF"
+            echo "$COMMIT_MSG"
+            echo "EOF"
+            echo "SAFE_PR_TITLE<<EOF"
+            echo "$PR_TITLE"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      # Using direct curl to Webex API instead of a GitHub Action because:
+      # - qsnyder/action-wxt is unmaintained (last commit 2022, no releases)
+      # - Direct API call has no third-party action dependency to maintain
+      # - Gives full control over error handling and message format
       - name: Webex Notification
         if: always()
-        uses: qsnyder/action-wxt@ea6ec7075c508a0e39826c2c67173b5de1ace0e2  # master
         env:
-          TOKEN: ${{ secrets.WEBEX_TOKEN }}
-          ROOMID: ${{ secrets.WEBEX_ROOM_ID }}
-          MESSAGE: |
-            [**[${{ env.jobSuccess }}] ${{ github.repository }} #${{ github.run_number }}**](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            * Commit: [${{ github.event.head_commit.message }}](${{ github.event.head_commit.url }})[${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
-            * Author: ${{ github.event.sender.login }}
-            * Branch: ${{ github.ref }} ${{ github.head_ref }}
-            * Event: ${{ github.event_name }}
+          # Pass sanitized env vars and static context values through env to avoid
+          # server-side expression expansion inside the shell script
+          JOB_SUCCESS: ${{ env.JOB_SUCCESS }}
+          SAFE_COMMIT_MSG: ${{ env.SAFE_COMMIT_MSG }}
+          SAFE_PR_TITLE: ${{ env.SAFE_PR_TITLE }}
+          WEBEX_TOKEN: ${{ secrets.WEBEX_TOKEN }}
+          WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          AUTHOR: ${{ github.event.sender.login }}
+          REF: ${{ github.ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          RUN_NUM: ${{ github.run_number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # jq -n --arg handles all JSON escaping; avoids double-encoding from jq -Rs
+          PAYLOAD=$(jq -n \
+            --arg room_id "$WEBEX_ROOM_ID" \
+            --arg status "$JOB_SUCCESS" \
+            --arg repo "$REPO" \
+            --arg run_num "$RUN_NUM" \
+            --arg run_url "https://github.com/$REPO/actions/runs/$RUN_ID" \
+            --arg commit_msg "$SAFE_COMMIT_MSG" \
+            --arg commit_url "$COMMIT_URL" \
+            --arg pr_title "$SAFE_PR_TITLE" \
+            --arg author "$AUTHOR" \
+            --arg ref "$REF" \
+            --arg head_ref "$HEAD_REF" \
+            --arg event "$EVENT" \
+            '{roomId: $room_id, markdown: ("[**[\($status)] \($repo) #\($run_num)**](\($run_url))\n* Commit: [\($commit_msg)](\($commit_url))\($pr_title)\n* Author: \($author)\n* Branch: \($ref) \($head_ref)\n* Event: \($event)")}')
+          # --fail-with-body: exit non-zero on HTTP 4xx/5xx so the || warning fires
+          curl --silent --fail-with-body --max-time 30 \
+            --request POST \
+            --url https://webexapis.com/v1/messages \
+            --header "Authorization: Bearer $WEBEX_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$PAYLOAD" \
+            || echo "::warning::Webex notification failed"

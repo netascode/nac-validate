@@ -4,6 +4,7 @@
 import filecmp
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,9 @@ def test_validate_non_strict() -> None:
     assert result.exit_code == 0
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="ansible-core is not available on Windows"
+)
 def test_validate_vault() -> None:
     runner = CliRunner()
     input_path = "tests/integration/fixtures/data_vault/"
