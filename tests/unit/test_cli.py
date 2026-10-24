@@ -4,6 +4,7 @@
 """Unit tests for nac-validate CLI error handling."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,9 @@ from tests.unit.helpers import (
 )
 
 runner = CliRunner()
+
+# Rich styles help output when it detects CI (e.g. GITHUB_ACTIONS), splitting words
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 class TestListRules:
@@ -179,7 +183,7 @@ class TestListArtifacts:
         """Should accept --list-rules as an undocumented alias."""
         write_artifacts(project / "mod", rules={"1": "module rule"})
 
-        help_output = runner.invoke(app, ["--help"]).output
+        help_output = ANSI_ESCAPE.sub("", runner.invoke(app, ["--help"]).output)
         result = runner.invoke(app, ["--list-rules", "--module-dir", "mod"])
 
         assert "--list-artifacts" in help_output
