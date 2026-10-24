@@ -355,7 +355,9 @@ def format_validation_summary(
             )
         else:
             semantic_total = (
-                sum(len(e.errors) for e in semantic_errors) if semantic_errors else 0
+                sum(len(e.errors) for e in semantic_errors)
+                if semantic_errors is not None
+                else 0
             )
             error_info = (
                 f" ({semantic_total} violation{'s' if semantic_total != 1 else ''})"
@@ -368,7 +370,12 @@ def format_validation_summary(
             )
 
             # Count violations by severity
-            if semantic_errors and rules:
+            if (
+                semantic_errors is not None
+                and len(semantic_errors) > 0
+                and rules is not None
+                and len(rules) > 0
+            ):
                 buckets = _bucket_by_severity(semantic_errors, rules)
 
                 lines.append("")
@@ -423,7 +430,7 @@ def format_rules_list(
             f"{severity_color}({severity}){Colors.RESET}"
             + (
                 f" {annotations[rule_id]}"
-                if annotations and rule_id in annotations
+                if annotations is not None and rule_id in annotations
                 else ""
             )
         )

@@ -97,5 +97,4 @@ class Colors(metaclass=_ColorsMeta):
     def for_severity(cls, severity: str) -> str:
         """Get the color code for a severity level."""
         color_name = _SEVERITY_COLOR_MAP.get(severity, "CYAN")
-        result: str = getattr(cls, color_name)
-        return result
+        return str(getattr(cls, color_name))

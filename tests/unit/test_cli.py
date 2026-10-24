@@ -6,6 +6,7 @@
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 from nac_artifacts.testing import bundle_files as raw_bundle_files
@@ -410,9 +411,9 @@ class TestCliMultipleBundles:
     """--bundle is repeatable and bundles in .nac/ are all used."""
 
     @staticmethod
-    def bundle(tmp_path: Path, name: str, **kwargs: object) -> Path:
+    def bundle(tmp_path: Path, name: str, **kwargs: Any) -> Path:
         files = raw_bundle_files(
-            artifact_files(**kwargs),  # type: ignore[arg-type]
+            artifact_files(**kwargs),
             name=name,
         )
         return make_zip(tmp_path / f"{name}.zip", files)

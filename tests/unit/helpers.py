@@ -119,7 +119,7 @@ def resolve(
         schema=schema,
         rules=rules or [DEFAULT_RULES],
         bundles=list(bundles)
-        if bundles
+        if bundles is not None and len(bundles) > 0
         else ([bundle] if bundle is not None else None),
         module_dir=module_dir,
     )

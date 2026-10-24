@@ -74,6 +74,5 @@ ENV/
 
 tmp/
 
-.mypy_cache/
 
 logs/

@@ -144,7 +144,7 @@ def main(
         raise typer.Exit(ExitCode.SUCCESS)
 
     # Require paths for validation
-    if not paths:
+    if paths is None or len(paths) == 0:
         print(
             f"{Colors.RED}Error: Missing argument 'PATHS...'.{Colors.RESET}\n"
             f"Use --help for usage information, or --list-artifacts to see the effective schema and rules."

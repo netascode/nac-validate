@@ -17,7 +17,7 @@ from typing import Any
 import yamale
 from nac_artifacts import DisableEntry, DisableMatcher
 from nac_yaml.yaml import load_yaml_files, write_yaml_file
-from ruamel import yaml
+from ruamel.yaml.error import MarkedYAMLError
 from yamale.yamale_error import YamaleError
 
 from .constants import (
@@ -445,12 +445,12 @@ class Validator:
             data = None
             try:
                 data = load_yaml_files([file_path], typ="safe")
-            except yaml.error.MarkedYAMLError as e:
+            except MarkedYAMLError as e:
                 line: int | None = None
                 column: int | None = None
                 if e.problem_mark is not None:
-                    line = e.problem_mark.line + 1
-                    column = e.problem_mark.column + 1
+                    line = int(e.problem_mark.line) + 1
+                    column = int(e.problem_mark.column) + 1
                 line_str = line if line is not None else 0
                 column_str = column if column is not None else 0
                 msg = f"Syntax error '{file_path}': Line {line_str}, Column {column_str} - {e.problem}"
@@ -554,7 +554,7 @@ class Validator:
             if self.schema is not None:
                 source = (
                     str(resolved_paths[0])
-                    if resolved_paths and len(resolved_paths) > 0
+                    if resolved_paths is not None and len(resolved_paths) > 0
                     else "<pre-loaded>"
                 )
                 try:
@@ -584,7 +584,7 @@ class Validator:
                                 )
                             )
         else:
-            if not resolved_paths:
+            if resolved_paths is None or len(resolved_paths) == 0:
                 return
             for input_path in resolved_paths:
                 if input_path.is_file():
@@ -653,7 +653,7 @@ class Validator:
             sig = signature(rule.match)
             if len(sig.parameters) == 1:
                 result = rule.match(data)
-            elif len(sig.parameters) == 2:
+            else:
                 result = rule.match(data, self.schema)
 
             if self._result_has_violations(result):

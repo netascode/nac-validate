@@ -14,6 +14,7 @@ from nac_artifacts import BundleError, ModuleDiscoveryError, OverridesError
 from nac_artifacts.testing import overrides_yaml, write_files
 
 from nac_validate.exceptions import SchemaNotFoundError
+from nac_validate.layers import ValidationLayer
 from tests.unit.helpers import (
     bundle_files,
     install_module,
@@ -168,8 +169,8 @@ class TestDisabledRules:
     """Tests for which disable entries reach which layer."""
 
     @staticmethod
-    def patterns(layer: object) -> list[tuple[str, str]]:
-        return [(e.pattern, e.source) for e in layer.disabled_rules]  # type: ignore[attr-defined]
+    def patterns(layer: ValidationLayer) -> list[tuple[str, str]]:
+        return [(e.pattern, e.source) for e in layer.disabled_rules]
 
     def test_local_layer_has_no_disabled_rules(self, project: Path) -> None:
         """Should never disable anything in the local layer."""

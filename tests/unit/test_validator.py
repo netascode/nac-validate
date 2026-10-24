@@ -620,9 +620,9 @@ class TestMultipleBundles:
     """Several bundles are peers: they may split artifacts but must not overlap."""
 
     @staticmethod
-    def bundle(tmp_path: Path, name: str, **kwargs: object) -> Path:
+    def bundle(tmp_path: Path, name: str, **kwargs: Any) -> Path:
         files = raw_bundle_files(
-            artifact_files(**kwargs),  # type: ignore[arg-type]
+            artifact_files(**kwargs),
             name=name,
         )
         return make_zip(tmp_path / f"{name}.zip", files)

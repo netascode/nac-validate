@@ -49,12 +49,12 @@ dev = [
     "ansible-core>=2.17.6; sys_platform != 'win32' and python_version < '3.12'",
     "ansible-core>=2.20.0; sys_platform != 'win32' and python_version >= '3.12'",
     "bandit[toml]>=1.9.4",
-    "mypy>=2.4.0",
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.17.0",
     "ruff>=0.17.2",
+    "ty>=0.0.86",
 ]
 
 [tool.coverage.run]
@@ -64,23 +64,13 @@ source = ["nac_validate"]
 exclude_lines = ["pragma: no cover", "@abstract", "except ImportError:"]
 omit = ["*/__main__.py"]
 
-[tool.mypy]
-python_version = "3.10"
-check_untyped_defs = true
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = false
-disallow_untyped_defs = true
-ignore_errors = false
-ignore_missing_imports = true
-strict_optional = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unused_configs = true
-warn_unused_ignores = false
-warn_unreachable = true
-show_error_context = true
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.rules]
+"all" = "error"
+# typing.override requires Python 3.12
+"missing-override-decorator" = "ignore"
 
 [tool.pytest.ini_options]
 markers = ["unit", "integration"]

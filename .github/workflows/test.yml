@@ -48,8 +48,8 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install mypy
-        run: uv tool install mypy
+      - name: Sync dependencies
+        run: uv sync --extra dev
 
       - name: Check License Headers
         run: bash scripts/license-headers.sh

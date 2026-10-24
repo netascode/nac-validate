@@ -34,7 +34,7 @@ class RuleBase:
     references: ClassVar[list[str]] = []
 
     @classmethod
-    def match(cls, data: dict[str, Any], *args: Any) -> Any:
+    def match(cls, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
 
