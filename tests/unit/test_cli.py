@@ -176,7 +176,7 @@ class TestListArtifacts:
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "module 'm' 1.2.3 at" in result.output
-        assert "/m [module]" in result.output
+        assert re.search(r"[/\\]m \[module\]", result.output)
         assert "schema.yaml [module]" in result.output
         assert "module rule" in result.output
 
