@@ -28,9 +28,9 @@ classifiers = [
 ]
 dependencies = [
     "nac-artifacts>=0.1.0",
-    "nac-yaml>=2.0.0",
+    "nac-yaml>=2.1.0",
     "ruamel.yaml>=0.19.1",
-    "typer>=0.25.1",
+    "typer>=0.27.3",
     "yamale>=6.1.0",
     "jmespath>=1.1.0",
 ]
@@ -46,14 +46,15 @@ nac-validate = "nac_validate.cli.main:app"
 
 [project.optional-dependencies]
 dev = [
-    "ansible-core>=2.17.6",
-    "bandit[toml]>=1.9.1",
-    "mypy>=1.18.2",
-    "pre-commit>=4.4.0",
-    "pytest>=9.0.1",
-    "pytest-cov>=7.0.0",
-    "pytest-mock>=3.15.1",
-    "ruff>=0.14.5",
+    "ansible-core>=2.17.6; sys_platform != 'win32' and python_version < '3.12'",
+    "ansible-core>=2.20.0; sys_platform != 'win32' and python_version >= '3.12'",
+    "bandit[toml]>=1.9.4",
+    "mypy>=2.4.0",
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-mock>=3.17.0",
+    "ruff>=0.17.2",
 ]
 
 [tool.coverage.run]

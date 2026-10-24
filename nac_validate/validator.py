@@ -431,9 +431,9 @@ class Validator:
         Returns:
             Merged YAML data dictionary
         """
-        input_paths = [Path(p) for p in input_paths]
-        logger.info("Loading yaml files from %s", input_paths)
-        self.data = load_yaml_files(input_paths, typ="safe")
+        paths = [Path(p) for p in input_paths]
+        logger.info("Loading yaml files from %s", paths)
+        self.data = load_yaml_files(paths, typ="safe")
         return self.data
 
     def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
@@ -719,6 +719,7 @@ class Validator:
 
     def write_output(self, input_paths: Sequence[Path | str], path: Path) -> None:
         """Write loaded YAML data to output file."""
-        if self.data is None:
-            self._load_data_from_paths(input_paths)
-        write_yaml_file(self.data, path)
+        data = self.data
+        if data is None:
+            data = self._load_data_from_paths(input_paths)
+        write_yaml_file(data, path)
