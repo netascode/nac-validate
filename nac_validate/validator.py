@@ -1,16 +1,21 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2025 Daniel Schmidt
 
+import hashlib
+import importlib.machinery
 import importlib.util
 import logging
+import re
 import sys
 import warnings
 from collections.abc import Sequence
+from dataclasses import dataclass
 from inspect import signature
 from pathlib import Path
 from typing import Any
 
 import yamale
+from nac_artifacts import DisableEntry, DisableMatcher
 from nac_yaml.yaml import load_yaml_files, write_yaml_file
 from ruamel import yaml
 from yamale.yamale_error import YamaleError
@@ -25,12 +30,14 @@ from .constants import (
 from .exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
+    SchemaConflictError,
     SchemaNotFoundError,
     SemanticErrorResult,
     SemanticValidationError,
     SyntaxErrorResult,
     SyntaxValidationError,
 )
+from .layers import ValidationLayer, resolve_layers
 from .models import _is_violation_list
 from .output_formatter import (
     format_json_result,
@@ -40,6 +47,34 @@ from .output_formatter import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class DisabledRule:
+    """A rule that was loaded but disabled by an ``overrides.yaml`` entry.
+
+    Attributes:
+        rule_id: ID of the disabled rule.
+        description: The rule's description.
+        origin: Layer the rule came from.
+        entry: The entry that disabled it, with the layer it came from.
+    """
+
+    rule_id: str
+    description: str
+    origin: str
+    entry: DisableEntry
+
+
+class _NoBytecodeLoader(importlib.machinery.SourceFileLoader):
+    """Source loader that never writes ``__pycache__`` next to the file.
+
+    Used for rules of modules and bundles, whose directories are not the user's
+    to write to. Unlike ``sys.dont_write_bytecode`` it affects no other imports.
+    """
+
+    def set_data(self, path: str, data: Any, *, _mode: int = 0o666) -> None:
+        """Skip writing the bytecode cache file."""
 
 
 class Validator:
@@ -72,8 +107,15 @@ class Validator:
             raise SchemaNotFoundError(f"Schema file not found: {schema_path}")
 
     @staticmethod
-    def _load_rules_from_dir(rules_path: Path) -> dict[str, Any]:
-        """Load validation rules from a single directory."""
+    def _load_rules_from_dir(
+        rules_path: Path, origin: str = "local", key: str = ""
+    ) -> dict[str, Any]:
+        """Load validation rules from a single directory.
+
+        Rules from packaged layers are registered under an origin-specific module
+        name so same-named files in different layers do not overwrite each other,
+        and are loaded without writing bytecode into module or bundle directories.
+        """
         if not rules_path.exists():
             if rules_path == DEFAULT_RULES:
                 logger.info("No rules found at default path")
@@ -83,16 +125,42 @@ class Validator:
                     f"Rules directory not found: {rules_path}"
                 )
 
-        logger.info("Loading rules from %s", rules_path)
+        logger.info("Loading %s rules from %s", origin, rules_path)
         rules: dict[str, Any] = {}
+        prefix = (
+            RULE_MODULE_NAME if origin == "local" else f"{RULE_MODULE_NAME}.{origin}"
+        )
+        if key:
+            # Peer layers (several bundles) may contain files with the same name;
+            # the hash keeps keys that only differ in punctuation apart
+            safe_key = re.sub(r"\W", "_", key)
+            digest = hashlib.sha256(key.encode()).hexdigest()[:8]
+            prefix += f".{safe_key}_{digest}"
+        Validator._load_rule_files(
+            rules_path, prefix, rules, write_bytecode=origin == "local"
+        )
+        return rules
 
+    @staticmethod
+    def _load_rule_files(
+        rules_path: Path,
+        prefix: str,
+        rules: dict[str, Any],
+        *,
+        write_bytecode: bool = True,
+    ) -> None:
         for filename in sorted(f.name for f in rules_path.iterdir()):
             if Path(filename).suffix == ".py":
                 try:
                     file_path = rules_path / filename
-                    module_name = f"{RULE_MODULE_NAME}.{Path(filename).stem}"
+                    module_name = f"{prefix}.{Path(filename).stem}"
+                    loader = (
+                        None
+                        if write_bytecode
+                        else _NoBytecodeLoader(module_name, str(file_path))
+                    )
                     spec = importlib.util.spec_from_file_location(
-                        module_name, file_path
+                        module_name, file_path, loader=loader
                     )
                     if spec is not None:
                         mod = importlib.util.module_from_spec(spec)
@@ -107,27 +175,40 @@ class Validator:
                                     filename,
                                     f"Rule.match() must accept 1 or 2 parameters, got {param_count}",
                                 )
-                            if mod.Rule.id in rules:
-                                existing = rules[mod.Rule.id]
+                            # IDs are matched as text (overrides, shadowing), so
+                            # `id = 101` and `id = "101"` are the same rule
+                            rule_id = str(mod.Rule.id)
+                            if rule_id in rules:
+                                existing = rules[rule_id]
                                 raise RuleLoadError(
                                     filename,
-                                    f"Duplicate rule ID '{mod.Rule.id}' - already defined in rule '{existing.description}'",
+                                    f"Duplicate rule ID '{rule_id}' - already defined in rule '{existing.description}'",
                                 )
-                            rules[mod.Rule.id] = mod.Rule
+                            rules[rule_id] = mod.Rule
                 except Exception as e:
                     raise RuleLoadError(filename, str(e)) from e
 
-        return rules
-
     @classmethod
-    def _load_rules(cls, rules_path: Path | list[Path]) -> dict[str, Any]:
+    def _load_rules(
+        cls, rules_path: Path | Sequence[Path], origin: str = "local", key: str = ""
+    ) -> dict[str, Any]:
         """Load validation rules from one or more directories."""
-        if isinstance(rules_path, list):
-            rules: dict[str, Any] = {}
-            for p in rules_path:
-                rules.update(cls._load_rules_from_dir(p))
-            return rules
-        return cls._load_rules_from_dir(rules_path)
+        if isinstance(rules_path, Path):
+            return cls._load_rules_from_dir(rules_path, origin, key)
+        rules: dict[str, Any] = {}
+        sources: dict[str, Path] = {}
+        for p in rules_path:
+            dir_rules = cls._load_rules_from_dir(p, origin, key)
+            for rule_id in dir_rules:
+                if rule_id in rules:
+                    raise RuleLoadError(
+                        str(p),
+                        f"Duplicate rule ID '{rule_id}' - already defined in rule "
+                        f"'{rules[rule_id].description}' from {sources[rule_id]}",
+                    )
+                sources[rule_id] = p
+            rules.update(dir_rules)
+        return rules
 
     def __init__(self, schema: Any | None, rules: Any | None = None):
         self.schema: Any | None = None
@@ -142,6 +223,12 @@ class Validator:
             self.schema = schema
             if isinstance(rules, dict):
                 self.rules = rules
+        self.layers: list[ValidationLayer] = []
+        self.schema_origin: ValidationLayer | None = None
+        self.rule_origins: dict[str, str] = {}
+        self.shadowed_rules: list[tuple[str, str, str]] = []
+        self.disabled_rules: list[DisabledRule] = []
+        self.unmatched_disables: list[DisableEntry] = []
         self.data: dict[str, Any] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
@@ -153,9 +240,9 @@ class Validator:
     ) -> "Validator":
         """Create validator by loading schema and rules from file system paths.
 
-        This is the primary way to create a Validator in production. It loads
-        the schema and rules from disk, validates their structure, and returns
-        a fully initialized Validator instance.
+        Only the given local paths are used: schema and rules packaged with an
+        installed module or a bundle, and ``overrides.yaml``, are not. Use
+        :meth:`from_project` to validate the way the CLI does.
 
         Args:
             schema_path: Path to schema.yaml file
@@ -172,6 +259,155 @@ class Validator:
         schema = cls._load_schema(schema_path)
         rules = cls._load_rules(rules_path)
         return cls(schema, rules)
+
+    @classmethod
+    def from_project(
+        cls,
+        project_dir: Path,
+        *,
+        schema: Path = DEFAULT_SCHEMA,
+        rules: Sequence[Path] = (DEFAULT_RULES,),
+        bundles: Sequence[Path] | None = None,
+        module_dir: Path | None = None,
+    ) -> "Validator":
+        """Create validator from all artifact layers of a project, like the CLI.
+
+        Combines the local schema and rules with those packaged in bundles and
+        an installed module, applying ``overrides.yaml``.
+
+        Args:
+            project_dir: Project directory (where ``.nac/`` and ``.terraform/`` live)
+            schema: Local schema file
+            rules: Local rules directories
+            bundles: Bundles to use instead of those found in ``.nac/``
+            module_dir: Module directory to use instead of the discovered one
+
+        Returns:
+            Initialized Validator instance
+
+        Raises:
+            SchemaNotFoundError: If a non-default local schema doesn't exist
+            SchemaConflictError: If several bundles provide a schema
+            RulesDirectoryNotFoundError: If a non-default local rules path doesn't exist
+            RuleLoadError: If a rule file has invalid structure
+            ArtifactError: If a bundle, the module or an overrides.yaml is invalid
+        """
+        layers = resolve_layers(
+            project_dir,
+            schema=schema,
+            rules=rules,
+            bundles=bundles,
+            module_dir=module_dir,
+        )
+        return cls.from_layers(layers)
+
+    @classmethod
+    def from_layers(cls, layers: Sequence[ValidationLayer]) -> "Validator":
+        """Create validator from artifact layers, highest priority first.
+
+        The schema comes from the highest layer providing one (schemas are not
+        merged). Rules are merged by ID, with higher layers shadowing lower ones.
+
+        Args:
+            layers: Resolved artifact layers, highest priority first
+
+        Returns:
+            Initialized Validator instance
+
+        Raises:
+            SchemaNotFoundError: If a non-default local schema doesn't exist
+            RulesDirectoryNotFoundError: If a non-default local rules path doesn't exist
+            RuleLoadError: If a rule file has invalid structure
+        """
+        schema_layers = [
+            (layer, layer.schema) for layer in layers if layer.schema is not None
+        ]
+        schema = None
+        if schema_layers:
+            top, top_schema = schema_layers[0]
+            peers = [(lay, s) for lay, s in schema_layers if lay.origin == top.origin]
+            if len(peers) > 1:
+                raise SchemaConflictError(
+                    "Several bundles provide a schema ("
+                    + ", ".join(f"{lay.tag}: {s}" for lay, s in peers)
+                    + "); schemas cannot be merged, keep one"
+                )
+            schema = cls._load_schema(top_schema)
+            # A local schema is often a stale copy; a bundle replacing the module's is by design
+            if top.origin == "local":
+                for lower, lower_schema in schema_layers[1:]:
+                    logger.warning(
+                        "Local schema (%s) shadows schema from %s layer (%s)",
+                        top_schema,
+                        lower.tag,
+                        lower_schema,
+                    )
+
+        # Layers with the same origin (several bundles) are peers of one tier
+        tiers: list[list[ValidationLayer]] = []
+        for layer in layers:
+            if tiers and tiers[-1][0].origin == layer.origin:
+                tiers[-1].append(layer)
+            else:
+                tiers.append([layer])
+
+        rules: dict[str, Any] = {}
+        origins: dict[str, str] = {}
+        shadowed: list[tuple[str, str, str]] = []
+        disabled: list[DisabledRule] = []
+        all_entries: dict[DisableEntry, None] = {}
+        for tier in reversed(tiers):
+            tier_rules: dict[str, Any] = {}
+            tier_origins: dict[str, str] = {}
+            for layer in tier:
+                layer_rules = cls._load_rules(layer.rules_dirs, layer.origin, layer.tag)
+                matcher = DisableMatcher(layer.disabled_rules)
+                all_entries.update(dict.fromkeys(layer.disabled_rules))
+                # Entries only remove rules of lower tiers; a peer's or a higher
+                # layer's rule with the same ID is never touched
+                for rule_id in list(layer_rules):
+                    entry = matcher.match(rule_id)
+                    if entry is not None:
+                        rule = layer_rules.pop(rule_id)
+                        disabled.append(
+                            DisabledRule(rule_id, rule.description, layer.tag, entry)
+                        )
+                        logger.info(
+                            "Rule %s from %s disabled by %s overrides",
+                            rule_id,
+                            layer.tag,
+                            entry.source,
+                        )
+                for rule_id, rule in layer_rules.items():
+                    if rule_id in tier_rules:
+                        raise RuleLoadError(
+                            layer.tag,
+                            f"Duplicate rule ID '{rule_id}' - also provided by "
+                            f"{tier_origins[rule_id]}",
+                        )
+                    tier_rules[rule_id] = rule
+                    tier_origins[rule_id] = layer.tag
+            for rule_id, tag in tier_origins.items():
+                if rule_id in origins:
+                    logger.info(
+                        "Rule %s from %s shadows rule from %s",
+                        rule_id,
+                        tag,
+                        origins[rule_id],
+                    )
+                    shadowed.append((rule_id, origins[rule_id], tag))
+                origins[rule_id] = tag
+            rules.update(tier_rules)
+
+        validator = cls(schema, rules)
+        validator.layers = list(layers)
+        validator.schema_origin = schema_layers[0][0] if schema_layers else None
+        validator.rule_origins = origins
+        validator.shadowed_rules = shadowed
+        validator.disabled_rules = disabled
+        used = {d.entry for d in disabled}
+        validator.unmatched_disables = [e for e in all_entries if e not in used]
+        return validator
 
     def load_data(self, data: dict[str, Any]) -> None:
         """Load a pre-parsed data model directly.

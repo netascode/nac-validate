@@ -26,7 +26,9 @@ trap cleanup EXIT INT TERM
 
 # Configuration
 EXPECTED_SPDX="# SPDX-License-Identifier: MPL-2.0"
-EXPECTED_COPYRIGHT="# Copyright (c) 2025 Daniel Schmidt"
+# Any year is accepted when checking; new headers use the current year
+COPYRIGHT_PATTERN='^# Copyright \(c\) [0-9]{4} Daniel Schmidt$'
+NEW_COPYRIGHT="# Copyright (c) $(date +%Y) Daniel Schmidt"
 
 # Colors for output
 RED='\033[0;31m'
@@ -108,7 +110,7 @@ check_headers() {
         line_copyright=$(sed -n '2p' "$file")
     fi
 
-    if [[ "$line_spdx" == "$EXPECTED_SPDX" ]] && [[ "$line_copyright" == "$EXPECTED_COPYRIGHT" ]]; then
+    if [[ "$line_spdx" == "$EXPECTED_SPDX" ]] && [[ "$line_copyright" =~ $COPYRIGHT_PATTERN ]]; then
         return 0  # Headers are correct
     else
         return 1  # Headers are missing or incorrect
@@ -125,13 +127,13 @@ add_headers() {
         # Preserve shebang, add headers after it
         echo "$first_line" > "$TEMP_FILE"
         echo "$EXPECTED_SPDX" >> "$TEMP_FILE"
-        echo "$EXPECTED_COPYRIGHT" >> "$TEMP_FILE"
+        echo "$NEW_COPYRIGHT" >> "$TEMP_FILE"
         echo "" >> "$TEMP_FILE"
         tail -n +2 "$file" >> "$TEMP_FILE"
     else
         # No shebang, add headers at the top
         echo "$EXPECTED_SPDX" > "$TEMP_FILE"
-        echo "$EXPECTED_COPYRIGHT" >> "$TEMP_FILE"
+        echo "$NEW_COPYRIGHT" >> "$TEMP_FILE"
         echo "" >> "$TEMP_FILE"
         cat "$file" >> "$TEMP_FILE"
     fi

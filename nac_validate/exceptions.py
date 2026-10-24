@@ -53,6 +53,12 @@ class SchemaNotFoundError(ValidationError):
     pass
 
 
+class SchemaConflictError(ValidationError):
+    """Raised when several bundles provide a schema."""
+
+    pass
+
+
 class RulesDirectoryNotFoundError(ValidationError):
     """Raised when rules directory is not found."""
 

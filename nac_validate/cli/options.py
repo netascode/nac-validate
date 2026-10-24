@@ -117,11 +117,51 @@ Version = Annotated[
 ]
 
 
+ListArtifacts = Annotated[
+    bool,
+    typer.Option(
+        "--list-artifacts",
+        help="List the effective schema, artifact layers and validation rules and exit.",
+    ),
+]
+
+
+# Kept for backward compatibility, behaves like --list-artifacts
 ListRules = Annotated[
     bool,
     typer.Option(
         "--list-rules",
-        help="List all available validation rules and exit.",
+        hidden=True,
+    ),
+]
+
+
+Bundle = Annotated[
+    list[Path] | None,
+    typer.Option(
+        "--bundle",
+        exists=False,
+        help=(
+            "Path to an artifact bundle (zip, tar.gz or directory), repeatable. "
+            "Defaults to the .zip, .tar.gz or .tgz files (and bundle/ directory) in .nac/."
+        ),
+        envvar="NAC_VALIDATE_BUNDLE",
+    ),
+]
+
+
+ModuleDir = Annotated[
+    Path | None,
+    typer.Option(
+        "--module-dir",
+        exists=False,
+        dir_okay=True,
+        file_okay=False,
+        help=(
+            "Path to a module directory containing nac/ artifacts. "
+            "Defaults to the module discovered via terraform init."
+        ),
+        envvar="NAC_VALIDATE_MODULE_DIR",
     ),
 ]
 

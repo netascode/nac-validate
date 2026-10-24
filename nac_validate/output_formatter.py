@@ -9,6 +9,7 @@ structured data from rules and renders it for different output formats.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -20,6 +21,7 @@ from .models import RuleBase, Violation, _is_violation_list
 
 if TYPE_CHECKING:
     from .exceptions import SyntaxErrorResult
+    from .validator import Validator
 
 
 class OutputFormatter:
@@ -387,11 +389,14 @@ def format_validation_summary(
     return "\n".join(lines)
 
 
-def format_rules_list(rules: dict[str, Any]) -> str:
+def format_rules_list(
+    rules: dict[str, Any], annotations: dict[str, str] | None = None
+) -> str:
     """Format a list of validation rules for display.
 
     Args:
         rules: Dict of rule_id -> Rule class mappings
+        annotations: Optional rule_id -> note appended after the rule line
 
     Returns:
         Formatted rules list string
@@ -416,9 +421,113 @@ def format_rules_list(rules: dict[str, Any]) -> str:
             f"  {Colors.BOLD}[{rule_id}]{Colors.RESET} "
             f"{rule.description} "
             f"{severity_color}({severity}){Colors.RESET}"
+            + (
+                f" {annotations[rule_id]}"
+                if annotations and rule_id in annotations
+                else ""
+            )
         )
 
     lines.append(f"\n{Colors.DIM}{'─' * SUMMARY_SEPARATOR_WIDTH}{Colors.RESET}")
     lines.append(f"{Colors.DIM}Total: {len(rules)} rules{Colors.RESET}\n")
 
     return "\n".join(lines)
+
+
+def format_artifacts_list(validator: Validator) -> str:
+    """Format the effective schema, artifact layers and rules for display.
+
+    Args:
+        validator: Validator created from artifact layers
+
+    Returns:
+        Formatted artifacts list string
+    """
+    lines = [
+        f"\n{Colors.CYAN}{Colors.BOLD}Artifact Layers (highest priority first):"
+        f"{Colors.RESET}"
+    ]
+    shown = [layer for layer in validator.layers if not layer.is_empty]
+    if not shown:
+        lines.append(f"  {Colors.YELLOW}None{Colors.RESET}")
+    for layer in shown:
+        lines.append(f"  {layer.detail} {_origin(layer.tag)}")
+
+    lines.append(f"\n{Colors.CYAN}{Colors.BOLD}Effective Schema:{Colors.RESET}")
+    schema_layer = validator.schema_origin
+    if schema_layer is None or schema_layer.schema is None:
+        lines.append(f"  {Colors.YELLOW}None (syntax validation skipped){Colors.RESET}")
+    else:
+        # Schemas are not merged: the top one shadows every lower one
+        shadowed = [
+            layer.tag
+            for layer in validator.layers
+            if layer.schema is not None and layer is not schema_layer
+        ]
+        lines.append(f"  {schema_layer.schema} {_origin(schema_layer.tag, shadowed)}")
+
+    priority = {layer.tag: i for i, layer in enumerate(validator.layers)}
+    shadows: dict[str, list[str]] = {}
+    for rule_id, shadowed_origin, _ in validator.shadowed_rules:
+        shadows.setdefault(rule_id, []).append(shadowed_origin)
+    annotations = {
+        rule_id: _origin(
+            origin,
+            sorted(
+                shadows.get(rule_id, []), key=lambda t: priority.get(t, len(priority))
+            ),
+        )
+        for rule_id, origin in validator.rule_origins.items()
+    }
+    lines.append(format_rules_list(validator.rules, annotations))
+    lines += _format_disabled(validator)
+    return "\n".join(lines)
+
+
+def _label(tag: str) -> str:
+    """Render a layer label; every label in the listing looks the same."""
+    return f"{Colors.MAGENTA}[{tag}]{Colors.RESET}"
+
+
+def _origin(tag: str, shadows: Sequence[str] = ()) -> str:
+    """Render ``[tag]`` plus the lower layers it shadows, highest priority first."""
+    text = _label(tag)
+    if shadows:
+        sep = f"{Colors.DIM},{Colors.RESET} "
+        text += f" {Colors.DIM}shadows{Colors.RESET} " + sep.join(
+            _label(s) for s in shadows
+        )
+    return text
+
+
+def _overrides(source: str) -> str:
+    """Render who an overrides.yaml entry came from: the project or a bundle label."""
+    if source == "project":
+        return f"{Colors.DIM}project overrides{Colors.RESET}"
+    return f"{_label(source)} {Colors.DIM}overrides{Colors.RESET}"
+
+
+def _format_disabled(validator: Validator) -> list[str]:
+    """Format rules disabled by overrides.yaml and entries that matched nothing."""
+    lines: list[str] = []
+    if validator.disabled_rules:
+        lines.append(f"{Colors.CYAN}{Colors.BOLD}Disabled Rules:{Colors.RESET}")
+        for disabled in sorted(validator.disabled_rules, key=lambda d: int(d.rule_id)):
+            lines.append(
+                f"  {Colors.BOLD}[{disabled.rule_id}]{Colors.RESET} "
+                f"{disabled.description} {_label(disabled.origin)} "
+                f"{Colors.DIM}disabled by{Colors.RESET} "
+                f"{_overrides(disabled.entry.source)}"
+            )
+        lines.append("")
+    if validator.unmatched_disables:
+        lines.append(
+            f"{Colors.CYAN}{Colors.BOLD}Overrides Matching No Rule:{Colors.RESET}"
+        )
+        lines += [
+            f"  {entry.pattern} {Colors.DIM}({Colors.RESET}"
+            f"{_overrides(entry.source)}{Colors.DIM}){Colors.RESET}"
+            for entry in validator.unmatched_disables
+        ]
+        lines.append("")
+    return lines

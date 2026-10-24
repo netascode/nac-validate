@@ -11,6 +11,10 @@ from pathlib import Path
 DEFAULT_SCHEMA = Path(".schema.yaml")
 DEFAULT_RULES = Path(".rules/")
 
+# Names of what nac-validate reads below a module's or bundle's nac/ directory
+ARTIFACTS_SCHEMA_FILENAME = "schema.yaml"
+ARTIFACTS_RULES_DIRNAME = "rules"
+
 # Output formatting widths
 HEADER_SEPARATOR_WIDTH = 80
 SUMMARY_SEPARATOR_WIDTH = 80
