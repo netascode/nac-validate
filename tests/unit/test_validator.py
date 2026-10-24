@@ -404,6 +404,21 @@ class TestFromLayersPriority:
         assert validator.rules["1"].description == "local one"
         assert validator.rules["3"].description == "module three"
 
+    def test_int_and_str_ids_are_the_same_rule(self, project: Path) -> None:
+        """Should let a local `id = "1"` shadow a module rule declaring `id = 1`."""
+        module_dir = install_module(project, schema=False)
+        (module_dir / "nac/rules").mkdir()
+        (module_dir / "nac/rules/r.py").write_text(
+            rule_source("1", "module").replace('"1"', "1")
+        )
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(rule_source("1", "local"))
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert {r: v.description for r, v in validator.rules.items()} == {"1": "local"}
+        assert validator.shadowed_rules == [("1", "module", "local")]
+
     def test_duplicate_ids_within_a_layer_still_raise(self, project: Path) -> None:
         """Should not silently merge duplicate rule IDs inside one layer."""
         module_dir = install_module(project, schema=False)
@@ -476,6 +491,21 @@ class TestDisabledRules:
             "module",
         )
         assert disabled.entry == DisableEntry("2", "project")
+
+    def test_rule_with_an_int_id_is_disabled(self, project: Path) -> None:
+        """Should match an entry against a rule declaring `id = 101` as an int."""
+        module_dir = install_module(project, schema=False)
+        (module_dir / "nac/rules").mkdir()
+        (module_dir / "nac/rules/r.py").write_text(
+            rule_source("101", "int id").replace('"101"', "101")
+        )
+        self.disable(project, "101")
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert validator.rules == {}
+        assert [d.rule_id for d in validator.disabled_rules] == ["101"]
+        assert validator.unmatched_disables == []
 
     def test_local_rule_with_the_same_id_survives(self, project: Path) -> None:
         """Should never disable local rules, so a copy can bring a rule back."""
@@ -715,3 +745,49 @@ class TestMultipleBundles:
             "1": "a",
             "2": "b",
         }
+
+    def test_bundle_names_differing_in_punctuation_do_not_collide(
+        self, project: Path, tmp_path: Path
+    ) -> None:
+        """Should register rules of `a-b` and `a_b` under distinct module names."""
+        a = make_zip(
+            tmp_path / "a.zip",
+            raw_bundle_files({"rules/check.py": rule_source("1", "a")}, name="a-b"),
+        )
+        b = make_zip(
+            tmp_path / "b.zip",
+            raw_bundle_files({"rules/check.py": rule_source("2", "b")}, name="a_b"),
+        )
+
+        validator = Validator.from_layers(resolve(project, bundles=[a, b]))
+
+        modules = {r: v.__module__ for r, v in validator.rules.items()}
+        assert modules["1"] != modules["2"]
+        assert sys.modules[modules["1"]].Rule is validator.rules["1"]
+        assert sys.modules[modules["2"]].Rule is validator.rules["2"]
+
+
+class TestFromProject:
+    """Validator.from_project resolves all layers like the CLI."""
+
+    def test_uses_module_rules_and_overrides(self, project: Path) -> None:
+        """Should pick up module artifacts and apply project overrides."""
+        install_module(project, rules={"1": "keep", "2": "drop"})
+        write_files(project / ".nac", {"overrides.yaml": overrides_yaml(rules=["2"])})
+
+        validator = Validator.from_project(project)
+
+        assert validator.schema is not None
+        assert set(validator.rules) == {"1"}
+        assert [d.rule_id for d in validator.disabled_rules] == ["2"]
+
+    def test_local_rules_win(self, project: Path) -> None:
+        """Should let local rules shadow module rules with the same ID."""
+        install_module(project, rules={"1": "module"})
+        (project / "custom").mkdir()
+        (project / "custom/r.py").write_text(rule_source("1", "local"))
+
+        validator = Validator.from_project(project, rules=[Path("custom")])
+
+        assert validator.rules["1"].description == "local"
+        assert validator.rule_origins == {"1": "local"}

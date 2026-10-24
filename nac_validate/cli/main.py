@@ -31,7 +31,6 @@ from ..exceptions import (
     SemanticValidationError,
     SyntaxValidationError,
 )
-from ..layers import resolve_layers
 from ..output_formatter import (
     format_artifacts_list,
 )
@@ -57,6 +56,15 @@ app = typer.Typer(add_completion=False)
 
 logger = logging.getLogger(__name__)
 
+# Problems with the schema, rules or artifacts, reported as configuration errors
+CONFIG_ERRORS = (
+    SchemaNotFoundError,
+    SchemaConflictError,
+    RulesDirectoryNotFoundError,
+    RuleLoadError,
+    ArtifactError,
+)
+
 
 def print_artifacts_list(
     schema: Path,
@@ -66,15 +74,14 @@ def print_artifacts_list(
 ) -> None:
     """Load and print the effective schema, layers and rules, then exit."""
     try:
-        layers = resolve_layers(
+        validator = nac_validate.validator.Validator.from_project(
             Path.cwd(),
             schema=schema,
             rules=rules_path,
             bundles=bundles,
             module_dir=module_dir,
         )
-        validator = nac_validate.validator.Validator.from_layers(layers)
-    except Exception as e:
+    except CONFIG_ERRORS as e:
         print(f"{Colors.YELLOW}Could not load rules or artifacts: {e}{Colors.RESET}")
         raise typer.Exit(ExitCode.CONFIG_ERROR) from None
 
@@ -148,26 +155,19 @@ def main(
     rich_output = format == OutputFormat.TEXT
 
     try:
-        layers = resolve_layers(
+        validator = nac_validate.validator.Validator.from_project(
             Path.cwd(),
             schema=schema,
             rules=rules,
             bundles=bundle,
             module_dir=module_dir,
         )
-        validator = nac_validate.validator.Validator.from_layers(layers)
         validator.validate_syntax(paths, not non_strict, rich_output)
         validator.validate_semantics(paths, rich_output, compact)
         if output:
             validator.write_output(paths, output)
 
-    except (
-        SchemaNotFoundError,
-        SchemaConflictError,
-        RulesDirectoryNotFoundError,
-        RuleLoadError,
-        ArtifactError,
-    ) as e:
+    except CONFIG_ERRORS as e:
         if format == OutputFormat.JSON:
             print(
                 json.dumps(
