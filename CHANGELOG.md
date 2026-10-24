@@ -1,6 +1,11 @@
 # Unreleased
 
 - Fix syntax validation failure for empty or comment-only YAML files
+- Discover schema and rules packaged with an installed Terraform module (`nac/schema.yaml`, `nac/rules/`, located via `terraform init`'s `modules.json`) and with a bundle dropped into the project (any `.zip`, `.tar.gz` or `.tgz` file in `.nac/`, or an extracted `.nac/bundle/`); local `-s`/`-r` and `.schema.yaml`/`.rules/` take priority over the bundle, which takes priority over the module (archives are extracted once into a git-ignored `.nac/cache/`)
+- Add `--bundle` (repeatable) and `--module-dir` CLI options (env `NAC_VALIDATE_BUNDLE`, `NAC_VALIDATE_MODULE_DIR`). Several bundles are peers of one priority tier and may split rules and the schema between them; a rule ID or schema provided by two bundles is an error, as are two bundles with the same manifest `name` (e.g. an old and a new version left in `.nac/`). Bundles in `.nac/` that provide nothing for nac-validate (e.g. only test templates) are skipped
+- Add `--list-artifacts` CLI option showing the effective schema, artifact layers and rules with their origin; `--list-rules` remains as an undocumented alias
+- Add `overrides.yaml` to disable rules of lower layers by rule ID (`disable: {rules: [...]}`): `.nac/overrides.yaml` in the project disables rules of a bundle and the module, a bundle's `overrides.yaml` disables rules of the module. Local rules are never affected. Entries are declarative: one that matches nothing is not an error, and `--list-artifacts` shows disabled rules and entries that matched no rule
+- Fix duplicate rule IDs across multiple `-r` directories going undetected; they now raise an error instead of the later directory silently replacing the earlier rule
 
 # 2.0.0
 

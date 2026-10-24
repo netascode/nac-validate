@@ -6,12 +6,19 @@ updates:
     directory: '/'
     schedule:
       interval: 'daily'
+    cooldown:
+      default-days: 3
 
-  - package-ecosystem: 'pip'
+  # Native uv support updates pyproject.toml and uv.lock in the same pull request
+  - package-ecosystem: 'uv'
     directory: '/'
     schedule:
       interval: 'daily'
-    # Note: lockfile-only removed because dependabot doesn't support uv.lock
-    # The workflow will auto-update uv.lock when pyproject.toml changes
     allow:
       - dependency-type: 'all'
+    cooldown:
+      default-days: 3
+      # Maintained by us, so new releases are picked up right away
+      exclude:
+        - 'nac-artifacts'
+        - 'nac-yaml'

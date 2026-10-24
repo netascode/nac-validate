@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from nac_artifacts import ArtifactError
 
 import nac_validate.validator
 
@@ -25,17 +26,22 @@ from ..constants import DEFAULT_RULES, DEFAULT_SCHEMA, Colors, ExitCode
 from ..exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
+    SchemaConflictError,
     SchemaNotFoundError,
     SemanticValidationError,
     SyntaxValidationError,
 )
+from ..layers import resolve_layers
 from ..output_formatter import (
-    format_rules_list,
+    format_artifacts_list,
 )
 from .options import (
+    Bundle,
     Compact,
     Format,
+    ListArtifacts,
     ListRules,
+    ModuleDir,
     NoColor,
     NonStrict,
     Output,
@@ -52,26 +58,27 @@ app = typer.Typer(add_completion=False)
 logger = logging.getLogger(__name__)
 
 
-def print_rules_list(rules_path: list[Path] | None) -> None:
-    """Load and print all available validation rules, then exit."""
-    if rules_path is None:
-        rules_path = [DEFAULT_RULES]
+def print_artifacts_list(
+    schema: Path,
+    rules_path: list[Path],
+    bundles: list[Path] | None,
+    module_dir: Path | None,
+) -> None:
+    """Load and print the effective schema, layers and rules, then exit."""
     try:
-        validator = nac_validate.validator.Validator.from_paths(
-            schema_path=DEFAULT_SCHEMA,
-            rules_path=rules_path,
+        layers = resolve_layers(
+            Path.cwd(),
+            schema=schema,
+            rules=rules_path,
+            bundles=bundles,
+            module_dir=module_dir,
         )
+        validator = nac_validate.validator.Validator.from_layers(layers)
     except Exception as e:
-        print(
-            f"{Colors.YELLOW}Could not load rules from {rules_path}: {e}{Colors.RESET}"
-        )
+        print(f"{Colors.YELLOW}Could not load rules or artifacts: {e}{Colors.RESET}")
         raise typer.Exit(ExitCode.CONFIG_ERROR) from None
 
-    if not validator.rules:
-        print(f"{Colors.YELLOW}No rules found in {rules_path}{Colors.RESET}")
-        raise typer.Exit(ExitCode.SUCCESS)
-
-    print(format_rules_list(validator.rules))
+    print(format_artifacts_list(validator))
     raise typer.Exit(ExitCode.SUCCESS)
 
 
@@ -105,7 +112,10 @@ def main(
     no_color: NoColor = False,
     compact: Compact = False,
     version: Version = False,
+    list_artifacts: ListArtifacts = False,
     list_rules: ListRules = False,
+    bundle: Bundle = None,
+    module_dir: ModuleDir = None,
 ) -> None:
     """A CLI tool to perform syntactic and semantic validation of YAML files."""
     if rules is None:
@@ -120,17 +130,17 @@ def main(
     else:
         configure_logging(verbosity)
 
-    # Handle --list-rules
-    if list_rules:
-        print_rules_list(rules)
-        # print_rules_list raises typer.Exit, but just in case:
+    # Handle --list-artifacts (and its hidden alias --list-rules)
+    if list_artifacts or list_rules:
+        print_artifacts_list(schema, rules, bundle, module_dir)
+        # print_artifacts_list raises typer.Exit, but just in case:
         raise typer.Exit(ExitCode.SUCCESS)
 
     # Require paths for validation
     if not paths:
         print(
             f"{Colors.RED}Error: Missing argument 'PATHS...'.{Colors.RESET}\n"
-            f"Use --help for usage information, or --list-rules to see available rules."
+            f"Use --help for usage information, or --list-artifacts to see the effective schema and rules."
         )
         raise typer.Exit(ExitCode.CONFIG_ERROR)
 
@@ -138,13 +148,26 @@ def main(
     rich_output = format == OutputFormat.TEXT
 
     try:
-        validator = nac_validate.validator.Validator.from_paths(schema, rules)
+        layers = resolve_layers(
+            Path.cwd(),
+            schema=schema,
+            rules=rules,
+            bundles=bundle,
+            module_dir=module_dir,
+        )
+        validator = nac_validate.validator.Validator.from_layers(layers)
         validator.validate_syntax(paths, not non_strict, rich_output)
         validator.validate_semantics(paths, rich_output, compact)
         if output:
             validator.write_output(paths, output)
 
-    except (SchemaNotFoundError, RulesDirectoryNotFoundError, RuleLoadError) as e:
+    except (
+        SchemaNotFoundError,
+        SchemaConflictError,
+        RulesDirectoryNotFoundError,
+        RuleLoadError,
+        ArtifactError,
+    ) as e:
         if format == OutputFormat.JSON:
             print(
                 json.dumps(
