@@ -157,7 +157,7 @@ All rules must subclass `RuleBase` and set at minimum `id` and `description`. Th
 
 | Attribute | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `id` | Yes | — | Unique rule identifier |
+| `id` | Yes | — | Unique rule identifier, a number such as `"101"` or `101` (other IDs log a warning) |
 | `description` | Yes | — | Short description of the rule |
 | `severity` | No | `"HIGH"` | Severity level (`HIGH`, `MEDIUM`, `LOW`) |
 | `title` | No | `""` | Header displayed in violation output |

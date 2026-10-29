@@ -512,6 +512,17 @@ class TestFormatRulesList:
         pos_100 = result.find("[100]")
         assert pos_50 < pos_100
 
+    def test_non_numeric_ids_sorted_after_numeric_ids(self) -> None:
+        """Should list numeric IDs numerically, then other IDs as text."""
+
+        class Rule:
+            description = "Rule"
+            severity = "HIGH"
+
+        result = format_rules_list({"abc": Rule, "10": Rule, "2": Rule})
+
+        assert 0 <= result.find("[2]") < result.find("[10]") < result.find("[abc]")
+
     def test_rules_show_severity_with_color(self) -> None:
         """Should show severity in parentheses."""
 

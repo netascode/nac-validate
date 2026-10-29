@@ -77,6 +77,31 @@ class _NoBytecodeLoader(importlib.machinery.SourceFileLoader):
         """Skip writing the bytecode cache file."""
 
 
+def _normalize_rule_id(rule_id: Any, filename: str) -> str:
+    """Return a rule ID as text: `id = 101` becomes "101", `id = "101"` is kept.
+
+    IDs are matched and printed as text, so an ID that is not an int or a
+    non-empty str cannot work. An ID that is not a number still works but is
+    listed after the numeric ones, so it is only warned about.
+    """
+    if (
+        isinstance(rule_id, bool)
+        or not isinstance(rule_id, (int, str))
+        or rule_id == ""
+    ):
+        raise ValueError(
+            f'Rule ID must be a number such as 101 or "101", got {rule_id!r}'
+        )
+    text = str(rule_id)
+    if not (text.isascii() and text.isdigit()):
+        logger.warning(
+            'Rule ID should be a number such as 101 or "101", got %r (%s)',
+            rule_id,
+            filename,
+        )
+    return text
+
+
 class Validator:
     @staticmethod
     def _load_schema(schema_path: Path) -> Any | None:
@@ -176,8 +201,11 @@ class Validator:
                                     f"Rule.match() must accept 1 or 2 parameters, got {param_count}",
                                 )
                             # IDs are matched as text (overrides, shadowing), so
-                            # `id = 101` and `id = "101"` are the same rule
-                            rule_id = str(mod.Rule.id)
+                            # `id = 101` and `id = "101"` are the same rule. The
+                            # class keeps the text form too, as validation results
+                            # and output read `Rule.id`
+                            rule_id = _normalize_rule_id(mod.Rule.id, filename)
+                            mod.Rule.id = rule_id
                             if rule_id in rules:
                                 existing = rules[rule_id]
                                 raise RuleLoadError(
