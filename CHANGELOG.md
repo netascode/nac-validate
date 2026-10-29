@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Drop support for Python 3.10 (end of life); Python 3.11 or later is now required
 - Update nac-yaml to 2.1.0: `!vault` values are now decrypted with the password from `ANSIBLE_VAULT_PASSWORD`
 - Fix syntax validation failure for empty or comment-only YAML files
 - Discover schema and rules packaged with an installed Terraform module (`nac/schema.yaml`, `nac/rules/`, located via `terraform init`'s `modules.json`) and with a bundle dropped into the project (any `.zip`, `.tar.gz` or `.tgz` file in `.nac/`, or an extracted `.nac/bundle/`); local `-s`/`-r` and `.schema.yaml`/`.rules/` take priority over the bundle, which takes priority over the module (archives are extracted once into a git-ignored `.nac/cache/`)

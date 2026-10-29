@@ -8,7 +8,7 @@ main CLI command. Keeping them separate from the command logic makes
 main.py a thin orchestration layer.
 """
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -17,7 +17,7 @@ import typer
 import nac_validate
 
 
-class VerbosityLevel(str, Enum):
+class VerbosityLevel(StrEnum):
     """Logging verbosity levels for CLI."""
 
     DEBUG = "DEBUG"
@@ -27,7 +27,7 @@ class VerbosityLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output format options for validation results."""
 
     TEXT = "text"

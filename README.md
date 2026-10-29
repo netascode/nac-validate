@@ -1,5 +1,5 @@
 [![Tests](https://github.com/netascode/nac-validate/actions/workflows/test.yml/badge.svg)](https://github.com/netascode/nac-validate/actions/workflows/test.yml)
-![Python Support](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-informational "Python Support: 3.10, 3.11, 3.12, 3.13, 3.14")
+![Python Support](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-informational "Python Support: 3.11, 3.12, 3.13, 3.14")
 
 # nac-validate
 
@@ -201,7 +201,7 @@ Output structure:
 
 ## Installation
 
-Python 3.10+ is required to install `nac-validate`. Don't have Python 3.10 or later? See [Python 3 Installation & Setup Guide](https://realpython.com/installing-python/).
+Python 3.11+ is required to install `nac-validate`. Don't have Python 3.11 or later? See [Python 3 Installation & Setup Guide](https://realpython.com/installing-python/).
 
 `nac-validate` can be installed in a virtual environment using `uv` or `pip`:
 
