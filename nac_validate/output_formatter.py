@@ -396,6 +396,14 @@ def format_validation_summary(
     return "\n".join(lines)
 
 
+def _rule_id_sort_key(rule_id: str) -> tuple[int, int, str]:
+    """Sort numeric rule IDs numerically, followed by any other IDs as text."""
+    text = str(rule_id)
+    if text.isascii() and text.isdigit():
+        return (0, int(text), text)
+    return (1, 0, text)
+
+
 def format_rules_list(
     rules: dict[str, Any], annotations: dict[str, str] | None = None
 ) -> str:
@@ -418,7 +426,7 @@ def format_rules_list(
     lines.append(f"{Colors.DIM}{'─' * SUMMARY_SEPARATOR_WIDTH}{Colors.RESET}\n")
 
     # Sort rules by ID
-    sorted_rules = sorted(rules.items(), key=lambda x: int(x[0]))
+    sorted_rules = sorted(rules.items(), key=lambda x: _rule_id_sort_key(x[0]))
 
     for rule_id, rule in sorted_rules:
         severity = getattr(rule, "severity", "HIGH")
@@ -519,7 +527,9 @@ def _format_disabled(validator: Validator) -> list[str]:
     lines: list[str] = []
     if validator.disabled_rules:
         lines.append(f"{Colors.CYAN}{Colors.BOLD}Disabled Rules:{Colors.RESET}")
-        for disabled in sorted(validator.disabled_rules, key=lambda d: int(d.rule_id)):
+        for disabled in sorted(
+            validator.disabled_rules, key=lambda d: _rule_id_sort_key(d.rule_id)
+        ):
             lines.append(
                 f"  {Colors.BOLD}[{disabled.rule_id}]{Colors.RESET} "
                 f"{disabled.description} {_label(disabled.origin)} "

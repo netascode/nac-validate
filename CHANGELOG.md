@@ -8,6 +8,7 @@
 - Add `overrides.yaml` to disable rules of lower layers by rule ID (`disable: {rules: [...]}`): `.nac/overrides.yaml` in the project disables rules of a bundle and the module, a bundle's `overrides.yaml` disables rules of the module. Local rules are never affected. Entries are declarative: one that matches nothing is not an error, and `--list-artifacts` shows disabled rules and entries that matched no rule
 - Add `Validator.from_project()` to build a validator from all artifact layers and overrides, as the CLI does; `Validator.from_paths()` keeps loading the given local paths only
 - Fix duplicate rule IDs across multiple `-r` directories going undetected; they now raise an error instead of the later directory silently replacing the earlier rule
+- Fix unexpected error when a rule declaring an integer ID (`id = 101`) reports a violation; rule IDs are now stored as text when rules are loaded. An ID that is not a number logs a warning and is listed after the numeric IDs instead of breaking `--list-artifacts`; an ID that is not an int or a non-empty string fails loading the rule
 
 ## 2.0.0
 

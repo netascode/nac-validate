@@ -165,6 +165,75 @@ class Rule:
         assert "Unexpected" in output["error"]
 
 
+class TestRuleIds:
+    """Test rules declaring an integer or a non-numeric ID."""
+
+    @staticmethod
+    def write_failing_rule(project: Path, rule_id: str) -> None:
+        """Write a local rule with the given `id` literal that always fails."""
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(
+            "from nac_validate import RuleBase\n"
+            "class Rule(RuleBase):\n"
+            f"    id = {rule_id}\n    description = 'always fails'\n"
+            "    severity = 'MEDIUM'\n"
+            "    @classmethod\n    def match(cls, data):\n        return ['boom']\n"
+        )
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: hello\n")
+
+    def test_int_id_violation_is_reported(self, project: Path) -> None:
+        """Should summarize a violation of a rule declaring `id = 412`."""
+        self.write_failing_rule(project, "412")
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert "1 MEDIUM severity violation (rules: 412)" in result.output
+
+    def test_int_id_is_text_in_json_output(self, project: Path) -> None:
+        """Should report a rule declaring `id = 412` with the rule_id "412"."""
+        self.write_failing_rule(project, "412")
+
+        result = runner.invoke(app, ["data", "--format", "json"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        (error,) = json.loads(result.output)["semantic_errors"]
+        assert error["rule_id"] == "412"
+
+    def test_non_numeric_id_validates_with_a_warning(self, project: Path) -> None:
+        """Should run a rule declaring `id = 'abc'` and warn about its ID."""
+        self.write_failing_rule(project, "'abc'")
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert "1 MEDIUM severity violation (rules: abc)" in result.output
+        assert (
+            'WARNING - Rule ID should be a number such as 101 or "101", '
+            "got 'abc' (r.py)" in result.output
+        )
+
+    @pytest.mark.parametrize("flag", ["--list-artifacts", "--list-rules"])
+    def test_non_numeric_id_is_listed(self, project: Path, flag: str) -> None:
+        """Should list a rule declaring `id = 'abc'` instead of failing on its ID."""
+        self.write_failing_rule(project, "'abc'")
+
+        result = runner.invoke(app, ["--no-color", flag])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "[abc] always fails (MEDIUM)" in result.output
+
+    def test_unusable_id_is_a_config_error(self, project: Path) -> None:
+        """Should name the rule file when its ID cannot work."""
+        self.write_failing_rule(project, "None")
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.CONFIG_ERROR
+        assert "r.py - Rule ID must be a number" in result.output
+
+
 class TestListArtifacts:
     """Test --list-artifacts functionality."""
 
@@ -352,6 +421,19 @@ class TestListArtifactsDisabled:
         assert "[2] drop me [module] disabled by project overrides" in result.output
         listed = result.output.split("Disabled Rules:")[0]
         assert "keep me" in listed and "drop me" not in listed
+
+    def test_disabled_rules_sort_numeric_ids_first(self, project: Path) -> None:
+        """Should list disabled numeric IDs numerically, then other IDs as text."""
+        install_module(project, rules={"abc": "a", "10": "ten", "2": "two"})
+        self.write_overrides(project, overrides_yaml(rules=["abc", "10", "2"]))
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        disabled = result.output.split("Disabled Rules:")[1]
+        assert (
+            0 <= disabled.find("[2]") < disabled.find("[10]") < disabled.find("[abc]")
+        )
 
     def test_shows_entries_matching_no_rule(self, project: Path) -> None:
         """Should report entries that matched nothing, without failing."""

@@ -271,6 +271,77 @@ class TestFromPaths:
         assert validator.layers == []
 
 
+class TestRuleIds:
+    """Tests for how rule IDs are checked and normalized when rules are loaded."""
+
+    @staticmethod
+    def load(project: Path, rule_id: str) -> Validator:
+        """Load a local rule whose `id` is the given Python literal."""
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(
+            rule_source("ID", "rule").replace('"ID"', rule_id)
+        )
+        return Validator.from_paths(DEFAULT_SCHEMA, DEFAULT_RULES)
+
+    def test_int_id_is_stored_as_text(
+        self, project: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Should key and label a rule declaring `id = 412` as "412"."""
+        validator = self.load(project, "412")
+
+        assert set(validator.rules) == {"412"}
+        assert validator.rules["412"].id == "412"
+        assert "Rule ID should be a number" not in caplog.text
+
+    def test_digit_string_id_is_unchanged(
+        self, project: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Should keep a rule declaring `id = "412"` as it is."""
+        validator = self.load(project, '"412"')
+
+        assert set(validator.rules) == {"412"}
+        assert validator.rules["412"].id == "412"
+        assert "Rule ID should be a number" not in caplog.text
+
+    @pytest.mark.parametrize(
+        ("rule_id", "text", "shown"),
+        [('"abc"', "abc", "'abc'"), ("-1", "-1", "-1")],
+    )
+    def test_non_numeric_id_is_kept_with_a_warning(
+        self,
+        project: Path,
+        caplog: pytest.LogCaptureFixture,
+        rule_id: str,
+        text: str,
+        shown: str,
+    ) -> None:
+        """Should load a rule whose ID is not a number, warning and naming the file."""
+        validator = self.load(project, rule_id)
+
+        assert set(validator.rules) == {text}
+        assert validator.rules[text].id == text
+        assert (
+            f'Rule ID should be a number such as 101 or "101", got {shown} (r.py)'
+            in caplog.text
+        )
+
+    @pytest.mark.parametrize("rule_id", ["None", '""', "True", "4.12", "[1]"])
+    def test_unusable_id_is_rejected(self, project: Path, rule_id: str) -> None:
+        """Should fail loading a rule whose ID is not an int or a non-empty str."""
+        with pytest.raises(RuleLoadError, match=r"r\.py - Rule ID must be a number"):
+            self.load(project, rule_id)
+
+    def test_missing_id_is_rejected(self, project: Path) -> None:
+        """Should fail loading a rule that declares no ID, naming the file."""
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(
+            rule_source("ID", "rule").replace('    id = "ID"\n', "")
+        )
+
+        with pytest.raises(RuleLoadError, match=r"r\.py - .*has no attribute 'id'"):
+            Validator.from_paths(DEFAULT_SCHEMA, DEFAULT_RULES)
+
+
 class TestFromLayersLocal:
     """Tests for from_layers() with only the local layer (existing behaviour)."""
 
