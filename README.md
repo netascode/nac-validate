@@ -33,13 +33,18 @@ Options:
                         [env: NAC_VALIDATE_COMPACT]
   --version             Display version number
   --list-artifacts      List the effective schema, artifact layers and validation rules and exit
+  --artifacts / --no-artifacts
+                        Experimental: also load schema and rules from bundles in nac/bundles/
+                        and the installed Terraform module, applying nac/overrides.yaml.
+                        Off by default (implied by --bundle and --module-dir); will become
+                        the default in a future version [env: NAC_VALIDATE_ARTIFACTS]
   --bundle PATH         Experimental: path to an artifact bundle (zip, tar.gz or directory),
-                        repeatable. Defaults to every .zip, .tar.gz or .tgz file and directory
-                        in nac/bundles/ [env: NAC_VALIDATE_BUNDLE]
+                        repeatable; implies --artifacts. Defaults to every .zip, .tar.gz or
+                        .tgz file and directory in nac/bundles/ [env: NAC_VALIDATE_BUNDLE]
   --module-dir DIRECTORY
-                        Experimental: path to a module directory containing nac/ artifacts.
-                        Defaults to the module discovered via terraform init
-                        [env: NAC_VALIDATE_MODULE_DIR]
+                        Experimental: path to a module directory containing nac/ artifacts;
+                        implies --artifacts. Defaults to the module discovered via
+                        terraform init [env: NAC_VALIDATE_MODULE_DIR]
   --help                Show this message and exit
 ```
 
@@ -62,7 +67,13 @@ Syntactic validation is done by basic YAML syntax validation (e.g., indentation)
 
 > **Note:** This feature is experimental and may change in future versions. It is not subject to semantic versioning guarantees.
 
-Besides the local `--schema` and `--rules` paths, schema and rules can come from two more places. They are layered, highest priority first:
+Besides the local `--schema` and `--rules` paths, schema and rules can come from two more places. Loading them is currently opt-in: enable it with `--artifacts` or `NAC_VALIDATE_ARTIFACTS=true` (passing `--bundle` or `--module-dir` enables it as well). It will become the default in a future version, after which `--no-artifacts` turns it off.
+
+```shell
+nac-validate --artifacts data/
+```
+
+The layers are, highest priority first:
 
 1. **Local**: `--schema`/`--rules`, or the `.schema.yaml` and `.rules/` defaults
 2. **Bundle**: every `.zip`, `.tar.gz` or `.tgz` archive and every directory in the project's `nac/bundles/` (or the paths given with `--bundle`), holding `manifest.yaml`, `schema.yaml` and `rules/` at its root

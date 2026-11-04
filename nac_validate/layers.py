@@ -124,10 +124,18 @@ def resolve_layers(
     rules: Sequence[Path],
     bundles: Sequence[Path] | None = None,
     module_dir: Path | None = None,
+    artifacts: bool = True,
 ) -> list[ValidationLayer]:
-    """Resolve all schema and rule layers, highest priority first."""
+    """Resolve all schema and rule layers, highest priority first.
+
+    With ``artifacts`` False only the local layer is returned: bundles, the
+    installed module and ``nac/overrides.yaml`` are not read.
+    """
     local = _local_layer(schema, rules)
     logger.info("Artifact layer [%s]: %s", local.origin, local.detail)
+    if not artifacts:
+        logger.info("Loading of bundles and modules is disabled")
+        return [local]
     try:
         artifact_layers = resolve_artifact_layers(
             project_dir,

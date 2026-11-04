@@ -297,6 +297,7 @@ class Validator:
         rules: Sequence[Path] = (DEFAULT_RULES,),
         bundles: Sequence[Path] | None = None,
         module_dir: Path | None = None,
+        artifacts: bool = True,
     ) -> "Validator":
         """Create validator from all artifact layers of a project, like the CLI.
 
@@ -313,6 +314,9 @@ class Validator:
             rules: Local rules directories
             bundles: Bundles to use instead of those found in ``nac/bundles/``
             module_dir: Module directory to use instead of the discovered one
+            artifacts: Whether to load bundles, the module and ``nac/overrides.yaml``
+                (on by default here, opt-in with ``--artifacts`` in the CLI);
+                with False only the local schema and rules are used
 
         Returns:
             Initialized Validator instance
@@ -330,6 +334,7 @@ class Validator:
             rules=rules,
             bundles=bundles,
             module_dir=module_dir,
+            artifacts=artifacts,
         )
         return cls.from_layers(layers)
 

@@ -35,6 +35,7 @@ from ..output_formatter import (
     format_artifacts_list,
 )
 from .options import (
+    Artifacts,
     Bundle,
     Compact,
     Format,
@@ -66,11 +67,31 @@ CONFIG_ERRORS = (
 )
 
 
+def artifacts_enabled(
+    artifacts: bool | None, bundles: list[Path] | None, module_dir: Path | None
+) -> bool:
+    """Whether to load bundles and modules: opt-in, implied by explicit paths.
+
+    Raises:
+        typer.Exit: If ``--no-artifacts`` is combined with ``--bundle`` or
+            ``--module-dir``.
+    """
+    explicit = bool(bundles) or module_dir is not None
+    if artifacts is False and explicit:
+        print(
+            f"{Colors.RED}Error: --bundle and --module-dir cannot be combined "
+            f"with --no-artifacts (or NAC_VALIDATE_ARTIFACTS=false).{Colors.RESET}"
+        )
+        raise typer.Exit(ExitCode.CONFIG_ERROR)
+    return bool(artifacts) or explicit
+
+
 def print_artifacts_list(
     schema: Path,
     rules_path: list[Path],
     bundles: list[Path] | None,
     module_dir: Path | None,
+    artifacts: bool,
 ) -> None:
     """Load and print the effective schema, layers and rules, then exit."""
     try:
@@ -80,12 +101,18 @@ def print_artifacts_list(
             rules=rules_path,
             bundles=bundles,
             module_dir=module_dir,
+            artifacts=artifacts,
         )
     except CONFIG_ERRORS as e:
         print(f"{Colors.YELLOW}Could not load rules or artifacts: {e}{Colors.RESET}")
         raise typer.Exit(ExitCode.CONFIG_ERROR) from None
 
     print(format_artifacts_list(validator))
+    if not artifacts:
+        print(
+            "\nBundles and modules are not loaded; use --artifacts to include them "
+            "(this will become the default in a future version)."
+        )
     raise typer.Exit(ExitCode.SUCCESS)
 
 
@@ -121,6 +148,7 @@ def main(
     version: Version = False,
     list_artifacts: ListArtifacts = False,
     list_rules: ListRules = False,
+    artifacts: Artifacts = None,
     bundle: Bundle = None,
     module_dir: ModuleDir = None,
 ) -> None:
@@ -137,9 +165,11 @@ def main(
     else:
         configure_logging(verbosity)
 
+    load_artifacts = artifacts_enabled(artifacts, bundle, module_dir)
+
     # Handle --list-artifacts (and its hidden alias --list-rules)
     if list_artifacts or list_rules:
-        print_artifacts_list(schema, rules, bundle, module_dir)
+        print_artifacts_list(schema, rules, bundle, module_dir, load_artifacts)
         # print_artifacts_list raises typer.Exit, but just in case:
         raise typer.Exit(ExitCode.SUCCESS)
 
@@ -161,6 +191,7 @@ def main(
             rules=rules,
             bundles=bundle,
             module_dir=module_dir,
+            artifacts=load_artifacts,
         )
         validator.validate_syntax(paths, not non_strict, rich_output)
         validator.validate_semantics(paths, rich_output, compact)

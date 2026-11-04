@@ -136,13 +136,29 @@ ListRules = Annotated[
 ]
 
 
+Artifacts = Annotated[
+    bool | None,
+    typer.Option(
+        "--artifacts/--no-artifacts",
+        help=(
+            "Experimental: also load schema and rules from bundles in nac/bundles/ "
+            "and the installed Terraform module, applying nac/overrides.yaml. "
+            "Off by default (implied by --bundle and --module-dir); will become "
+            "the default in a future version."
+        ),
+        envvar="NAC_VALIDATE_ARTIFACTS",
+        show_default=False,
+    ),
+]
+
+
 Bundle = Annotated[
     list[Path] | None,
     typer.Option(
         "--bundle",
         exists=False,
         help=(
-            "Experimental: path to an artifact bundle (zip, tar.gz or directory), repeatable. "
+            "Experimental: path to an artifact bundle (zip, tar.gz or directory), repeatable; implies --artifacts. "
             "Defaults to every .zip, .tar.gz or .tgz file and directory in nac/bundles/."
         ),
         envvar="NAC_VALIDATE_BUNDLE",
@@ -158,7 +174,7 @@ ModuleDir = Annotated[
         dir_okay=True,
         file_okay=False,
         help=(
-            "Experimental: path to a module directory containing nac/ artifacts. "
+            "Experimental: path to a module directory containing nac/ artifacts; implies --artifacts. "
             "Defaults to the module discovered via terraform init."
         ),
         envvar="NAC_VALIDATE_MODULE_DIR",

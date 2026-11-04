@@ -19,4 +19,10 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     project_dir.mkdir()
     monkeypatch.chdir(project_dir)
     monkeypatch.delenv("TF_DATA_DIR", raising=False)
+    for var in (
+        "NAC_VALIDATE_ARTIFACTS",
+        "NAC_VALIDATE_BUNDLE",
+        "NAC_VALIDATE_MODULE_DIR",
+    ):
+        monkeypatch.delenv(var, raising=False)
     return project_dir

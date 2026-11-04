@@ -242,7 +242,7 @@ class TestListArtifacts:
         """Should list the module layer, effective schema and its rules."""
         install_module(project, version="1.2.3", rules={"1": "module rule"})
 
-        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "module 'm' 1.2.3 at" in result.output
@@ -305,7 +305,7 @@ class TestListArtifacts:
         monkeypatch.setattr(_ColorsMeta, "_enabled", True)
         monkeypatch.delenv("NO_COLOR", raising=False)
 
-        result = runner.invoke(app, ["--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--list-artifacts"])
 
         label = "\x1b[95m[module]\x1b[0m"
         assert result.output.count(label) == 3  # layer, schema, rule
@@ -319,6 +319,102 @@ class TestListArtifacts:
         assert "Could not load rules" in result.output
 
 
+class TestArtifactsOptIn:
+    """Bundles and modules are only loaded with --artifacts (for now)."""
+
+    @staticmethod
+    def setup_project(project: Path) -> None:
+        install_module(project, rules={"1": "module rule"})
+        write_files(
+            project / "nac/bundles/acme",
+            raw_bundle_files(
+                artifact_files(schema=False, rules={"2": "bundle rule"}), name="acme"
+            ),
+        )
+        (project / "nac/overrides.yaml").write_text("- not valid\n")
+
+    def test_off_by_default(self, project: Path) -> None:
+        """Should ignore the module, bundles and overrides and hint at --artifacts."""
+        self.setup_project(project)
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "module rule" not in result.output
+        assert "bundle rule" not in result.output
+        assert "use --artifacts to include them" in result.output
+
+    def test_validation_ignores_layers_by_default(self, project: Path) -> None:
+        """Should validate with local paths only, as before."""
+        self.setup_project(project)
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: 1\n")
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+
+    def test_flag_enables_loading(self, project: Path) -> None:
+        """Should load the module and bundles with --artifacts."""
+        install_module(project, rules={"1": "module rule"})
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts", "--artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "module rule" in result.output
+        assert "use --artifacts" not in result.output
+
+    @pytest.mark.parametrize("value", ["true", "1", "yes"])
+    def test_env_var_enables_loading(
+        self, project: Path, monkeypatch: pytest.MonkeyPatch, value: str
+    ) -> None:
+        """Should read the opt-in from NAC_VALIDATE_ARTIFACTS."""
+        install_module(project, rules={"1": "module rule"})
+        monkeypatch.setenv("NAC_VALIDATE_ARTIFACTS", value)
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "module rule" in result.output
+
+    def test_no_artifacts_overrides_env_var(
+        self, project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Should let --no-artifacts win over NAC_VALIDATE_ARTIFACTS=true."""
+        install_module(project, rules={"1": "module rule"})
+        monkeypatch.setenv("NAC_VALIDATE_ARTIFACTS", "true")
+
+        result = runner.invoke(
+            app, ["--no-color", "--list-artifacts", "--no-artifacts"]
+        )
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "module rule" not in result.output
+
+    def test_bundle_implies_artifacts(self, project: Path, tmp_path: Path) -> None:
+        """Should load an explicit --bundle without --artifacts."""
+        archive = make_zip(tmp_path / "b.zip", bundle_files())
+
+        result = runner.invoke(
+            app, ["--no-color", "--list-artifacts", "--bundle", str(archive)]
+        )
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "bundle rule" in result.output
+
+    @pytest.mark.parametrize("args", [["--bundle", "b.zip"], ["--module-dir", "mod"]])
+    def test_explicit_paths_conflict_with_no_artifacts(
+        self, project: Path, args: list[str]
+    ) -> None:
+        """Should refuse --bundle or --module-dir together with --no-artifacts."""
+        result = runner.invoke(
+            app, ["--no-color", "--list-artifacts", "--no-artifacts", *args]
+        )
+
+        assert result.exit_code == ExitCode.CONFIG_ERROR
+        assert "cannot be combined with --no-artifacts" in result.output
+
+
 class TestPackagedArtifacts:
     """Test validation using module and bundle artifacts."""
 
@@ -330,9 +426,9 @@ class TestPackagedArtifacts:
         data_dir.mkdir()
         (data_dir / "a.yaml").write_text("name: 5\n")
 
-        invalid = runner.invoke(app, ["--no-color", "data"])
+        invalid = runner.invoke(app, ["--artifacts", "--no-color", "data"])
         (data_dir / "a.yaml").write_text("name: hello\n")
-        valid = runner.invoke(app, ["--no-color", "data"])
+        valid = runner.invoke(app, ["--artifacts", "--no-color", "data"])
 
         assert invalid.exit_code == ExitCode.SYNTAX_ERROR
         assert valid.exit_code == ExitCode.SUCCESS
@@ -397,7 +493,7 @@ class TestPackagedArtifacts:
         (project / "data").mkdir()
         (project / "data/a.yaml").write_text("a: 1\n")
 
-        result = runner.invoke(app, ["data"])
+        result = runner.invoke(app, ["--artifacts", "data"])
 
         assert result.exit_code == ExitCode.CONFIG_ERROR
 
@@ -415,7 +511,7 @@ class TestListArtifactsDisabled:
         install_module(project, rules={"1": "keep me", "2": "drop me"})
         self.write_overrides(project, overrides_yaml(rules=["2"]))
 
-        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "Disabled Rules:" in result.output
@@ -428,7 +524,7 @@ class TestListArtifactsDisabled:
         install_module(project, rules={"abc": "a", "10": "ten", "2": "two"})
         self.write_overrides(project, overrides_yaml(rules=["abc", "10", "2"]))
 
-        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
 
         assert result.exit_code == ExitCode.SUCCESS
         disabled = result.output.split("Disabled Rules:")[1]
@@ -441,7 +537,7 @@ class TestListArtifactsDisabled:
         install_module(project, rules={"1": "one"})
         self.write_overrides(project, overrides_yaml(rules=["999"]))
 
-        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "Overrides Matching No Rule:" in result.output
@@ -470,9 +566,9 @@ class TestListArtifactsDisabled:
         (project / "data").mkdir()
         (project / "data/a.yaml").write_text("a: hello\n")
 
-        failing = runner.invoke(app, ["--no-color", "data"])
+        failing = runner.invoke(app, ["--artifacts", "--no-color", "data"])
         self.write_overrides(project, overrides_yaml(rules=["1"]))
-        passing = runner.invoke(app, ["--no-color", "data"])
+        passing = runner.invoke(app, ["--artifacts", "--no-color", "data"])
 
         assert failing.exit_code == ExitCode.SEMANTIC_ERROR
         assert passing.exit_code == ExitCode.SUCCESS
@@ -484,7 +580,7 @@ class TestListArtifactsDisabled:
         (project / "data").mkdir()
         (project / "data/a.yaml").write_text("a: 1\n")
 
-        result = runner.invoke(app, ["data"])
+        result = runner.invoke(app, ["--artifacts", "data"])
 
         assert result.exit_code == ExitCode.CONFIG_ERROR
         assert "Unknown key" in result.output
@@ -547,7 +643,7 @@ class TestCliMultipleBundles:
                 ),
             )
 
-        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "rule 1" in result.output and "rule 2" in result.output
@@ -561,7 +657,7 @@ class TestCliMultipleBundles:
             ),
         )
 
-        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "dir rule" in result.output and "[bundle acme]" in result.output
@@ -595,7 +691,7 @@ class TestCliMultipleBundles:
         (project / "data").mkdir()
         (project / "data/a.yaml").write_text("a: 1\n")
 
-        result = runner.invoke(app, ["data"])
+        result = runner.invoke(app, ["--artifacts", "data"])
 
         assert result.exit_code == ExitCode.CONFIG_ERROR
         assert "'acme' is present 2 times" in result.output
@@ -610,6 +706,6 @@ class TestCliMultipleBundles:
         (project / "data").mkdir()
         (project / "data/a.yaml").write_text("a: 1\n")
 
-        result = runner.invoke(app, ["data"])
+        result = runner.invoke(app, ["--artifacts", "data"])
 
         assert result.exit_code == ExitCode.SUCCESS

@@ -852,6 +852,21 @@ class TestFromProject:
         assert set(validator.rules) == {"1"}
         assert [d.rule_id for d in validator.disabled_rules] == ["2"]
 
+    def test_artifacts_false_uses_local_layer_only(self, project: Path) -> None:
+        """Should ignore the module, bundles and overrides with artifacts=False."""
+        install_module(project, rules={"1": "module"})
+        write_files(project / "nac", {"overrides.yaml": "- not valid\n"})
+        (project / "custom").mkdir()
+        (project / "custom/r.py").write_text(rule_source("2", "local"))
+
+        validator = Validator.from_project(
+            project, rules=[Path("custom")], artifacts=False
+        )
+
+        assert validator.schema is None
+        assert validator.rule_origins == {"2": "local"}
+        assert [layer.origin for layer in validator.layers] == ["local"]
+
     def test_local_rules_win(self, project: Path) -> None:
         """Should let local rules shadow module rules with the same ID."""
         install_module(project, rules={"1": "module"})
