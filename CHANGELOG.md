@@ -1,4 +1,4 @@
-## Unreleased
+## 2.1.0
 
 - Add `primary_key` schema option for lists (`list(include('item'), primary_key='name')`): every item must set the key and its value must be unique within the list, checked per file and on the merged data. A composite key names several comma-separated fields (`primary_key='node_id,name'`), whose combination must be unique
 - Fail loading a schema with an invalid schema option (e.g. `primary_key` on a `str()`), and log a warning for unknown keywords of schema validators, like a misspelled option
