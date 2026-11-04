@@ -83,6 +83,12 @@ vrf:
   name: str()
 ```
 
+A composite key names several comma-separated fields, whose combination must be unique, so the same interface name can be used on different nodes:
+
+```yaml
+interfaces: list(include('interface'), primary_key='node_id,name')
+```
+
 Values of different types are distinct (`1` and `"1"` do not collide). Primary keys are checked in every file and, once every file passed, on the data merged from all files: items with the same key are only merged when all their shared fields match, so the same key used with conflicting values in two files remains a duplicate.
 
 ## Packaged Schema and Rules (Experimental)

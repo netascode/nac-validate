@@ -192,6 +192,23 @@ def test_validate_primary_key_conflict() -> None:
     assert "Duplicate primary key name=ABC across files" in result.output
 
 
+def test_validate_composite_primary_key_conflict() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_composite_key_conflict/"
+    schema_path = "tests/integration/fixtures/schema_composite_key/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
+    assert "Duplicate primary key node=101, name=eth1 across files" in result.output
+    assert "node=102" not in result.output
+
+
 def test_validate_invalid_schema_extension() -> None:
     runner = CliRunner()
     input_path = "tests/integration/fixtures/data/"

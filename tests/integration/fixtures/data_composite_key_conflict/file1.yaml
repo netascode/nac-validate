@@ -1,0 +1,9 @@
+---
+root:
+  interfaces:
+    - node: 101
+      name: eth1
+      description: uplink
+    - node: 102
+      name: eth1
+      description: uplink

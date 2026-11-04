@@ -1,0 +1,6 @@
+---
+root:
+  interfaces:
+    - node: 101
+      name: eth1
+      description: server

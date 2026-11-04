@@ -109,6 +109,51 @@ class TestPrimaryKey:
         assert errors({"items": [{"name": "a"}, {"name": "a"}]}, schema) == []
 
 
+class TestCompositePrimaryKey:
+    """Tests for primary_key naming several comma-separated fields."""
+
+    SCHEMA = "items: list(map(), primary_key='node, name')"
+
+    def test_combination_must_be_unique(self) -> None:
+        data = {
+            "items": [
+                {"node": 1, "name": "a"},
+                {"node": 2, "name": "a"},
+                {"node": 1, "name": "b"},
+                {"node": 1, "name": "a", "x": 1},
+            ]
+        }
+        assert errors(data, self.SCHEMA) == [
+            "items: Duplicate primary key node=1, name=a in items 0, 3"
+        ]
+
+    def test_each_missing_field_is_reported(self) -> None:
+        data = {"items": [{"node": 1, "name": "a"}, {"x": 1}, {"node": 1}]}
+        assert errors(data, self.SCHEMA) == [
+            "items: Primary key 'node' missing in item 1",
+            "items: Primary key 'name' missing in item 1",
+            "items: Primary key 'name' missing in item 2",
+        ]
+
+    def test_items_missing_a_field_are_not_duplicates(self) -> None:
+        data = {"items": [{"node": 1}, {"node": 1}]}
+        assert errors(data, self.SCHEMA) == [
+            "items: Primary key 'name' missing in item 0",
+            "items: Primary key 'name' missing in item 1",
+        ]
+
+    def test_values_of_different_types_are_distinct(self) -> None:
+        data = {"items": [{"node": 1, "name": "a"}, {"node": "1", "name": "a"}]}
+        assert errors(data, self.SCHEMA) == []
+
+    def test_duplicate_in_merged_data(self) -> None:
+        data = {"items": [{"node": 1, "name": "a", "x": 1}] * 2}
+        assert errors(data, self.SCHEMA, Scope.DOCUMENT) == [
+            "items: Duplicate primary key node=1, name=a across files"
+            " (with conflicting values that prevent merging)"
+        ]
+
+
 class TestVanillaYamale:
     """Schemas using extensions stay valid for vanilla Yamale."""
 
@@ -270,11 +315,19 @@ class TestCheckSchema:
         with pytest.raises(SchemaError, match=r"a: primary_key is only .* list\(\)"):
             check_schema(yamale.make_schema(content="a: str(primary_key='name')"))
 
-    @pytest.mark.parametrize("value", ["''", "1"])
+    @pytest.mark.parametrize(
+        "value", ["''", "1", "' '", "'a,,b'", "'a,'", "'a, a'", "True"]
+    )
     def test_invalid_primary_key_fails(self, value: str) -> None:
         schema = f"a: list(map(), primary_key={value})"
-        with pytest.raises(SchemaError, match="primary_key must be a field name"):
+        with pytest.raises(
+            SchemaError, match="a: primary_key must be comma-separated field names"
+        ):
             check_schema(yamale.make_schema(content=schema))
+
+    @pytest.mark.parametrize("value", ["'name'", "'node,name'", "' node , name '"])
+    def test_valid_primary_key_passes(self, value: str) -> None:
+        check_schema(yamale.make_schema(content=f"a: list(map(), primary_key={value})"))
 
     def test_yamale_keyword_does_not_configure_an_extension(self) -> None:
         class Key(Extension):
