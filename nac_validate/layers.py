@@ -6,7 +6,7 @@
 Schema and rules come from up to three layers, highest priority first:
 
 1. local:  explicit ``-s``/``-r`` options and the ``.schema.yaml`` / ``.rules/`` defaults
-2. bundles: archives or directories dropped into the project (``.nac/``); several
+2. bundles: archives or directories dropped into the project (``nac/bundles/``); several
    bundles are peers that may split artifacts but must not overlap
 3. module: the ``nac/`` directory embedded in an installed Terraform module
 
@@ -54,7 +54,7 @@ class ValidationLayer:
         version: Module version or bundle manifest version, if known.
         detail: Human-readable description of where the layer came from.
         disabled_rules: Entries (rule IDs) that disable rules of this layer, from
-            ``.nac/overrides.yaml`` and from bundles above it.
+            ``nac/overrides.yaml`` and from bundles above it.
         label: Name for messages, e.g. ``bundle acme-base`` (defaults to the origin).
     """
 

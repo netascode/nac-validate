@@ -304,10 +304,10 @@ class Validator:
         an installed module, applying ``overrides.yaml``.
 
         Args:
-            project_dir: Project directory (where ``.nac/`` and ``.terraform/`` live)
+            project_dir: Project directory (where ``nac/`` and ``.terraform/`` live)
             schema: Local schema file
             rules: Local rules directories
-            bundles: Bundles to use instead of those found in ``.nac/``
+            bundles: Bundles to use instead of those found in ``nac/bundles/``
             module_dir: Module directory to use instead of the discovered one
 
         Returns:

@@ -143,7 +143,7 @@ Bundle = Annotated[
         exists=False,
         help=(
             "Path to an artifact bundle (zip, tar.gz or directory), repeatable. "
-            "Defaults to the .zip, .tar.gz or .tgz files (and bundle/ directory) in .nac/."
+            "Defaults to every .zip, .tar.gz or .tgz file and directory in nac/bundles/."
         ),
         envvar="NAC_VALIDATE_BUNDLE",
     ),

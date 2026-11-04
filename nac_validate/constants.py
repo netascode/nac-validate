@@ -11,7 +11,7 @@ from pathlib import Path
 DEFAULT_SCHEMA = Path(".schema.yaml")
 DEFAULT_RULES = Path(".rules/")
 
-# Names of what nac-validate reads below a module's or bundle's nac/ directory
+# Names of what nac-validate reads in a module's nac/ directory or at a bundle's root
 ARTIFACTS_SCHEMA_FILENAME = "schema.yaml"
 ARTIFACTS_RULES_DIRNAME = "rules"
 

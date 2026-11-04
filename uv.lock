@@ -541,15 +541,15 @@ wheels = [
 
 [[package]]
 name = "nac-artifacts"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
     { name = "ruamel-yaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/1b/971498e079007d11c9e3aa296e50b0c4de37d71ec570f538b7bfc0ab6b31/nac_artifacts-0.1.0.tar.gz", hash = "sha256:ccf843a36d878fcc4088e9bf30ffdc63a6c4fe9b24f1354dff4c48236873b9bb", size = 44560, upload-time = "2026-10-16T11:04:43.293Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/54/7aea8d05ca6df7776e61e34c27c387f9322fbc8a658a6f9c32b7ef33c2ab/nac_artifacts-0.2.0.tar.gz", hash = "sha256:3676f05a7cd1da7c724ae050236928e981d4b3babb5abde9cc5dd9bd66b6d568", size = 46193, upload-time = "2026-11-03T19:54:47.095Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/7e/4e6db179b68ae185b7611e7863e8cb8cd7529091e119c91233ef57f8c84d/nac_artifacts-0.1.0-py3-none-any.whl", hash = "sha256:ff56ca318e118683992f393c211aaf55369d056245c147440882ff00832134a1", size = 29050, upload-time = "2026-10-16T11:04:42.43Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/ac/fb28fec9d1a9bf900187f46811626da4e600cd52e63b47a59189230a3a5c/nac_artifacts-0.2.0-py3-none-any.whl", hash = "sha256:8b8617a7e3af9d3a26e8e49705706adecd5a16d0da2b91ca54fb9d085701279c", size = 30130, upload-time = "2026-11-03T19:54:46.18Z" },
 ]
 
 [[package]]
@@ -584,7 +584,7 @@ requires-dist = [
     { name = "ansible-core", marker = "python_full_version < '3.12' and sys_platform != 'win32' and extra == 'dev'", specifier = ">=2.17.6" },
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.9.4" },
     { name = "jmespath", specifier = ">=1.1.0" },
-    { name = "nac-artifacts", specifier = ">=0.1.0" },
+    { name = "nac-artifacts", specifier = ">=0.2.0" },
     { name = "nac-yaml", specifier = ">=2.1.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.6.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },

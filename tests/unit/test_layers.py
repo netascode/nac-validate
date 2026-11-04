@@ -175,17 +175,17 @@ class TestDisabledRules:
     def test_local_layer_has_no_disabled_rules(self, project: Path) -> None:
         """Should never disable anything in the local layer."""
         install_module(project)
-        write_files(project / ".nac", {"overrides.yaml": overrides_yaml(rules=["1"])})
+        write_files(project / "nac", {"overrides.yaml": overrides_yaml(rules=["1"])})
 
         assert resolve(project)[0].disabled_rules == ()
 
     def test_project_entries_reach_bundle_and_module(
         self, project: Path, tmp_path: Path
     ) -> None:
-        """Should apply .nac/overrides.yaml to every packaged layer."""
+        """Should apply nac/overrides.yaml to every packaged layer."""
         install_module(project)
         archive = make_zip(tmp_path / "b.zip", bundle_files())
-        write_files(project / ".nac", {"overrides.yaml": overrides_yaml(rules=["102"])})
+        write_files(project / "nac", {"overrides.yaml": overrides_yaml(rules=["102"])})
 
         _, bundle, module = resolve(project, bundle=archive)
 
@@ -213,7 +213,7 @@ class TestDisabledRules:
         """Should ignore template entries, which only nac-test uses."""
         install_module(project)
         write_files(
-            project / ".nac", {"overrides.yaml": overrides_yaml(templates=["a.robot"])}
+            project / "nac", {"overrides.yaml": overrides_yaml(templates=["a.robot"])}
         )
 
         assert resolve(project)[1].disabled_rules == ()
@@ -221,7 +221,7 @@ class TestDisabledRules:
     def test_malformed_project_overrides_raise(self, project: Path) -> None:
         """Should fail instead of ignoring a broken overrides file."""
         install_module(project)
-        write_files(project / ".nac", {"overrides.yaml": "- x\n"})
+        write_files(project / "nac", {"overrides.yaml": "- x\n"})
 
         with pytest.raises(OverridesError, match="must be a mapping"):
             resolve(project)

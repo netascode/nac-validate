@@ -396,7 +396,7 @@ class TestFromLayersPriority:
         (project / ".schema.yaml").write_text("local: str()\n")
         archive = make_zip(
             tmp_path / "b.zip",
-            bundle_files(extra={"nac/rules/1.py": rule_source("1", "bundle one")}),
+            bundle_files(extra={"rules/1.py": rule_source("1", "bundle one")}),
         )
         install_module(
             project, rules={"1": "module one", "2": "module two", "3": "module three"}
@@ -545,7 +545,7 @@ class TestDisabledRules:
 
     @staticmethod
     def disable(project: Path, *rules: str) -> None:
-        write_files(project / ".nac", {"overrides.yaml": overrides_yaml(rules=rules)})
+        write_files(project / "nac", {"overrides.yaml": overrides_yaml(rules=rules)})
 
     def test_rule_is_removed_and_recorded(self, project: Path) -> None:
         """Should not validate with a disabled module rule, and say why."""
@@ -844,7 +844,7 @@ class TestFromProject:
     def test_uses_module_rules_and_overrides(self, project: Path) -> None:
         """Should pick up module artifacts and apply project overrides."""
         install_module(project, rules={"1": "keep", "2": "drop"})
-        write_files(project / ".nac", {"overrides.yaml": overrides_yaml(rules=["2"])})
+        write_files(project / "nac", {"overrides.yaml": overrides_yaml(rules=["2"])})
 
         validator = Validator.from_project(project)
 

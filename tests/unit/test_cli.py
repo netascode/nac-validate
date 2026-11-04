@@ -23,6 +23,7 @@ from tests.unit.helpers import (
     module_entry,
     rule_source,
     write_artifacts,
+    write_files,
     write_modules_json,
 )
 
@@ -406,8 +407,8 @@ class TestListArtifactsDisabled:
 
     @staticmethod
     def write_overrides(project: Path, text: str) -> None:
-        (project / ".nac").mkdir(exist_ok=True)
-        (project / ".nac" / "overrides.yaml").write_text(text)
+        (project / "nac").mkdir(exist_ok=True)
+        (project / "nac" / "overrides.yaml").write_text(text)
 
     def test_shows_disabled_rules_with_origin_and_source(self, project: Path) -> None:
         """Should list each disabled rule, its layer and who disabled it."""
@@ -490,7 +491,7 @@ class TestListArtifactsDisabled:
 
 
 class TestCliMultipleBundles:
-    """--bundle is repeatable and bundles in .nac/ are all used."""
+    """--bundle is repeatable and bundles in nac/bundles/ are all used."""
 
     @staticmethod
     def bundle(tmp_path: Path, name: str, **kwargs: Any) -> Path:
@@ -536,11 +537,11 @@ class TestCliMultipleBundles:
         assert ".schema.yaml [local] shadows [module]" in result.output
 
     def test_all_bundles_in_nac_are_used(self, project: Path, tmp_path: Path) -> None:
-        """Should use every archive dropped into .nac/."""
-        (project / ".nac").mkdir()
+        """Should use every archive dropped into nac/bundles/."""
+        (project / "nac/bundles").mkdir(parents=True)
         for name, rid in (("one", "1"), ("two", "2")):
             make_zip(
-                project / ".nac" / f"{name}.zip",
+                project / "nac/bundles" / f"{name}.zip",
                 raw_bundle_files(
                     artifact_files(schema=False, rules={rid: f"rule {rid}"}), name=name
                 ),
@@ -550,6 +551,20 @@ class TestCliMultipleBundles:
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "rule 1" in result.output and "rule 2" in result.output
+
+    def test_bundle_directory_in_nac_bundles_is_used(self, project: Path) -> None:
+        """Should use an extracted bundle directory with its artifacts at its root."""
+        write_files(
+            project / "nac/bundles/acme",
+            raw_bundle_files(
+                artifact_files(schema=False, rules={"3": "dir rule"}), name="acme"
+            ),
+        )
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "dir rule" in result.output and "[bundle acme]" in result.output
 
     def test_overlapping_rules_are_a_config_error(
         self, project: Path, tmp_path: Path
@@ -566,11 +581,11 @@ class TestCliMultipleBundles:
         assert "Duplicate rule ID '1'" in result.output
 
     def test_same_bundle_name_twice_is_a_config_error(self, project: Path) -> None:
-        """Should refuse an old and a new version of one bundle left in .nac/."""
-        (project / ".nac").mkdir()
+        """Should refuse an old and a new version of one bundle left in nac/bundles/."""
+        (project / "nac/bundles").mkdir(parents=True)
         for version in ("1.0.0", "2.0.0"):
             make_zip(
-                project / ".nac" / f"acme-{version}.zip",
+                project / "nac/bundles" / f"acme-{version}.zip",
                 raw_bundle_files(
                     artifact_files(schema=False, rules={"1": "r"}),
                     name="acme",
@@ -586,10 +601,10 @@ class TestCliMultipleBundles:
         assert "'acme' is present 2 times" in result.output
 
     def test_bundle_for_another_tool_is_ignored(self, project: Path) -> None:
-        """Should not fail because .nac/ also holds a bundle with only test assets."""
-        (project / ".nac").mkdir()
+        """Should not fail because nac/bundles/ also holds a bundle with only test assets."""
+        (project / "nac/bundles").mkdir(parents=True)
         make_zip(
-            project / ".nac/tests.zip",
+            project / "nac/bundles/tests.zip",
             raw_bundle_files({"tests/templates/a.robot": ""}, name="tests-only"),
         )
         (project / "data").mkdir()
