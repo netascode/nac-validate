@@ -1,0 +1,6 @@
+---
+root:
+  children:
+    - name: ABC
+      description: merged
+    - name: DEF

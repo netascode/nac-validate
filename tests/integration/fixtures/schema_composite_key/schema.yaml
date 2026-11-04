@@ -1,0 +1,10 @@
+---
+root: include('root', required=False)
+---
+root:
+  interfaces: list(include('interface'), primary_key='node,name', required=False)
+
+interface:
+  node: int()
+  name: str()
+  description: str(required=False)

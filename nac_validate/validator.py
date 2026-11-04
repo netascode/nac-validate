@@ -46,6 +46,14 @@ from .output_formatter import (
     format_syntax_errors,
     format_validation_summary,
 )
+from .schema import (
+    Extension,
+    Scope,
+    Violation,
+    check_data,
+    check_schema,
+    used_extensions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -354,6 +362,11 @@ class Validator:
         return rules
 
     def __init__(self, schema: Any | None, rules: Any | None = None):
+        """Create a validator from a loaded schema and rules, or their paths.
+
+        Raises:
+            SchemaError: If the schema uses an extension incorrectly
+        """
         self.schema: Any | None = None
         self.rules: dict[str, Any] = {}
         if isinstance(schema, (str | Path)):
@@ -363,6 +376,8 @@ class Validator:
             self.schema = inst.schema
             self.rules = inst.rules
         else:
+            if schema is not None:
+                check_schema(schema)
             self.schema = schema
             if isinstance(rules, dict):
                 self.rules = rules
@@ -374,6 +389,8 @@ class Validator:
         self.unmatched_disables: list[DisableEntry] = []
         self.unresolved_rules: list[tuple[DeclaredRule, str]] = []
         self.data: dict[str, Any] | None = None
+        # Data merged from the paths by the syntax validation, for reuse
+        self._merged_data: tuple[tuple[Path, ...], dict[str, Any]] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
         self.file_count: int = 0
@@ -397,6 +414,7 @@ class Validator:
 
         Raises:
             SchemaNotFoundError: If non-default schema path doesn't exist
+            SchemaError: If the schema uses an extension incorrectly
             RulesDirectoryNotFoundError: If non-default rules path doesn't exist
             RuleLoadError: If rule file has invalid structure
         """
@@ -479,6 +497,7 @@ class Validator:
 
         Raises:
             SchemaNotFoundError: If a non-default local schema doesn't exist
+            SchemaError: If the schema uses an extension incorrectly
             RulesDirectoryNotFoundError: If a non-default local rules path doesn't exist
             RuleLoadError: If a rule file has invalid structure
         """
@@ -606,12 +625,17 @@ class Validator:
         Returns:
             Merged YAML data dictionary
         """
-        paths = [Path(p) for p in input_paths]
-        logger.info("Loading yaml files from %s", paths)
-        self.data = load_yaml_files(paths, typ="safe")
+        self.data = self._merged_data_from_paths([Path(p) for p in input_paths])
+        # Handed over to self.data, so a later load reads the files again
+        self._merged_data = None
         return self.data
 
-    def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
+    def _validate_syntax_file(
+        self,
+        file_path: Path,
+        strict: bool = True,
+        extensions: Sequence[Extension] = (),
+    ) -> None:
         """Run syntactic validation for a single file"""
         if file_path.is_file() and file_path.suffix in YAML_SUFFIXES:
             logger.info("Validate file: %s", file_path)
@@ -644,39 +668,99 @@ class Validator:
             # Schema syntax validation
             if self.schema is None or data == {}:
                 return
-            try:
-                yamale.validate(self.schema, [(data, file_path)], strict=strict)
-            except YamaleError as e:
-                for result in e.results:
-                    for err in result.errors:
-                        # Generate a meaningful path representation
-                        named_path = self._get_named_path(
-                            data, err.split(":")[0].strip()
-                        )
-                        transformed_err = err.replace(
-                            err.split(":")[0].strip(), named_path
-                        )
-                        msg = f"Syntax error '{result.data}': {transformed_err}"
-                        logger.debug(msg)
-                        self.errors.append(msg)
-                        self.structured_syntax_errors.append(
-                            SyntaxErrorResult(
-                                file=str(result.data),
-                                line=None,
-                                column=None,
-                                message=transformed_err,
-                            )
-                        )
+            self._validate_schema(
+                data,
+                str(file_path),
+                strict,
+                extensions,
+                merged=False,
+                log_level=logging.DEBUG,
+            )
 
-    def _get_named_path(self, data: dict[str, Any], path: str) -> str:
-        """Convert a numeric path to a named path for better error messages."""
-        path_segments = path.split(".")
+    def _validate_schema(
+        self,
+        data: Any,
+        source: str,
+        strict: bool,
+        extensions: Sequence[Extension],
+        *,
+        merged: bool,
+        log_level: int,
+    ) -> None:
+        """Validate data against the schema, then against its extensions.
+
+        Extensions are only checked once the data passed Yamale validation, so
+        they can rely on its structure. Merged data is checked against every
+        extension once, in the document scope where supported.
+        """
+        try:
+            yamale.validate(self.schema, [(data, source)], strict=strict)
+        except YamaleError as e:
+            for result in e.results:
+                self._record_schema_errors(result.data, result.errors, data, log_level)
+            return
+        errors: list[Violation]
+        if merged:
+            file_only = [e for e in extensions if Scope.DOCUMENT not in e.scopes]
+            errors = check_data(self.schema, data, file_only, Scope.FILE, strict)
+            errors += check_data(self.schema, data, extensions, Scope.DOCUMENT, strict)
+        else:
+            errors = check_data(self.schema, data, extensions, Scope.FILE, strict)
+        self._record_schema_errors(source, errors, data, log_level)
+
+    def _merged_data_from_paths(self, paths: Sequence[Path]) -> dict[str, Any]:
+        """Load and merge YAML data from paths, reusing a previous load."""
+        key = tuple(paths)
+        if self._merged_data is None or self._merged_data[0] != key:
+            logger.info("Loading yaml files from %s", list(paths))
+            self._merged_data = (key, load_yaml_files(list(paths), typ="safe"))
+        return self._merged_data[1]
+
+    def _record_schema_errors(
+        self,
+        source: str,
+        errors: Sequence[str] | Sequence[Violation],
+        data: Any,
+        log_level: int,
+    ) -> None:
+        """Record Yamale errors (``path: message``) or extension violations."""
+        for err in errors:
+            # Generate a meaningful path representation
+            if isinstance(err, Violation):
+                named_path = self._get_named_path(data, err.path)
+                transformed_err = f"{named_path}: {err.message}"
+            else:
+                path = err.split(":")[0].strip()
+                transformed_err = err.replace(path, self._get_named_path(data, path))
+            msg = f"Syntax error '{source}': {transformed_err}"
+            logger.log(log_level, msg)
+            self.errors.append(msg)
+            self.structured_syntax_errors.append(
+                SyntaxErrorResult(
+                    file=source,
+                    line=None,
+                    column=None,
+                    message=transformed_err,
+                )
+            )
+
+    def _get_named_path(
+        self, data: dict[str, Any], path: str | Sequence[str | int]
+    ) -> str:
+        """Convert a numeric path to a named path for better error messages.
+
+        The path is a dotted string or, to keep map keys with dots intact, the
+        sequence of its segments.
+        """
+        path_segments = path.split(".") if isinstance(path, str) else list(path)
         named_path = []
         current: Any = data
 
         for segment in path_segments:
             try:
-                if segment.isdigit() and isinstance(current, list):
+                if isinstance(current, list) and (
+                    isinstance(segment, int) or segment.isdigit()
+                ):
                     current_item = current[int(segment)]
                     if isinstance(current_item, dict) and current_item:
                         preferred_keys = ("name", "id")
@@ -698,18 +782,15 @@ class Validator:
                         named_path.append(f"[{primary_key[0]}={primary_key[1]}]")
                     current = current_item
                 elif isinstance(current, dict) and segment in current:
-                    named_path.append(segment)
+                    named_path.append(str(segment))
                     current = current[segment]
                 else:
-                    named_path.append(segment)
+                    named_path.append(str(segment))
             except (IndexError, KeyError, TypeError):
                 # Append the segment as is if an error occurs
-                named_path.append(segment)
+                named_path.append(str(segment))
 
-        if named_path:
-            return ".".join(named_path)
-        else:
-            return path
+        return ".".join(named_path)
 
     def validate_syntax(
         self,
@@ -724,6 +805,9 @@ class Validator:
         self.errors.clear()
         self.structured_syntax_errors.clear()
         self.file_count = 0
+        # Files may have changed since a previous run
+        self._merged_data = None
+        extensions = used_extensions(self.schema) if self.schema is not None else []
 
         if self.data is not None:
             if self.schema is not None:
@@ -732,46 +816,40 @@ class Validator:
                     if resolved_paths is not None and len(resolved_paths) > 0
                     else "<pre-loaded>"
                 )
-                try:
-                    yamale.validate(
-                        self.schema,
-                        [(self.data, source)],
-                        strict=strict,
-                    )
-                except YamaleError as e:
-                    for result in e.results:
-                        for err in result.errors:
-                            named_path = self._get_named_path(
-                                self.data, err.split(":")[0].strip()
-                            )
-                            transformed_err = err.replace(
-                                err.split(":")[0].strip(), named_path
-                            )
-                            msg = f"Syntax error '{result.data}': {transformed_err}"
-                            logger.error(msg)
-                            self.errors.append(msg)
-                            self.structured_syntax_errors.append(
-                                SyntaxErrorResult(
-                                    file=str(result.data),
-                                    line=None,
-                                    column=None,
-                                    message=transformed_err,
-                                )
-                            )
+                self._validate_schema(
+                    self.data,
+                    source,
+                    strict,
+                    extensions,
+                    merged=True,
+                    log_level=logging.ERROR,
+                )
         else:
             if resolved_paths is None or len(resolved_paths) == 0:
                 return
             for input_path in resolved_paths:
                 if input_path.is_file():
-                    self._validate_syntax_file(input_path, strict)
+                    self._validate_syntax_file(input_path, strict, extensions)
                     if input_path.suffix in YAML_SUFFIXES:
                         self.file_count += 1
                 else:
                     for file_path in input_path.rglob("*"):
                         if file_path.is_file():
-                            self._validate_syntax_file(file_path, strict)
+                            self._validate_syntax_file(file_path, strict, extensions)
                             if file_path.suffix in YAML_SUFFIXES:
                                 self.file_count += 1
+            # Violations only visible after merging, checked once every file
+            # passed; a single file has nothing to merge
+            document = [e for e in extensions if Scope.DOCUMENT in e.scopes]
+            if not self.errors and document and self.file_count > 1:
+                data = self._merged_data_from_paths(resolved_paths)
+                if data != {}:
+                    self._record_schema_errors(
+                        ", ".join(str(p) for p in resolved_paths),
+                        check_data(self.schema, data, document, Scope.DOCUMENT, strict),
+                        data,
+                        logging.DEBUG,
+                    )
 
         if self.errors:
             if rich_output:

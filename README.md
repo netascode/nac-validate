@@ -63,6 +63,34 @@ The CLI uses specific exit codes to help automation distinguish between error ty
 
 Syntactic validation is done by basic YAML syntax validation (e.g., indentation) and by providing a [Yamale](https://github.com/23andMe/Yamale) schema and validating all YAML files against that schema. Semantic validation is done by providing a set of rules (implemented in Python) which are then validated against the YAML data. Every rule is implemented as a Python class and should be placed in a `.py` file located in the `--rules` path.
 
+## Schema Extensions
+
+nac-validate extends Yamale with additional keyword arguments on the standard validators. Vanilla Yamale accepts and ignores them, so a schema using them still works with plain Yamale, which then just does not enforce them.
+
+Extensions are checked once the data passed the Yamale validation. An extension keyword on a validator that does not support it, or with an invalid value, fails loading the schema (exit code 3). A keyword known neither to Yamale nor to nac-validate, like a misspelled one, is logged as a warning and ignored.
+
+### Primary Keys
+
+`primary_key` on a `list()` of maps names a field that every item must set to a single value (not a map or list), unique within the list:
+
+```yaml
+tenants: list(include('tenant'), primary_key='name')
+---
+tenant:
+  name: str()
+  vrfs: list(include('vrf'), primary_key='name', required=False)
+vrf:
+  name: str()
+```
+
+A composite key names several comma-separated fields, whose combination must be unique, so the same interface name can be used on different nodes:
+
+```yaml
+interfaces: list(include('interface'), primary_key='node_id,name')
+```
+
+Values of different types are distinct (`1` and `"1"` do not collide). Primary keys are checked in every file and, once every file passed, on the data merged from all files: items with the same key are only merged when all their shared fields match, so the same key used with conflicting values in two files remains a duplicate.
+
 ## Packaged Schema and Rules (Experimental)
 
 > **Note:** This feature is experimental and may change in future versions. It is not subject to semantic versioning guarantees.

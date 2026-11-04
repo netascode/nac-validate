@@ -161,6 +161,69 @@ def test_validate_syntax() -> None:
     assert result.exit_code == ExitCode.SYNTAX_ERROR
 
 
+def test_validate_primary_key() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_primary_key/"
+    schema_path = "tests/integration/fixtures/schema_primary_key/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_validate_primary_key_conflict() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_primary_key_conflict/"
+    schema_path = "tests/integration/fixtures/schema_primary_key/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
+    assert "Duplicate primary key name=ABC across files" in result.output
+
+
+def test_validate_composite_primary_key_conflict() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_composite_key_conflict/"
+    schema_path = "tests/integration/fixtures/schema_composite_key/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
+    assert "Duplicate primary key node=101, name=eth1 across files" in result.output
+    assert "node=102" not in result.output
+
+
+def test_validate_invalid_schema_extension() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data/"
+    schema_path = "tests/integration/fixtures/schema_invalid_extension/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == ExitCode.CONFIG_ERROR
+
+
 def test_validate_semantics() -> None:
     runner = CliRunner()
     input_path = "tests/integration/fixtures/data_semantic_error/"

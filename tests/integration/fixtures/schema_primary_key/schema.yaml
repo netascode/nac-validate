@@ -1,0 +1,10 @@
+---
+root: include('root', required=False)
+---
+root:
+  children: list(include('child'), primary_key='name', required=False)
+
+child:
+  name: regex('^[A-Z]{1,10}$')
+  value: int(required=False)
+  description: str(required=False)

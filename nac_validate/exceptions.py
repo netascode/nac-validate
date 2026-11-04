@@ -59,6 +59,12 @@ class SchemaConflictError(ValidationError):
     pass
 
 
+class SchemaError(ValidationError):
+    """Raised when a schema uses a schema extension incorrectly."""
+
+    pass
+
+
 class RulesDirectoryNotFoundError(ValidationError):
     """Raised when rules directory is not found."""
 
