@@ -32,7 +32,14 @@ Options:
   --compact             Use compact output format without rule context details
                         [env: NAC_VALIDATE_COMPACT]
   --version             Display version number
-  --list-rules          List all available validation rules and exit
+  --list-artifacts      List the effective schema, artifact layers and validation rules and exit
+  --bundle PATH         Experimental: path to an artifact bundle (zip, tar.gz or directory),
+                        repeatable. Defaults to every .zip, .tar.gz or .tgz file and directory
+                        in nac/bundles/ [env: NAC_VALIDATE_BUNDLE]
+  --module-dir DIRECTORY
+                        Experimental: path to a module directory containing nac/ artifacts.
+                        Defaults to the module discovered via terraform init
+                        [env: NAC_VALIDATE_MODULE_DIR]
   --help                Show this message and exit
 ```
 
@@ -50,6 +57,26 @@ The CLI uses specific exit codes to help automation distinguish between error ty
 ## How It Works
 
 Syntactic validation is done by basic YAML syntax validation (e.g., indentation) and by providing a [Yamale](https://github.com/23andMe/Yamale) schema and validating all YAML files against that schema. Semantic validation is done by providing a set of rules (implemented in Python) which are then validated against the YAML data. Every rule is implemented as a Python class and should be placed in a `.py` file located in the `--rules` path.
+
+## Packaged Schema and Rules (Experimental)
+
+> **Note:** This feature is experimental and may change in future versions. It is not subject to semantic versioning guarantees.
+
+Besides the local `--schema` and `--rules` paths, schema and rules can come from two more places. They are layered, highest priority first:
+
+1. **Local**: `--schema`/`--rules`, or the `.schema.yaml` and `.rules/` defaults
+2. **Bundle**: every `.zip`, `.tar.gz` or `.tgz` archive and every directory in the project's `nac/bundles/` (or the paths given with `--bundle`), holding `manifest.yaml`, `schema.yaml` and `rules/` at its root
+3. **Module**: the `nac/` directory (`nac/schema.yaml`, `nac/rules/`) of the Terraform module installed by `terraform init` (or the one given with `--module-dir`)
+
+A higher layer replaces the schema of a lower one and rules with the same ID. Rules of lower layers can be disabled by ID in `nac/overrides.yaml`:
+
+```yaml
+disable:
+  rules:
+    - "101"
+```
+
+Run `nac-validate --list-artifacts` to see the effective schema, the layers in use and where each rule comes from. Discovery is implemented in [nac-artifacts](https://github.com/netascode/nac-artifacts), which documents the bundle format in detail.
 
 ## Writing Validation Rules
 

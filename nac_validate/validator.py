@@ -303,6 +303,10 @@ class Validator:
         Combines the local schema and rules with those packaged in bundles and
         an installed module, applying ``overrides.yaml``.
 
+        Experimental: loading schema and rules from bundles and modules may
+        change in future versions and is not subject to semantic versioning
+        guarantees.
+
         Args:
             project_dir: Project directory (where ``nac/`` and ``.terraform/`` live)
             schema: Local schema file

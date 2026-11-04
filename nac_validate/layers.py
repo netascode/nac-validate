@@ -13,6 +13,9 @@ Schema and rules come from up to three layers, highest priority first:
 The bundle and module layers are located by :mod:`nac_artifacts`; this
 module adds the local layer and maps each layer to the schema and rules
 nac-validate cares about.
+
+Experimental: the bundle and module layers may change in future versions and
+are not subject to semantic versioning guarantees.
 """
 
 import logging
