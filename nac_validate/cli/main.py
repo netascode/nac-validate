@@ -27,6 +27,7 @@ from ..exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaConflictError,
+    SchemaError,
     SchemaNotFoundError,
     SemanticValidationError,
     SyntaxValidationError,
@@ -61,6 +62,7 @@ logger = logging.getLogger(__name__)
 CONFIG_ERRORS = (
     SchemaNotFoundError,
     SchemaConflictError,
+    SchemaError,
     RulesDirectoryNotFoundError,
     RuleLoadError,
     ArtifactError,

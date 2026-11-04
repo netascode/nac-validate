@@ -30,7 +30,7 @@ dependencies = [
     "nac-yaml>=2.1.0",
     "ruamel.yaml>=0.19.1",
     "typer>=0.27.3",
-    "yamale>=6.1.0",
+    "yamale>=6.1.0,<7",
     "jmespath>=1.1.0",
 ]
 

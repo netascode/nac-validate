@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add `primary_key` schema option for lists (`list(include('item'), primary_key='name')`): every item must set the key and its value must be unique within the list, checked per file and on the merged data
+- Fail loading a schema with an invalid schema option (e.g. `primary_key` on a `str()`), and log a warning for unknown keywords of schema validators, like a misspelled option
 - Drop support for Python 3.10 (end of life); Python 3.11 or later is now required
 - Update nac-yaml to 2.1.0: `!vault` values are now decrypted with the password from `ANSIBLE_VAULT_PASSWORD`
 - Fix syntax validation failure for empty or comment-only YAML files
