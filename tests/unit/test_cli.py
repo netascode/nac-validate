@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 from nac_artifacts.testing import bundle_files as raw_bundle_files
+from nac_artifacts.testing import install_module as raw_install_module
 from nac_artifacts.testing import overrides_yaml
 from typer.testing import CliRunner
 
@@ -65,14 +66,26 @@ class Rule:
         assert "No rules found" in result.output
 
     def test_list_rules_with_malformed_rule(self, tmp_path: Path) -> None:
-        """Should error when rule file is missing required attributes."""
+        """Should error when a rule file is not valid Python."""
         rule_file = tmp_path / "bad_rule.py"
-        rule_file.write_text("class Rule:\n    pass\n")  # Missing required attributes
+        rule_file.write_text("class Rule(:\n    pass\n")
 
         result = runner.invoke(app, ["--list-rules", "-r", str(tmp_path)])
 
         assert result.exit_code == ExitCode.CONFIG_ERROR
         assert "Could not load rules" in result.output
+        assert "bad_rule.py - Cannot parse" in result.output
+
+    def test_list_rules_with_rule_missing_attributes(self, tmp_path: Path) -> None:
+        """Should list a rule without a literal ID as unknown instead of failing."""
+        rule_file = tmp_path / "bad_rule.py"
+        rule_file.write_text("class Rule:\n    pass\n")  # Missing required attributes
+
+        result = runner.invoke(app, ["--no-color", "--list-rules", "-r", str(tmp_path)])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "Rules With Unknown ID (not statically resolvable):" in result.output
+        assert f"{rule_file} [local]" in result.output
 
 
 class TestMissingArguments:
@@ -233,6 +246,126 @@ class TestRuleIds:
 
         assert result.exit_code == ExitCode.CONFIG_ERROR
         assert "r.py - Rule ID must be a number" in result.output
+
+
+class TestListArtifactsRunsNoCode:
+    """--list-artifacts reads rules statically instead of importing them."""
+
+    @staticmethod
+    def rule_with_side_effect(marker: Path, body: str) -> str:
+        """Return a rule that creates ``marker`` when it is imported."""
+        return (
+            "import pathlib\n"
+            f"pathlib.Path({str(marker)!r}).touch()\n"
+            f"class Rule:\n{body}"
+            "    @classmethod\n    def match(cls, data):\n        return []\n"
+        )
+
+    def test_module_and_bundle_rules_are_not_imported(
+        self, project: Path, tmp_path: Path
+    ) -> None:
+        """Should list module and bundle rules without running their code."""
+        module_marker = tmp_path / "module-ran"
+        bundle_marker = tmp_path / "bundle-ran"
+        raw_install_module(
+            project,
+            {
+                "rules/r.py": self.rule_with_side_effect(
+                    module_marker,
+                    "    id = 1\n    description: str = 'module rule'\n",
+                )
+            },
+        )
+        write_files(
+            project / "nac/bundles/acme",
+            raw_bundle_files(
+                {
+                    "rules/r.py": self.rule_with_side_effect(
+                        bundle_marker,
+                        "    id = '2'\n    description = 'bundle rule'\n"
+                        "    severity = 'LOW'\n",
+                    )
+                },
+                name="acme",
+            ),
+        )
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS, result.output
+        assert "[1] module rule (HIGH) [module]" in result.output
+        assert "[2] bundle rule (LOW) [bundle acme]" in result.output
+        assert not module_marker.exists()
+        assert not bundle_marker.exists()
+
+    def test_computed_values_are_unknown(self, project: Path) -> None:
+        """Should list a computed ID separately and placeholders for other values."""
+        (project / ".rules").mkdir()
+        (project / ".rules/computed.py").write_text(
+            "class Rule:\n    id = str(1)\n    description = 'computed id'\n"
+        )
+        (project / ".rules/desc.py").write_text(
+            "class Rule:\n    id = '5'\n    description = 'a' + 'b'\n"
+            "    severity = ''.join('LOW')\n"
+        )
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS, result.output
+        assert (
+            "[5] unknown (not statically resolvable) "
+            "(unknown (not statically resolvable))" in result.output
+        )
+        assert "Rules With Unknown ID (not statically resolvable):" in result.output
+        assert "computed.py [local]" in result.output
+        assert "Total: 1 rules" in result.output
+
+    def test_last_class_definition_wins(self, project: Path) -> None:
+        """Should read the last top-level Rule class, as an import would."""
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(
+            "class Rule:\n    id = '1'\n    description = 'earlier'\n"
+            "class Rule:\n    id = '2'\n    description = 'second'\n"
+        )
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert "[2] second (HIGH)" in result.output
+        assert "earlier" not in result.output
+
+    def test_duplicate_ids_are_still_detected(self, project: Path) -> None:
+        """Should report two literal IDs in one directory as a config error."""
+        (project / ".rules").mkdir()
+        (project / ".rules/a.py").write_text(rule_source("7", "a"))
+        (project / ".rules/b.py").write_text(rule_source("7", "b"))
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.CONFIG_ERROR
+        assert "Duplicate rule ID '7'" in result.output
+
+    def test_unusable_id_is_a_config_error(self, project: Path) -> None:
+        """Should reject a literal ID that cannot work, as loading does."""
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(
+            "class Rule:\n    id = None\n    description = 'x'\n"
+        )
+
+        result = runner.invoke(app, ["--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.CONFIG_ERROR
+        assert "r.py - Rule ID must be a number" in result.output
+
+    def test_unknown_id_is_not_disabled_by_overrides(self, project: Path) -> None:
+        """Should keep a rule with an unknown ID out of overrides matching."""
+        raw_install_module(project, {"rules/r.py": "class Rule:\n    id = str(1)\n"})
+        write_files(project / "nac", {"overrides.yaml": overrides_yaml(rules=["*"])})
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS, result.output
+        assert "r.py [module]" in result.output
+        assert "Disabled Rules:" not in result.output
 
 
 class TestListArtifacts:

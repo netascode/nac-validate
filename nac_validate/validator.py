@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2025 Daniel Schmidt
 
+import ast
 import hashlib
 import importlib.machinery
 import importlib.util
@@ -77,6 +78,82 @@ class _NoBytecodeLoader(importlib.machinery.SourceFileLoader):
         """Skip writing the bytecode cache file."""
 
 
+UNRESOLVED = "unknown (not statically resolvable)"
+_NOT_LITERAL = object()
+
+
+@dataclass(frozen=True)
+class DeclaredRule:
+    """A rule read from its source without importing it (``--list-artifacts``).
+
+    Stands in for the ``Rule`` class where only ``id``, ``description`` and
+    ``severity`` are needed, so listing runs no code of a bundle or module.
+
+    Attributes:
+        id: The literal rule ID as text, or ``None`` if it is not a literal.
+        description: The literal description, or a placeholder.
+        severity: The literal severity, ``HIGH`` if not set, or a placeholder.
+        file: The rule file.
+    """
+
+    id: str | None
+    description: str
+    severity: str
+    file: Path
+
+
+def _declared_rule(file_path: Path) -> DeclaredRule:
+    """Read ``id``, ``description`` and ``severity`` of the top-level ``Rule``.
+
+    Only string (and, for ``id``, integer) literals assigned in the class body
+    are used. Anything else (computed, inherited, imported) is unknown.
+
+    Raises:
+        RuleLoadError: If the file is not valid Python or its ID cannot work.
+    """
+    try:
+        tree = ast.parse(file_path.read_bytes(), filename=str(file_path))
+    except (SyntaxError, ValueError) as e:
+        raise RuleLoadError(file_path.name, f"Cannot parse: {e}") from None
+    values: dict[str, Any] = {}
+    for node in tree.body:
+        if not (isinstance(node, ast.ClassDef) and node.name == "Rule"):
+            continue
+        values = {}  # a later definition of the class replaces an earlier one
+        for stmt in node.body:
+            if isinstance(stmt, ast.Assign):
+                targets, value = stmt.targets, stmt.value
+            elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                targets, value = [stmt.target], stmt.value
+            else:
+                continue
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    values[target.id] = (
+                        value.value if isinstance(value, ast.Constant) else _NOT_LITERAL
+                    )
+
+    rule_id = values.get("id", _NOT_LITERAL)
+    if rule_id is _NOT_LITERAL:
+        text_id = None
+    else:
+        try:
+            text_id = _normalize_rule_id(rule_id, file_path.name)
+        except ValueError as e:
+            raise RuleLoadError(file_path.name, str(e)) from None
+
+    def text(name: str, default: Any = _NOT_LITERAL) -> str:
+        value = values.get(name, default)
+        return value if isinstance(value, str) else UNRESOLVED
+
+    return DeclaredRule(
+        id=text_id,
+        description=text("description"),
+        severity=text("severity", "HIGH"),
+        file=file_path,
+    )
+
+
 def _normalize_rule_id(rule_id: Any, filename: str) -> str:
     """Return a rule ID as text: `id = 101` becomes "101", `id = "101"` is kept.
 
@@ -133,13 +210,21 @@ class Validator:
 
     @staticmethod
     def _load_rules_from_dir(
-        rules_path: Path, origin: str = "local", key: str = ""
+        rules_path: Path,
+        origin: str = "local",
+        key: str = "",
+        *,
+        inspect_only: bool = False,
     ) -> dict[str, Any]:
         """Load validation rules from a single directory.
 
         Rules from packaged layers are registered under an origin-specific module
         name so same-named files in different layers do not overwrite each other,
         and are loaded without writing bytecode into module or bundle directories.
+
+        With ``inspect_only``, files are parsed instead of imported and the values
+        are :class:`DeclaredRule`; rules whose ID is not a literal are keyed by
+        their file path.
         """
         if not rules_path.exists():
             if rules_path == DEFAULT_RULES:
@@ -152,6 +237,9 @@ class Validator:
 
         logger.info("Loading %s rules from %s", origin, rules_path)
         rules: dict[str, Any] = {}
+        if inspect_only:
+            Validator._declare_rule_files(rules_path, rules)
+            return rules
         prefix = (
             RULE_MODULE_NAME if origin == "local" else f"{RULE_MODULE_NAME}.{origin}"
         )
@@ -165,6 +253,24 @@ class Validator:
             rules_path, prefix, rules, write_bytecode=origin == "local"
         )
         return rules
+
+    @staticmethod
+    def _declare_rule_files(rules_path: Path, rules: dict[str, Any]) -> None:
+        """Read the rule files of a directory statically (see :class:`DeclaredRule`)."""
+        for filename in sorted(f.name for f in rules_path.iterdir()):
+            if Path(filename).suffix != ".py":
+                continue
+            rule = _declared_rule(rules_path / filename)
+            if rule.id is None:
+                rules[str(rule.file)] = rule
+                continue
+            if rule.id in rules:
+                raise RuleLoadError(
+                    filename,
+                    f"Duplicate rule ID '{rule.id}' - already defined in rule "
+                    f"'{rules[rule.id].description}'",
+                )
+            rules[rule.id] = rule
 
     @staticmethod
     def _load_rule_files(
@@ -218,15 +324,24 @@ class Validator:
 
     @classmethod
     def _load_rules(
-        cls, rules_path: Path | Sequence[Path], origin: str = "local", key: str = ""
+        cls,
+        rules_path: Path | Sequence[Path],
+        origin: str = "local",
+        key: str = "",
+        *,
+        inspect_only: bool = False,
     ) -> dict[str, Any]:
         """Load validation rules from one or more directories."""
         if isinstance(rules_path, Path):
-            return cls._load_rules_from_dir(rules_path, origin, key)
+            return cls._load_rules_from_dir(
+                rules_path, origin, key, inspect_only=inspect_only
+            )
         rules: dict[str, Any] = {}
         sources: dict[str, Path] = {}
         for p in rules_path:
-            dir_rules = cls._load_rules_from_dir(p, origin, key)
+            dir_rules = cls._load_rules_from_dir(
+                p, origin, key, inspect_only=inspect_only
+            )
             for rule_id in dir_rules:
                 if rule_id in rules:
                     raise RuleLoadError(
@@ -257,6 +372,7 @@ class Validator:
         self.shadowed_rules: list[tuple[str, str, str]] = []
         self.disabled_rules: list[DisabledRule] = []
         self.unmatched_disables: list[DisableEntry] = []
+        self.unresolved_rules: list[tuple[DeclaredRule, str]] = []
         self.data: dict[str, Any] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
@@ -298,6 +414,7 @@ class Validator:
         bundles: Sequence[Path] | None = None,
         module_dir: Path | None = None,
         artifacts: bool = True,
+        inspect_only: bool = False,
     ) -> "Validator":
         """Create validator from all artifact layers of a project, like the CLI.
 
@@ -317,6 +434,7 @@ class Validator:
             artifacts: Whether to load bundles, the module and ``nac/overrides.yaml``
                 (on by default here, opt-in with ``--artifacts`` in the CLI);
                 with False only the local schema and rules are used
+            inspect_only: Read rules without running them, see :meth:`from_layers`
 
         Returns:
             Initialized Validator instance
@@ -336,10 +454,12 @@ class Validator:
             module_dir=module_dir,
             artifacts=artifacts,
         )
-        return cls.from_layers(layers)
+        return cls.from_layers(layers, inspect_only=inspect_only)
 
     @classmethod
-    def from_layers(cls, layers: Sequence[ValidationLayer]) -> "Validator":
+    def from_layers(
+        cls, layers: Sequence[ValidationLayer], *, inspect_only: bool = False
+    ) -> "Validator":
         """Create validator from artifact layers, highest priority first.
 
         The schema comes from the highest layer providing one (schemas are not
@@ -347,6 +467,12 @@ class Validator:
 
         Args:
             layers: Resolved artifact layers, highest priority first
+            inspect_only: Parse rule files instead of importing them, so no rule
+                code runs (``--list-artifacts``). Rules are then
+                :class:`DeclaredRule` and the validator cannot validate. Rules
+                whose ID is not a literal are kept in ``unresolved_rules`` and
+                take part in no duplicate, shadowing or disable check; a real
+                run still resolves them by importing.
 
         Returns:
             Initialized Validator instance
@@ -393,11 +519,20 @@ class Validator:
         shadowed: list[tuple[str, str, str]] = []
         disabled: list[DisabledRule] = []
         all_entries: dict[DisableEntry, None] = {}
+        unresolved: list[tuple[DeclaredRule, str]] = []
         for tier in reversed(tiers):
             tier_rules: dict[str, Any] = {}
             tier_origins: dict[str, str] = {}
             for layer in tier:
-                layer_rules = cls._load_rules(layer.rules_dirs, layer.origin, layer.tag)
+                layer_rules = cls._load_rules(
+                    layer.rules_dirs,
+                    layer.origin,
+                    layer.tag,
+                    inspect_only=inspect_only,
+                )
+                for rule_id, rule in list(layer_rules.items()):
+                    if isinstance(rule, DeclaredRule) and rule.id is None:
+                        unresolved.append((layer_rules.pop(rule_id), layer.tag))
                 matcher = DisableMatcher(layer.disabled_rules)
                 all_entries.update(dict.fromkeys(layer.disabled_rules))
                 # Entries only remove rules of lower tiers; a peer's or a higher
@@ -444,6 +579,9 @@ class Validator:
         validator.disabled_rules = disabled
         used = {d.entry for d in disabled}
         validator.unmatched_disables = [e for e in all_entries if e not in used]
+        # Highest priority layer first, like the layers
+        priority = {layer.tag: i for i, layer in enumerate(layers)}
+        validator.unresolved_rules = sorted(unresolved, key=lambda u: priority[u[1]])
         return validator
 
     def load_data(self, data: dict[str, Any]) -> None:

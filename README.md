@@ -87,7 +87,15 @@ disable:
     - "101"
 ```
 
-Run `nac-validate --list-artifacts` to see the effective schema, the layers in use and where each rule comes from. Discovery is implemented in [nac-artifacts](https://github.com/netascode/nac-artifacts), which documents the bundle format in detail.
+Run `nac-validate --list-artifacts` to see the effective schema, the layers in use and where each rule comes from. It reads rules without running them: the `id`, `description` and `severity` of each rule are taken from the string or number literals in its `Rule` class, and a rule whose ID is not such a literal (computed or inherited) is listed as having an unknown ID. With `--artifacts` it still extracts bundle archives into `nac/bundles/.cache/`.
+
+The project directory is the **current working directory**, not the location of the data, `--schema` or `--rules`: `nac/bundles/`, `nac/overrides.yaml` and the `.terraform/` directory (or `TF_DATA_DIR`) written by `terraform init` are looked up there. Run nac-validate from your root module directory, or point to the artifacts with `--module-dir` and `--bundle`.
+
+### Trust
+
+Rules are Python code that nac-validate executes, so bundles and modules need the same trust as code in your own repository. Review them with `--list-artifacts` (bundle archives are shown with a SHA-256 prefix) before enabling `--artifacts`. Note that a module update (`terraform init -upgrade`) or a new file in `nac/bundles/` changes which code runs, and `.terraform/` is usually not part of your reviewed changes.
+
+Discovery is implemented in [nac-artifacts](https://github.com/netascode/nac-artifacts), which documents the bundle format in detail.
 
 ## Writing Validation Rules
 

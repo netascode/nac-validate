@@ -93,7 +93,11 @@ def print_artifacts_list(
     module_dir: Path | None,
     artifacts: bool,
 ) -> None:
-    """Load and print the effective schema, layers and rules, then exit."""
+    """Load and print the effective schema, layers and rules, then exit.
+
+    Rules are parsed, not imported, so no code of a bundle or module runs.
+    Bundle archives are still extracted into ``nac/bundles/.cache/``.
+    """
     try:
         validator = nac_validate.validator.Validator.from_project(
             Path.cwd(),
@@ -102,6 +106,8 @@ def print_artifacts_list(
             bundles=bundles,
             module_dir=module_dir,
             artifacts=artifacts,
+            # Read statically: listing must not run bundle or module code
+            inspect_only=True,
         )
     except CONFIG_ERRORS as e:
         print(f"{Colors.YELLOW}Could not load rules or artifacts: {e}{Colors.RESET}")

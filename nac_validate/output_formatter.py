@@ -495,6 +495,7 @@ def format_artifacts_list(validator: Validator) -> str:
         for rule_id, origin in validator.rule_origins.items()
     }
     lines.append(format_rules_list(validator.rules, annotations))
+    lines += _format_unresolved(validator)
     lines += _format_disabled(validator)
     return "\n".join(lines)
 
@@ -520,6 +521,21 @@ def _overrides(source: str) -> str:
     if source == "project":
         return f"{Colors.DIM}project overrides{Colors.RESET}"
     return f"{_label(source)} {Colors.DIM}overrides{Colors.RESET}"
+
+
+def _format_unresolved(validator: Validator) -> list[str]:
+    """Format rule files whose ID could not be read without running them."""
+    if not validator.unresolved_rules:
+        return []
+    lines = [
+        f"{Colors.CYAN}{Colors.BOLD}Rules With Unknown ID "
+        f"(not statically resolvable):{Colors.RESET}"
+    ]
+    lines += [
+        f"  {rule.file} {_label(tag)}" for rule, tag in validator.unresolved_rules
+    ]
+    lines.append("")
+    return lines
 
 
 def _format_disabled(validator: Validator) -> list[str]:
