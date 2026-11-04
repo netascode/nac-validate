@@ -13,17 +13,19 @@ To add an extension, subclass ``Extension`` and add it to ``EXTENSIONS``.
 
 import logging
 from collections.abc import Collection
+from dataclasses import dataclass
 from typing import Any
 
 from ..exceptions import SchemaError
 from .base import Extension, Scope
 from .primary_key import PrimaryKey
-from .walker import known_keywords, walk_data, walk_schema
+from .walker import KeyPath, known_keywords, walk_data, walk_schema
 
 __all__ = [
     "EXTENSIONS",
     "Extension",
     "Scope",
+    "Violation",
     "check_data",
     "check_schema",
     "used_extensions",
@@ -32,6 +34,19 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 EXTENSIONS: tuple[Extension, ...] = (PrimaryKey(),)
+
+
+@dataclass(frozen=True)
+class Violation:
+    """A violation of an extension at a path of the data."""
+
+    # Path segments, kept apart as map keys may contain dots
+    path: KeyPath
+    message: str
+
+    def __str__(self) -> str:
+        """Format the violation like a Yamale error (``path: message``)."""
+        return f"{'.'.join(str(p) for p in self.path)}: {self.message}"
 
 
 def check_schema(schema: Any, extensions: Collection[Extension] = EXTENSIONS) -> None:
@@ -83,19 +98,14 @@ def check_data(
     extensions: Collection[Extension],
     scope: Scope,
     strict: bool = True,
-) -> list[str]:
-    """Check data that passed Yamale validation against the extensions.
-
-    Returns:
-        Violations in Yamale's error format (``path: message``)
-    """
+) -> list[Violation]:
+    """Check data that passed Yamale validation against the extensions."""
     active = [ext for ext in extensions if scope in ext.scopes]
     if not active:
         return []
-    errors: list[str] = []
+    errors: list[Violation] = []
     for node in walk_data(schema, data, strict):
         for ext in active:
             if ext.applies(node.validator):
-                path = ".".join(str(p) for p in node.path)
-                errors += [f"{path}: {m}" for m in ext.check(node, scope)]
+                errors += [Violation(node.path, m) for m in ext.check(node, scope)]
     return errors

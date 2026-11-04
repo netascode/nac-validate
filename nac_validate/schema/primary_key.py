@@ -21,6 +21,22 @@ def _fields(validator: Validator) -> list[str]:
     return [f.strip() for f in validator.kwargs["primary_key"].split(",")]
 
 
+def _hashable(value: Any) -> bool:
+    try:
+        hash(value)
+    except TypeError:
+        return False
+    return True
+
+
+def _kind(value: Any) -> str:
+    if isinstance(value, dict):
+        return "a map"
+    if isinstance(value, list):
+        return "a list"
+    return f"a {type(value).__name__}"
+
+
 class PrimaryKey(Extension):
     keywords = ("primary_key",)
     validator_types = (List,)
@@ -49,15 +65,18 @@ class PrimaryKey(Extension):
                 continue
             missing = [f for f in fields if item.get(f) is None]
             errors += [f"Primary key '{f}' missing in item {index}" for f in missing]
-            if missing:
+            # Maps and lists can't be compared, whatever the item validators allow
+            nested = [f for f in fields if f not in missing and not _hashable(item[f])]
+            errors += [
+                f"Primary key '{f}' in item {index} must be a single value, not "
+                f"{_kind(item[f])}"
+                for f in nested
+            ]
+            if missing or nested:
                 continue
             # Typed so that 1, "1" and True are different values
             key_value = tuple((type(item[f]), item[f]) for f in fields)
-            try:
-                indexes.setdefault(key_value, []).append(index)
-            except TypeError:
-                # Unhashable values (maps, lists) are validated by the item validators
-                continue
+            indexes.setdefault(key_value, []).append(index)
         for key_value, items in indexes.items():
             if len(items) == 1:
                 continue

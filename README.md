@@ -71,7 +71,7 @@ Extensions are checked once the data passed the Yamale validation. An extension 
 
 ### Primary Keys
 
-`primary_key` on a `list()` of maps names a field that every item must set and whose value must be unique within the list:
+`primary_key` on a `list()` of maps names a field that every item must set to a single value (not a map or list), unique within the list:
 
 ```yaml
 tenants: list(include('tenant'), primary_key='name')

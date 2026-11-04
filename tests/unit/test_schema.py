@@ -18,6 +18,7 @@ from nac_validate.schema import (
     EXTENSIONS,
     Extension,
     Scope,
+    Violation,
     check_data,
     check_schema,
     used_extensions,
@@ -43,7 +44,7 @@ def errors(
     """Check data that passes Yamale validation against the extensions."""
     loaded = yamale.make_schema(content=schema)
     yamale.validate(loaded, [(data, "data")])
-    return check_data(loaded, data, EXTENSIONS, scope)
+    return [str(v) for v in check_data(loaded, data, EXTENSIONS, scope)]
 
 
 def walked(schema: str, data: dict[str, Any]) -> list[tuple[str, str]]:
@@ -98,6 +99,17 @@ class TestPrimaryKey:
         assert errors(data) == [
             "tenants: Duplicate primary key name=a in items 0, 1",
             "tenants.0.bds: Duplicate primary key name=x in items 0, 1",
+        ]
+
+    @pytest.mark.parametrize(
+        ("value", "kind"), [(["a"], "a list"), ({"k": "a"}, "a map")]
+    )
+    def test_key_value_must_be_a_single_value(self, value: Any, kind: str) -> None:
+        schema = "items: list(map(), primary_key='name')"
+        data = {"items": [{"name": value}, {"name": value}]}
+        assert errors(data, schema) == [
+            f"items: Primary key 'name' in item {i} must be a single value, not {kind}"
+            for i in (0, 1)
         ]
 
     def test_items_that_are_not_maps_are_left_to_item_validators(self) -> None:
@@ -338,7 +350,7 @@ class TestCheckSchema:
 
         loaded = yamale.make_schema(content="a: map(key=str())\nb: str(key='x')")
         assert check_data(loaded, {"a": {}, "b": "v"}, [Key()], Scope.FILE) == [
-            "b: checked"
+            Violation(("b",), "checked")
         ]
 
     def test_used_extensions(self) -> None:
@@ -360,6 +372,26 @@ class TestValidatorExtensions:
         data = project / "data"
         data.mkdir()
         return data
+
+    def test_invalid_extension_fails_creating_from_a_loaded_schema(self) -> None:
+        schema = yamale.make_schema(content="a: list(map(), primary_key=1)")
+        with pytest.raises(SchemaError):
+            Validator(schema)
+
+    def test_map_keys_with_dots_are_kept_in_error_paths(
+        self, validator: Validator
+    ) -> None:
+        validator.schema = yamale.make_schema(
+            content="m: map(list(include('i'), primary_key='name'))\n---\n"
+            "i:\n  name: str()\n  l: list(map(), primary_key='name', required=False)"
+        )
+        validator.load_data({"m": {"x.y": [{"name": "a", "l": [{"name": "b"}] * 2}]}})
+        with pytest.raises(SyntaxValidationError):
+            validator.validate_syntax(rich_output=False)
+        assert validator.errors == [
+            "Syntax error '<pre-loaded>': m.x.y.[name=a].l: Duplicate primary key"
+            " name=b across files (with conflicting values that prevent merging)"
+        ]
 
     def test_invalid_extension_fails_loading_the_schema(self, project: Path) -> None:
         schema = project / "schema.yaml"
@@ -466,15 +498,30 @@ class TestValidatorExtensions:
         with pytest.raises(SyntaxValidationError):
             validator.validate_syntax([data], rich_output=False)
 
-    def test_merged_data_is_reused_for_semantic_validation(
-        self, validator: Validator, data: Path
+    def test_merged_data_is_reused_once(
+        self, validator: Validator, data: Path, project: Path
     ) -> None:
+        (data / "a.yaml").write_text("tenants:\n  - name: a\n")
+        (data / "b.yaml").write_text("tenants:\n  - name: b\n")
+        load = nac_validate.validator.load_yaml_files
+        with patch.object(
+            nac_validate.validator, "load_yaml_files", side_effect=load
+        ) as mock_load:
+            validator.validate_syntax([data], rich_output=False)
+            # Once per file, once merged
+            assert mock_load.call_count == 3
+            validator.write_output([data], project / "out.yaml")
+            assert mock_load.call_count == 3
+            # Handed over, so loading again reads the files
+            validator.data = None
+            validator.write_output([data], project / "out.yaml")
+            assert mock_load.call_count == 4
+
+    def test_single_file_is_not_merged(self, validator: Validator, data: Path) -> None:
         (data / "a.yaml").write_text("tenants:\n  - name: a\n")
         load = nac_validate.validator.load_yaml_files
         with patch.object(
             nac_validate.validator, "load_yaml_files", side_effect=load
         ) as mock_load:
             validator.validate_syntax([data], rich_output=False)
-            validator.validate_semantics([data], rich_output=False)
-        # Once for the file, once merged; the semantic validation reuses it
-        assert mock_load.call_count == 2
+        assert mock_load.call_count == 1
