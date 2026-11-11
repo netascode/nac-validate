@@ -20,6 +20,7 @@ from nac_artifacts.testing import overrides_yaml, write_files
 
 from nac_validate.constants import DEFAULT_RULES, DEFAULT_SCHEMA
 from nac_validate.exceptions import (
+    OutputWriteError,
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaConflictError,
@@ -877,3 +878,30 @@ class TestFromProject:
 
         assert validator.rules["1"].description == "local"
         assert validator.rule_origins == {"1": "local"}
+
+
+class TestWriteOutput:
+    """Tests for Validator.write_output()."""
+
+    def test_write_output_missing_directory_raises(
+        self, tmp_path: Path
+    ) -> None:
+        """A silently failed write must raise instead of exiting 0."""
+        data_file = tmp_path / "data.yaml"
+        data_file.write_text("key: value\n")
+        validator = Validator(None, {})
+        validator.validate_syntax([data_file], rich_output=False)
+        with pytest.raises(OutputWriteError):
+            validator.write_output(
+                [data_file], tmp_path / "no-such-dir" / "out.yaml"
+            )
+
+    def test_write_output_writes_file(self, tmp_path: Path) -> None:
+        """A successful write must create the output file."""
+        data_file = tmp_path / "data.yaml"
+        data_file.write_text("key: value\n")
+        validator = Validator(None, {})
+        validator.validate_syntax([data_file], rich_output=False)
+        out = tmp_path / "out.yaml"
+        validator.write_output([data_file], out)
+        assert out.is_file()
