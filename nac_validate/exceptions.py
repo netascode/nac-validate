@@ -71,6 +71,12 @@ class RulesDirectoryNotFoundError(ValidationError):
     pass
 
 
+class OutputWriteError(ValidationError):
+    """Raised when merged YAML output cannot be written."""
+
+    pass
+
+
 class RuleLoadError(ValidationError):
     """Raised when a rule file fails to load."""
 

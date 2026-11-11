@@ -29,6 +29,7 @@ from .constants import (
     YAML_SUFFIXES,
 )
 from .exceptions import (
+    OutputWriteError,
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaConflictError,
@@ -971,8 +972,16 @@ class Validator:
         )
 
     def write_output(self, input_paths: Sequence[Path | str], path: Path) -> None:
-        """Write loaded YAML data to output file."""
+        """Write loaded YAML data to output file.
+
+        Raises:
+            OutputWriteError: If the output file was not written
+        """
         data = self.data
         if data is None:
             data = self._load_data_from_paths(input_paths)
         write_yaml_file(data, path)
+        # write_yaml_file logs failures instead of raising, so verify the
+        # file exists: otherwise the CLI would report success without output
+        if not path.is_file():
+            raise OutputWriteError(f"Could not write output file: {path}")

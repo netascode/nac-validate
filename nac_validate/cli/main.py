@@ -24,6 +24,7 @@ import nac_validate.validator
 
 from ..constants import DEFAULT_RULES, DEFAULT_SCHEMA, Colors, ExitCode
 from ..exceptions import (
+    OutputWriteError,
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaConflictError,
@@ -58,8 +59,9 @@ app = typer.Typer(add_completion=False)
 
 logger = logging.getLogger(__name__)
 
-# Problems with the schema, rules or artifacts, reported as configuration errors
+# Problems with the schema, rules, artifacts or output, reported as configuration errors
 CONFIG_ERRORS = (
+    OutputWriteError,
     SchemaNotFoundError,
     SchemaConflictError,
     SchemaError,
