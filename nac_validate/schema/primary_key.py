@@ -8,33 +8,24 @@ combination must be unique. Yamale only accepts constants as keyword values,
 so the fields are a comma-separated string.
 """
 
-from typing import Any
-
 from yamale.validators import List, Validator
 
 from .base import Extension, Scope
+from .values import (
+    TypedValue,
+    format_key,
+    is_single_value,
+    kind,
+    split_fields,
+    typed,
+    valid_fields,
+)
 from .walker import DataNode
 
 
 def _fields(validator: Validator) -> list[str]:
     """Return the key fields of a valid ``primary_key`` keyword."""
-    return [f.strip() for f in validator.kwargs["primary_key"].split(",")]
-
-
-def _hashable(value: Any) -> bool:
-    try:
-        hash(value)
-    except TypeError:
-        return False
-    return True
-
-
-def _kind(value: Any) -> str:
-    if isinstance(value, dict):
-        return "a map"
-    if isinstance(value, list):
-        return "a list"
-    return f"a {type(value).__name__}"
+    return split_fields(validator.kwargs["primary_key"])
 
 
 class PrimaryKey(Extension):
@@ -46,10 +37,8 @@ class PrimaryKey(Extension):
 
     def check_schema(self, validator: Validator) -> list[str]:
         key = validator.kwargs["primary_key"]
-        if isinstance(key, str):
-            fields = _fields(validator)
-            if all(fields) and len(set(fields)) == len(fields):
-                return []
+        if valid_fields(key):
+            return []
         return [f"primary_key must be comma-separated field names, not {key!r}"]
 
     def check(self, node: DataNode, scope: Scope) -> list[str]:
@@ -58,7 +47,7 @@ class PrimaryKey(Extension):
             return []
         fields = _fields(node.validator)
         errors: list[str] = []
-        indexes: dict[tuple[tuple[type, Any], ...], list[int]] = {}
+        indexes: dict[tuple[TypedValue, ...], list[int]] = {}
         for index, item in enumerate(node.value):
             # Items that are not maps are validated by the item validators
             if not isinstance(item, dict):
@@ -66,23 +55,22 @@ class PrimaryKey(Extension):
             missing = [f for f in fields if item.get(f) is None]
             errors += [f"Primary key '{f}' missing in item {index}" for f in missing]
             # Maps and lists can't be compared, whatever the item validators allow
-            nested = [f for f in fields if f not in missing and not _hashable(item[f])]
+            nested = [
+                f for f in fields if f not in missing and not is_single_value(item[f])
+            ]
             errors += [
                 f"Primary key '{f}' in item {index} must be a single value, not "
-                f"{_kind(item[f])}"
+                f"{kind(item[f])}"
                 for f in nested
             ]
             if missing or nested:
                 continue
-            # Typed so that 1, "1" and True are different values
-            key_value = tuple((type(item[f]), item[f]) for f in fields)
+            key_value = tuple(typed(item[f]) for f in fields)
             indexes.setdefault(key_value, []).append(index)
         for key_value, items in indexes.items():
             if len(items) == 1:
                 continue
-            key = ", ".join(
-                f"{f}={v}" for f, (_, v) in zip(fields, key_value, strict=True)
-            )
+            key = format_key(fields, key_value)
             if scope == Scope.DOCUMENT:
                 # Item numbers of the merged data are of no help to find them
                 errors.append(

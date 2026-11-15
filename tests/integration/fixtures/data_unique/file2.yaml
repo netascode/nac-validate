@@ -1,0 +1,6 @@
+---
+root:
+  wlans:
+    - name: CORP
+    - name: GUEST
+      id: 2

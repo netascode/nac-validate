@@ -91,6 +91,28 @@ interfaces: list(include('interface'), primary_key='node_id,name')
 
 Values of different types are distinct (`1` and `"1"` do not collide). Primary keys are checked in every file and, once every file passed, on the data merged from all files: items with the same key are only merged when all their shared fields match, so the same key used with conflicting values in two files remains a duplicate.
 
+### Unique Values
+
+`unique` on a `list()` requires values to be unique within the list without making them the key of an item. `unique=True` applies to a list of single values (items that are maps or lists are not compared):
+
+```yaml
+features: list(str(), unique=True)
+```
+
+On a list of maps, `unique` names comma-separated fields whose combination must be unique. Unlike with `primary_key`, the fields may be optional: a field that is not set is a value of its own, so a route without a `vrf` does not collide with the same prefix in a VRF, and items setting none of the fields are not compared:
+
+```yaml
+routes: list(include('route'), unique='prefix,vrf')
+```
+
+It can be combined with a `primary_key`, but must not name the same fields:
+
+```yaml
+zone_pairs: list(include('zone_pair'), primary_key='name', unique='source,destination')
+```
+
+As with primary keys, values of different types are distinct, and `unique` is checked in every file and, once every file passed, on the data merged from all files, where items from different files that don't merge still collide.
+
 ## Packaged Schema and Rules (Experimental)
 
 > **Note:** This feature is experimental and may change in future versions. It is not subject to semantic versioning guarantees.

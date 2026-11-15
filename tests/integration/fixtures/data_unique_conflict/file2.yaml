@@ -1,0 +1,5 @@
+---
+root:
+  wlans:
+    - name: GUEST
+      id: 1

@@ -19,6 +19,7 @@ from typing import Any
 from ..exceptions import SchemaError
 from .base import Extension, Scope
 from .primary_key import PrimaryKey
+from .unique import Unique
 from .walker import KeyPath, known_keywords, walk_data, walk_schema
 
 __all__ = [
@@ -33,7 +34,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-EXTENSIONS: tuple[Extension, ...] = (PrimaryKey(),)
+EXTENSIONS: tuple[Extension, ...] = (PrimaryKey(), Unique())
 
 
 @dataclass(frozen=True)
