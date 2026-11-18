@@ -19,22 +19,25 @@ from typing import Any
 from ..exceptions import SchemaError
 from .base import Extension, Scope
 from .primary_key import PrimaryKey
+from .reference import Reference, References, references
 from .unique import Unique
-from .walker import KeyPath, known_keywords, walk_data, walk_schema
+from .walker import DataNode, KeyPath, known_keywords, walk_data, walk_schema
 
 __all__ = [
     "EXTENSIONS",
     "Extension",
+    "Reference",
     "Scope",
     "Violation",
     "check_data",
     "check_schema",
+    "references",
     "used_extensions",
 ]
 
 logger = logging.getLogger(__name__)
 
-EXTENSIONS: tuple[Extension, ...] = (PrimaryKey(), Unique())
+EXTENSIONS: tuple[Extension, ...] = (PrimaryKey(), Unique(), References())
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,10 @@ def check_schema(schema: Any, extensions: Collection[Extension] = EXTENSIONS) ->
             logger.warning(
                 "Unknown schema keyword '%s' at '%s' is ignored", keyword, node.location
             )
+    # Checks across the schema rely on the keywords being valid
+    if not problems:
+        for ext in extensions:
+            problems += ext.check_whole_schema(schema)
     if problems:
         raise SchemaError("Invalid schema: " + "; ".join(problems))
 
@@ -104,9 +111,21 @@ def check_data(
     active = [ext for ext in extensions if scope in ext.scopes]
     if not active:
         return []
+    # Extensions checking nodes one by one report in data order, extensions
+    # relating values across the data after them
+    per_node = [e for e in active if not e.relates_values]
+    whole = [e for e in active if e.relates_values]
+    nodes: list[DataNode] = []
     errors: list[Violation] = []
     for node in walk_data(schema, data, strict):
-        for ext in active:
+        if whole:
+            nodes.append(node)
+        for ext in per_node:
             if ext.applies(node.validator):
                 errors += [Violation(node.path, m) for m in ext.check(node, scope)]
+    for ext in whole:
+        errors += [
+            Violation(path, message)
+            for path, message in ext.check_nodes(schema, nodes, data, scope)
+        ]
     return errors

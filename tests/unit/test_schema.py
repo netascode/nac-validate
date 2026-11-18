@@ -488,12 +488,25 @@ class TestCheckSchema:
             Violation(("b",), "checked")
         ]
 
+    def test_violations_are_reported_in_data_order(self) -> None:
+        schema = "a: list(str(), unique=True)\nb: list(map(), primary_key='n')\nc: list(str(), unique=True)"
+        loaded = yamale.make_schema(content=schema)
+        data = {"a": ["x", "x"], "b": [{"n": 1}, {"n": 1}], "c": ["y", "y"]}
+        assert [
+            str(v).split(":")[0]
+            for v in check_data(loaded, data, EXTENSIONS, Scope.FILE)
+        ] == ["a", "b", "c"]
+
     def test_used_extensions(self) -> None:
-        primary_key, unique = EXTENSIONS
+        primary_key, unique, refs = EXTENSIONS
         assert used_extensions(yamale.make_schema(content=SCHEMA)) == [primary_key]
         both = yamale.make_schema(content=f"{SCHEMA}\nu: list(str(), unique=True)")
         assert used_extensions(both) == [primary_key, unique]
         assert used_extensions(yamale.make_schema(content="a: list(map())")) == []
+        referenced = yamale.make_schema(
+            content="a: list(map(), primary_key='n', ref_name='x')\nb: str(ref='x')"
+        )
+        assert used_extensions(referenced) == [primary_key, refs]
 
 
 class TestValidatorExtensions:

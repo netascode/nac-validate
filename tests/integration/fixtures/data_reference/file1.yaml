@@ -1,0 +1,6 @@
+---
+root:
+  devices:
+    - name: LEAF1
+      vrfs:
+        - name: PROD

@@ -1,0 +1,9 @@
+---
+root:
+  devices:
+    - name: LEAF1
+      interfaces:
+        - name: Ethernet1/1
+          vrf: PROD
+        - name: mgmt0
+          vrf: management

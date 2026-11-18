@@ -1,0 +1,17 @@
+---
+root: include('root', required=False)
+---
+root:
+  devices: list(include('device'), primary_key='name', required=False)
+
+device:
+  name: str()
+  vrfs: list(include('vrf'), primary_key='name', ref_name='vrf', ref_implicit='default,management', required=False)
+  interfaces: list(include('interface'), primary_key='name', required=False)
+
+vrf:
+  name: str()
+
+interface:
+  name: str()
+  vrf: str(ref='vrf', required=False)

@@ -1,0 +1,10 @@
+---
+root:
+  devices:
+    - name: LEAF1
+      vrfs:
+        - name: PROD
+    - name: LEAF2
+      interfaces:
+        - name: Ethernet1/1
+          vrf: PROD
