@@ -8,7 +8,7 @@ This is the only place relying on Yamale internals (``Schema._schema``,
 this module guard against changes of them in new Yamale versions.
 """
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +20,8 @@ from yamale.validators import List as ListValidator
 from .values import split_fields, valid_fields
 
 KeyPath = tuple[str | int, ...]
+# Whether a value satisfies the extensions configured on a validator
+Accepts = Callable[[Validator, Any], bool]
 
 
 @dataclass(frozen=True)
@@ -188,7 +190,9 @@ def _resolves(schema: Any, node: Any, path: list[str], seen: set[str]) -> bool:
     return False
 
 
-def walk_data(schema: Any, data: Any, strict: bool) -> Iterator[DataNode]:
+def walk_data(
+    schema: Any, data: Any, strict: bool, accepts: Accepts | None = None
+) -> Iterator[DataNode]:
     """Yield every value of the data with the validator it was validated with.
 
     Where a value could match several validators (``any()``, ``list()`` and
@@ -201,8 +205,13 @@ def walk_data(schema: Any, data: Any, strict: bool) -> Iterator[DataNode]:
     the path of their value. A map part of ``subset()`` is yielded as a map of
     just that key, the way Yamale validates it. Every value carries the items
     of the lists enclosing it.
+
+    ``accepts`` narrows the validators matching a value to those whose
+    extensions it satisfies, e.g. ``ip(type='network')`` of
+    ``any(ip(type='address'), ip(type='network'))`` for ``10.0.0.0/24``. If
+    none satisfies them, the first one matching it in Yamale is used.
     """
-    yield from _data_nodes(schema, schema._schema, data, (), strict, ())
+    yield from _data_nodes(schema, schema._schema, data, (), strict, (), accepts)
 
 
 def _data_nodes(
@@ -212,6 +221,7 @@ def _data_nodes(
     path: KeyPath,
     strict: bool,
     levels: tuple[ListLevel, ...],
+    accepts: Accepts | None,
 ) -> Iterator[DataNode]:
     if isinstance(node, dict | list):
         keys = node.keys() if isinstance(node, dict) else range(len(node))
@@ -221,7 +231,7 @@ def _data_nodes(
             except (KeyError, IndexError, TypeError):
                 continue
             yield from _data_nodes(
-                schema, node[key], value, (*path, key), strict, levels
+                schema, node[key], value, (*path, key), strict, levels, accepts
             )
         return
 
@@ -231,7 +241,9 @@ def _data_nodes(
     if isinstance(node, Include):
         include = schema.includes[node.include_name]
         strict = strict if node.strict is None else bool(node.strict)
-        yield from _data_nodes(include, include._schema, data, path, strict, levels)
+        yield from _data_nodes(
+            include, include._schema, data, path, strict, levels, accepts
+        )
     elif isinstance(node, Map | ListValidator):
         if isinstance(data, Mapping):
             items: Iterator[tuple[str | int, Any]] = iter(data.items())
@@ -254,13 +266,27 @@ def _data_nodes(
                 item_levels = (*levels, ListLevel(path, key, item_key, node))
             if isinstance(key_validator, Validator):
                 yield from _data_nodes(
-                    schema, key_validator, key, (*path, key), strict, item_levels
+                    schema,
+                    key_validator,
+                    key,
+                    (*path, key),
+                    strict,
+                    item_levels,
+                    accepts,
                 )
             yield from _matching(
-                schema, node.validators, value, (*path, key), strict, item_levels
+                schema,
+                node.validators,
+                value,
+                (*path, key),
+                strict,
+                item_levels,
+                accepts,
             )
     elif isinstance(node, AnyValidator):
-        yield from _matching(schema, node.validators, data, path, strict, levels)
+        yield from _matching(
+            schema, node.validators, data, path, strict, levels, accepts
+        )
     elif isinstance(node, Subset):
         if isinstance(data, Mapping):
             parts = [{k: v} for k, v in data.items()]
@@ -269,7 +295,9 @@ def _data_nodes(
         else:
             parts = [data]
         for part in parts:
-            yield from _matching(schema, node.validators, part, path, strict, levels)
+            yield from _matching(
+                schema, node.validators, part, path, strict, levels, accepts
+            )
 
 
 def _matching(
@@ -279,21 +307,25 @@ def _matching(
     path: KeyPath,
     strict: bool,
     levels: tuple[ListLevel, ...],
+    accepts: Accepts | None,
 ) -> Iterator[DataNode]:
     if not validators:
         return
+    match: Validator | None = None
     if len(validators) == 1:
         match = validators[0]
     else:
-        match = next(
-            (
-                v
-                for v in validators
-                if not schema._validate(v, data, DataPath(), strict)
-            ),
-            None,
-        )
+        first_valid = None
+        for v in validators:
+            if schema._validate(v, data, DataPath(), strict):
+                continue
+            if accepts is None or accepts(v, data):
+                match = v
+                break
+            if first_valid is None:
+                first_valid = v
+        match = match or first_valid
         if match is None:
             # Not valid data: walk on with the first validator of the right type
             match = next((v for v in validators if v.is_valid(data)), validators[0])
-    yield from _data_nodes(schema, match, data, path, strict, levels)
+    yield from _data_nodes(schema, match, data, path, strict, levels, accepts)

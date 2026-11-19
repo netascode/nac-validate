@@ -66,6 +66,15 @@ class Extension:
         """
         return []
 
+    def accepts(self, validator: Validator, value: Any) -> bool:
+        """Return whether the value satisfies the extension on the validator.
+
+        Used to choose among the validators of ``any()``, ``list()`` and
+        ``subset()`` a value matches in Yamale, so only extensions checking
+        single values need to override it.
+        """
+        return True
+
     def check(self, node: DataNode, scope: Scope) -> list[str]:
         """Return violations of the value validated by the node's validator."""
         raise NotImplementedError
@@ -85,3 +94,15 @@ class Extension:
             if self.applies(node.validator)
             for message in self.check(node, scope)
         ]
+
+
+class Annotation(Extension):
+    """An extension only describing the schema, never checked against data.
+
+    Subclasses set ``keywords`` and implement ``check_schema()``.
+    """
+
+    scopes: ClassVar[frozenset[Scope]] = frozenset[Scope]()
+
+    def check(self, node: DataNode, scope: Scope) -> list[str]:
+        return []
