@@ -209,6 +209,37 @@ def test_validate_composite_primary_key_conflict() -> None:
     assert "node=102" not in result.output
 
 
+def test_validate_unique() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_unique/"
+    schema_path = "tests/integration/fixtures/schema_unique/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_validate_unique_conflict() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_unique_conflict/"
+    schema_path = "tests/integration/fixtures/schema_unique/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
+    assert "Duplicate unique key id=1 across files" in result.output
+
+
 def test_validate_invalid_schema_extension() -> None:
     runner = CliRunner()
     input_path = "tests/integration/fixtures/data/"

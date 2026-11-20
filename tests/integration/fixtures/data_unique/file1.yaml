@@ -1,0 +1,10 @@
+---
+root:
+  routes:
+    - prefix: 10.0.0.0/8
+    - prefix: 10.0.0.0/8
+      vrf: VRF1
+      tags: [a, b]
+  wlans:
+    - name: CORP
+      id: 1

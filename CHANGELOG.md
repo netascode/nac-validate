@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add `unique` schema option for lists, for values that must be unique without identifying an item: `unique=True` on a list of single values (`list(str(), unique=True)`), or comma-separated fields of the items whose combination must be unique (`unique='prefix,vrf'`). Unlike `primary_key`, the fields may be optional: a field that is not set is a value of its own, and items setting none of the fields are not compared. Checked per file and on the merged data
+
 ## 2.1.0
 
 - Add `primary_key` schema option for lists (`list(include('item'), primary_key='name')`): every item must set the key and its value must be unique within the list, checked per file and on the merged data. A composite key names several comma-separated fields (`primary_key='node_id,name'`), whose combination must be unique

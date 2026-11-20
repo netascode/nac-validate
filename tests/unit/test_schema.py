@@ -166,6 +166,107 @@ class TestCompositePrimaryKey:
         ]
 
 
+class TestUniqueValues:
+    """Tests for unique=True on list() of single values."""
+
+    SCHEMA = "items: list(any(str(), int(), bool(), map()), unique=True)"
+
+    def test_unique_values_pass(self) -> None:
+        assert errors({"items": ["a", "b"]}, self.SCHEMA) == []
+
+    def test_duplicate_values_fail(self) -> None:
+        data = {"items": ["a", "b", "a", "b", "a"]}
+        assert errors(data, self.SCHEMA) == [
+            "items: Duplicate value a in items 0, 2, 4",
+            "items: Duplicate value b in items 1, 3",
+        ]
+
+    def test_values_of_different_types_are_distinct(self) -> None:
+        assert errors({"items": [1, "1", True]}, self.SCHEMA) == []
+
+    def test_maps_are_not_compared(self) -> None:
+        assert errors({"items": [{"a": 1}, {"a": 1}]}, self.SCHEMA) == []
+
+    def test_duplicate_in_merged_data_names_no_items(self) -> None:
+        data = {"items": ["a", "a"]}
+        assert errors(data, self.SCHEMA, Scope.DOCUMENT) == [
+            "items: Duplicate value a across files"
+        ]
+
+    def test_list_without_unique_allows_duplicates(self) -> None:
+        assert errors({"items": ["a", "a"]}, "items: list(str())") == []
+
+
+class TestUniqueFields:
+    """Tests for unique naming fields of the items of list()."""
+
+    SCHEMA = "items: list(any(map(), str()), unique='prefix, vrf')"
+
+    def test_combination_must_be_unique(self) -> None:
+        data = {
+            "items": [
+                {"prefix": "p1", "vrf": "a"},
+                {"prefix": "p1", "vrf": "b"},
+                {"prefix": "p2", "vrf": "a"},
+                {"prefix": "p1", "vrf": "a", "x": 1},
+            ]
+        }
+        assert errors(data, self.SCHEMA) == [
+            "items: Duplicate unique key prefix=p1, vrf=a in items 0, 3"
+        ]
+
+    def test_unset_field_is_a_value_of_its_own(self) -> None:
+        data = {"items": [{"prefix": "p1"}, {"prefix": "p1", "vrf": "a"}]}
+        assert errors(data, self.SCHEMA) == []
+
+    @pytest.mark.parametrize("item", [{"prefix": "p1"}, {"prefix": "p1", "vrf": None}])
+    def test_unset_fields_are_shown_as_not_set(self, item: dict[str, Any]) -> None:
+        data = {"items": [{"prefix": "p1"}, item]}
+        assert errors(data, self.SCHEMA) == [
+            "items: Duplicate unique key prefix=p1 in items 0, 1"
+        ]
+
+    def test_items_setting_no_field_are_not_compared(self) -> None:
+        data = {"items": [{"x": 1}, {"x": 1}, {"prefix": None}, "a", "a"]}
+        assert errors(data, self.SCHEMA) == []
+
+    def test_values_of_different_types_are_distinct(self) -> None:
+        data = {"items": [{"prefix": 1}, {"prefix": "1"}]}
+        assert errors(data, self.SCHEMA) == []
+
+    @pytest.mark.parametrize(
+        ("value", "kind"), [(["a"], "a list"), ({"k": "a"}, "a map")]
+    )
+    def test_field_value_must_be_a_single_value(self, value: Any, kind: str) -> None:
+        data = {"items": [{"prefix": value}, {"prefix": value}]}
+        assert errors(data, self.SCHEMA) == [
+            f"items: Unique field 'prefix' in item {i} must be a single value, not "
+            f"{kind}"
+            for i in (0, 1)
+        ]
+
+    def test_unique_key_next_to_primary_key(self) -> None:
+        schema = "items: list(map(), primary_key='name', unique='src,dst')"
+        data = {
+            "items": [
+                {"name": "a", "src": 1, "dst": 2},
+                {"name": "b", "src": 1, "dst": 2},
+                {"name": "c", "src": 2, "dst": 1},
+                {"name": "a"},
+            ]
+        }
+        assert errors(data, schema) == [
+            "items: Duplicate primary key name=a in items 0, 3",
+            "items: Duplicate unique key src=1, dst=2 in items 0, 1",
+        ]
+
+    def test_duplicate_in_merged_data_names_no_items(self) -> None:
+        data = {"items": [{"prefix": "p1", "x": 1}, {"prefix": "p1", "x": 2}]}
+        assert errors(data, self.SCHEMA, Scope.DOCUMENT) == [
+            "items: Duplicate unique key prefix=p1 across files"
+        ]
+
+
 class TestVanillaYamale:
     """Schemas using extensions stay valid for vanilla Yamale."""
 
@@ -173,6 +274,13 @@ class TestVanillaYamale:
         loaded = yamale.make_schema(content=SCHEMA)
         data = {"tenants": [{"name": "a"}, {"name": "a"}]}
         yamale.validate(loaded, [(data, "data")])
+
+    @pytest.mark.parametrize("value", ["True", "'a,b'"])
+    def test_unique_keyword_is_ignored(self, value: str) -> None:
+        loaded = yamale.make_schema(
+            content=f"a: list(any(str(), map()), unique={value})"
+        )
+        yamale.validate(loaded, [({"a": ["x", "x", {"a": 1}, {"a": 1}]}, "data")])
 
 
 class TestWalkData:
@@ -341,6 +449,33 @@ class TestCheckSchema:
     def test_valid_primary_key_passes(self, value: str) -> None:
         check_schema(yamale.make_schema(content=f"a: list(map(), primary_key={value})"))
 
+    def test_unique_on_unsupported_validator_fails(self) -> None:
+        with pytest.raises(SchemaError, match=r"a: unique is only .* list\(\)"):
+            check_schema(yamale.make_schema(content="a: map(unique=True)"))
+
+    @pytest.mark.parametrize(
+        "value", ["False", "1", "''", "' '", "'a,,b'", "'a,'", "'a, a'"]
+    )
+    def test_invalid_unique_fails(self, value: str) -> None:
+        schema = f"a: list(map(), unique={value})"
+        with pytest.raises(
+            SchemaError, match="a: unique must be True or comma-separated field names"
+        ):
+            check_schema(yamale.make_schema(content=schema))
+
+    def test_unique_naming_part_of_the_primary_key_passes(self) -> None:
+        schema = "a: list(map(), primary_key='a,b', unique='a')"
+        check_schema(yamale.make_schema(content=schema))
+
+    def test_unique_naming_the_primary_key_fails(self) -> None:
+        schema = "a: list(map(), primary_key='a,b', unique='b, a')"
+        with pytest.raises(SchemaError, match="a: unique names the fields of primary"):
+            check_schema(yamale.make_schema(content=schema))
+
+    @pytest.mark.parametrize("value", ["True", "'a'", "'a,b'", "' a , b '"])
+    def test_valid_unique_passes(self, value: str) -> None:
+        check_schema(yamale.make_schema(content=f"a: list(map(), unique={value})"))
+
     def test_yamale_keyword_does_not_configure_an_extension(self) -> None:
         class Key(Extension):
             keywords: ClassVar[tuple[str, ...]] = ("key",)
@@ -354,7 +489,10 @@ class TestCheckSchema:
         ]
 
     def test_used_extensions(self) -> None:
-        assert used_extensions(yamale.make_schema(content=SCHEMA)) == list(EXTENSIONS)
+        primary_key, unique = EXTENSIONS
+        assert used_extensions(yamale.make_schema(content=SCHEMA)) == [primary_key]
+        both = yamale.make_schema(content=f"{SCHEMA}\nu: list(str(), unique=True)")
+        assert used_extensions(both) == [primary_key, unique]
         assert used_extensions(yamale.make_schema(content="a: list(map())")) == []
 
 
@@ -409,6 +547,22 @@ class TestValidatorExtensions:
         assert validator.errors == [
             f"Syntax error '{data}': tenants: Duplicate primary key name=a across"
             " files (with conflicting values that prevent merging)"
+        ]
+
+    def test_unique_values_across_files_fail(self, project: Path, data: Path) -> None:
+        schema = project / "schema.yaml"
+        schema.write_text(
+            "wlans: list(include('wlan'), primary_key='name', unique='id')\n---\n"
+            "wlan:\n  name: str()\n  id: int(required=False)\n"
+        )
+        validator = Validator.from_paths(schema, DEFAULT_RULES)
+        (data / "a.yaml").write_text("wlans:\n  - name: a\n    id: 1\n")
+        # Item a merges, b uses the id of a from the other file
+        (data / "b.yaml").write_text("wlans:\n  - name: a\n  - name: b\n    id: 1\n")
+        with pytest.raises(SyntaxValidationError):
+            validator.validate_syntax([data], rich_output=False)
+        assert validator.errors == [
+            f"Syntax error '{data}': wlans: Duplicate unique key id=1 across files"
         ]
 
     def test_matching_items_across_files_merge(

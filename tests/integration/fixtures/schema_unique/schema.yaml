@@ -1,0 +1,15 @@
+---
+root: include('root', required=False)
+---
+root:
+  routes: list(include('route'), unique='prefix,vrf', required=False)
+  wlans: list(include('wlan'), primary_key='name', unique='id', required=False)
+
+route:
+  prefix: str()
+  vrf: str(required=False)
+  tags: list(str(), unique=True, required=False)
+
+wlan:
+  name: str()
+  id: int(required=False)
