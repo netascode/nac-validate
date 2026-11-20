@@ -173,6 +173,44 @@ class Rule(RuleBase):
 
 References are checked on the data merged from all files, also for a single file, once every file passed. Loading the schema fails for a `ref` naming no `ref_name`, a `ref_in` path that does not exist in the enclosing list item, more `ref_in` selectors than lists enclose the target, a selected list without a single-field `primary_key`, and lists sharing a `ref_name` used with `ref_in` that are nested differently.
 
+### IP Forms
+
+`type` on an `ip()` restricts the value to one or several comma-separated forms:
+
+| Type | Accepted | Rejected |
+|---|---|---|
+| `address` | `10.0.0.1` | any prefix length |
+| `interface` | `10.0.0.1/24` | no prefix length, network or broadcast address (`10.0.0.0/24`, `10.0.0.255/24`) |
+| `network` | `10.0.0.0/24` | no prefix length, host bits set (`10.0.0.1/24`) |
+
+```yaml
+a: ip(version=4, type='address')
+b: ip(type='interface')
+c: ip(type='network')
+d: ip(type='interface,network')
+```
+
+`interface` rejects the network address of the subnet, the IPv4 broadcast address and the IPv6 subnet-router anycast address (`2001:db8::/64`), except on IPv4 /31 and /32 and IPv6 /127 and /128 subnets. Prefix lengths must be numbers, netmasks like `10.0.0.1/255.255.255.0` are rejected.
+
+### Ordered Lists
+
+`ordered=True` on a `list()` marks the order of its items as significant. A list without it, or with `ordered=False`, has no significant order. It is not checked against the data:
+
+```yaml
+a: list(str(), ordered=True)
+```
+
+### Descriptions
+
+`description` documents a schema element. It is supported on every validator and not checked against the data:
+
+```yaml
+tenants: list(include('tenant'), primary_key='name', description='Tenants of the fabric')
+---
+tenant:
+  name: str(description='Name of the tenant')
+```
+
 ## Packaged Schema and Rules (Experimental)
 
 > **Note:** This feature is experimental and may change in future versions. It is not subject to semantic versioning guarantees.

@@ -16,8 +16,13 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
+from yamale.validators import Validator
+
 from ..exceptions import SchemaError
 from .base import Extension, Scope
+from .description import Description
+from .ip_type import IpType
+from .ordered import Ordered
 from .primary_key import PrimaryKey
 from .reference import Reference, References, references
 from .unique import Unique
@@ -37,7 +42,14 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-EXTENSIONS: tuple[Extension, ...] = (PrimaryKey(), Unique(), References())
+EXTENSIONS: tuple[Extension, ...] = (
+    PrimaryKey(),
+    Unique(),
+    References(),
+    IpType(),
+    Ordered(),
+    Description(),
+)
 
 
 @dataclass(frozen=True)
@@ -117,7 +129,15 @@ def check_data(
     whole = [e for e in active if e.relates_values]
     nodes: list[DataNode] = []
     errors: list[Violation] = []
-    for node in walk_data(schema, data, strict):
+
+    def accepts(validator: Validator, value: Any) -> bool:
+        return all(
+            ext.accepts(validator, value)
+            for ext in extensions
+            if ext.applies(validator)
+        )
+
+    for node in walk_data(schema, data, strict, accepts):
         if whole:
             nodes.append(node)
         for ext in per_node:

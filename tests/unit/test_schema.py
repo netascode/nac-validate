@@ -23,6 +23,10 @@ from nac_validate.schema import (
     check_schema,
     used_extensions,
 )
+from nac_validate.schema.ip_type import IpType
+from nac_validate.schema.primary_key import PrimaryKey
+from nac_validate.schema.reference import References
+from nac_validate.schema.unique import Unique
 from nac_validate.schema.walker import DataNode, walk_data, walk_schema
 from nac_validate.validator import Validator
 
@@ -498,7 +502,10 @@ class TestCheckSchema:
         ] == ["a", "b", "c"]
 
     def test_used_extensions(self) -> None:
-        primary_key, unique, refs = EXTENSIONS
+        primary_key, unique, refs, ip_type = (
+            next(e for e in EXTENSIONS if isinstance(e, t))
+            for t in (PrimaryKey, Unique, References, IpType)
+        )
         assert used_extensions(yamale.make_schema(content=SCHEMA)) == [primary_key]
         both = yamale.make_schema(content=f"{SCHEMA}\nu: list(str(), unique=True)")
         assert used_extensions(both) == [primary_key, unique]
@@ -507,6 +514,245 @@ class TestCheckSchema:
             content="a: list(map(), primary_key='n', ref_name='x')\nb: str(ref='x')"
         )
         assert used_extensions(referenced) == [primary_key, refs]
+        typed = yamale.make_schema(content="a: ip(type='address')")
+        assert used_extensions(typed) == [ip_type]
+
+
+class TestIpType:
+    """Tests for the type keyword of ip()."""
+
+    @pytest.mark.parametrize(
+        ("types", "value"),
+        [
+            ("address", "10.0.0.1"),
+            ("address", "2001:db8::1"),
+            ("address", "fe80::1%eth0"),
+            ("interface", "10.0.0.1/24"),
+            ("interface", "10.0.0.254/24"),
+            ("interface", "10.0.0.0/31"),
+            ("interface", "10.0.0.1/31"),
+            ("interface", "10.0.0.0/32"),
+            ("interface", "2001:db8::1/64"),
+            ("interface", "2001:db8::ffff:ffff:ffff:ffff/64"),
+            ("interface", "2001:db8::/127"),
+            ("interface", "2001:db8::/128"),
+            ("network", "10.0.0.0/24"),
+            ("network", "10.0.0.1/32"),
+            ("network", "0.0.0.0/0"),
+            ("network", "2001:db8::/32"),
+            ("network", "fe80::%eth0/64"),
+            ("address,network", "10.0.0.1"),
+            ("address,network", "10.0.0.0/24"),
+            ("address, interface", "10.0.0.1/24"),
+            ("interface,network", "10.0.0.1/24"),
+            ("interface,network", "10.0.0.0/24"),
+            ("interface,network", "2001:db8::/64"),
+        ],
+    )
+    def test_valid_value_passes(self, types: str, value: str) -> None:
+        assert errors({"a": value}, f"a: ip(type='{types}')") == []
+
+    @pytest.mark.parametrize(
+        ("types", "value", "message"),
+        [
+            (
+                "address",
+                "10.0.0.1/24",
+                "'10.0.0.1/24' is not an IP address, it has a prefix length",
+            ),
+            (
+                "address",
+                "10.0.0.1/255.255.255.0",
+                "'10.0.0.1/255.255.255.0' is not an IP address, it has a prefix length",
+            ),
+            (
+                "interface",
+                "10.0.0.1",
+                "'10.0.0.1' is not an IP host address with prefix length, it has "
+                "no prefix length",
+            ),
+            (
+                "interface",
+                "10.0.0.1/255.255.255.0",
+                "'10.0.0.1/255.255.255.0' is not an IP host address with prefix "
+                "length, prefix length 255.255.255.0 must be a number, not a "
+                "netmask",
+            ),
+            (
+                "interface",
+                "10.0.0.0/24",
+                "'10.0.0.0/24' is not an IP host address with prefix length, it "
+                "is the network address",
+            ),
+            (
+                "interface",
+                "10.0.0.255/24",
+                "'10.0.0.255/24' is not an IP host address with prefix length, it "
+                "is the broadcast address",
+            ),
+            (
+                "interface",
+                "2001:db8::/64",
+                "'2001:db8::/64' is not an IP host address with prefix length, it "
+                "is the subnet-router anycast address",
+            ),
+            (
+                "interface,network",
+                "10.0.0.255/24",
+                "'10.0.0.255/24' is not an IP host address with prefix length or "
+                "an IP network, it is the broadcast address",
+            ),
+            (
+                "network",
+                "10.0.0.1",
+                "'10.0.0.1' is not an IP network, it has no prefix length",
+            ),
+            (
+                "network",
+                "10.0.0.1/24",
+                "'10.0.0.1/24' is not an IP network, host bits are set (network "
+                "is 10.0.0.0/24)",
+            ),
+            (
+                "network",
+                "2001:db8::1/32",
+                "'2001:db8::1/32' is not an IP network, host bits are set "
+                "(network is 2001:db8::/32)",
+            ),
+            (
+                "address,network",
+                "10.0.0.1/24",
+                "'10.0.0.1/24' is not an IP address or an IP network, host bits "
+                "are set (network is 10.0.0.0/24)",
+            ),
+        ],
+    )
+    def test_invalid_value_fails(self, types: str, value: str, message: str) -> None:
+        assert errors({"a": value}, f"a: ip(type='{types}')") == [f"a: {message}"]
+
+    def test_combined_with_version(self) -> None:
+        schema = "a: ip(version=4, type='network')"
+        assert errors({"a": "10.0.0.0/8"}, schema) == []
+        with pytest.raises(yamale.YamaleError):
+            yamale.validate(
+                yamale.make_schema(content=schema), [({"a": "2001:db8::/32"}, "d")]
+            )
+
+    def test_list_items_are_checked(self) -> None:
+        schema = "a: list(ip(type='network'))"
+        assert errors({"a": ["10.0.0.0/8", "10.0.0.1/8"]}, schema) == [
+            "a.1: '10.0.0.1/8' is not an IP network, host bits are set (network "
+            "is 10.0.0.0/8)"
+        ]
+
+    @pytest.mark.parametrize(
+        ("types", "message"),
+        [
+            ("address", None),
+            ("interface", "'167772161' is not an IP host address with prefix length"),
+            ("network", "'167772161' is not an IP network"),
+        ],
+    )
+    def test_integer_is_an_address(self, types: str, message: str | None) -> None:
+        schema = f"a: ip(type='{types}')"
+        assert errors({"a": 167772161}, schema) == (
+            [] if message is None else [f"a: {message}, it has no prefix length"]
+        )
+
+    def test_any_chooses_the_alternative_satisfying_the_type(self) -> None:
+        schema = "a: any(ip(type='address'), ip(type='network'))"
+        assert errors({"a": "10.0.0.0/24"}, schema) == []
+        assert errors({"a": "10.0.0.1"}, schema) == []
+        assert errors({"a": "10.0.0.1/24"}, schema) == [
+            "a: '10.0.0.1/24' is not an IP address, it has a prefix length"
+        ]
+
+    def test_list_chooses_the_item_validator_satisfying_the_type(self) -> None:
+        schema = "a: list(ip(type='address'), ip(type='network'))"
+        assert errors({"a": ["10.0.0.1", "10.0.0.0/24"]}, schema) == []
+
+    def test_merged_data_is_not_checked_again(self) -> None:
+        assert errors({"a": "10.0.0.1"}, "a: ip(type='network')", Scope.DOCUMENT) == []
+
+    @pytest.mark.parametrize(
+        "value", ["''", "'host'", "'address,'", "'address,address'", "1", "True"]
+    )
+    def test_invalid_type_fails(self, value: str) -> None:
+        with pytest.raises(
+            SchemaError, match="a: type must be comma-separated IP forms of address"
+        ):
+            check_schema(yamale.make_schema(content=f"a: ip(type={value})"))
+
+    def test_type_on_unsupported_validator_fails(self) -> None:
+        with pytest.raises(SchemaError, match=r"a: type is only supported on ip\(\)"):
+            check_schema(yamale.make_schema(content="a: str(type='address')"))
+
+
+class TestOrdered:
+    """Tests for the ordered keyword of list()."""
+
+    SCHEMA = (
+        "a: list(str(), ordered=True)\n"
+        "b: list(include('i'), primary_key='x', ordered=False, required=False)\n"
+        "---\ni:\n  x: int()"
+    )
+
+    def test_valid_values_pass(self, caplog: pytest.LogCaptureFixture) -> None:
+        with caplog.at_level(logging.WARNING):
+            check_schema(yamale.make_schema(content=self.SCHEMA))
+        assert caplog.messages == []
+
+    @pytest.mark.parametrize("value", ["1", "'true'", "'yes'", "None"])
+    def test_invalid_value_fails(self, value: str) -> None:
+        with pytest.raises(SchemaError, match="a: ordered must be True or False"):
+            check_schema(yamale.make_schema(content=f"a: list(str(), ordered={value})"))
+
+    def test_on_unsupported_validator_fails(self) -> None:
+        with pytest.raises(SchemaError, match=r"a: ordered is only .* list\(\)"):
+            check_schema(yamale.make_schema(content="a: str(ordered=True)"))
+
+    def test_not_checked_against_data(self) -> None:
+        data = {"a": ["b", "a", "a"], "b": [{"x": 2}, {"x": 1}]}
+        assert errors(data, self.SCHEMA) == []
+        assert errors(data, self.SCHEMA, Scope.DOCUMENT) == []
+
+
+class TestDescription:
+    """Tests for the description keyword of all validators."""
+
+    SCHEMA = (
+        "a: str(description='A string')\n"
+        "b: list(include('i'), description='A list', primary_key='x')\n"
+        "c: include('i', description='An include', required=False)\n"
+        "d: regex('^a', description='A regex')\n"
+        "e: map(key=str(description='A key'), description='A map', required=False)\n"
+        "---\ni:\n  x: int(description='A field')"
+    )
+
+    def test_supported_on_all_validators(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING):
+            check_schema(yamale.make_schema(content=self.SCHEMA))
+        assert caplog.messages == []
+
+    @pytest.mark.parametrize("value", ["''", "' '", "1", "True"])
+    def test_invalid_description_fails(self, value: str) -> None:
+        with pytest.raises(
+            SchemaError, match="a: description must be a non-empty string"
+        ):
+            check_schema(yamale.make_schema(content=f"a: str(description={value})"))
+
+    def test_not_checked_against_data(self) -> None:
+        data = {"a": "x", "b": [{"x": 1}], "d": "ab"}
+        assert errors(data, self.SCHEMA) == []
+        assert errors(data, self.SCHEMA, Scope.DOCUMENT) == []
+
+    def test_vanilla_yamale_ignores_description(self) -> None:
+        loaded = yamale.make_schema(content=self.SCHEMA)
+        yamale.validate(loaded, [({"a": "x", "b": [{"x": 1}], "d": "ab"}, "data")])
+        with pytest.raises(yamale.YamaleError):
+            yamale.validate(loaded, [({"a": 1, "b": [], "d": "ab"}, "data")])
 
 
 class TestValidatorExtensions:
