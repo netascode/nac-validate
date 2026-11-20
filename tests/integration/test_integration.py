@@ -240,6 +240,37 @@ def test_validate_unique_conflict() -> None:
     assert "Duplicate unique key id=1 across files" in result.output
 
 
+def test_validate_reference() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_reference/"
+    schema_path = "tests/integration/fixtures/schema_reference/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_validate_reference_error() -> None:
+    runner = CliRunner()
+    input_path = "tests/integration/fixtures/data_reference_error/"
+    schema_path = "tests/integration/fixtures/schema_reference/schema.yaml"
+    result = runner.invoke(
+        nac_validate.cli.main.app,
+        [
+            "-s",
+            schema_path,
+            input_path,
+        ],
+    )
+    assert result.exit_code == ExitCode.SYNTAX_ERROR
+    assert "vrf 'PROD' is not defined in devices[name=LEAF2]" in result.output
+
+
 def test_validate_invalid_schema_extension() -> None:
     runner = CliRunner()
     input_path = "tests/integration/fixtures/data/"

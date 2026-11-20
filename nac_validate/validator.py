@@ -391,6 +391,9 @@ class Validator:
         self.data: dict[str, Any] | None = None
         # Data merged from the paths by the syntax validation, for reuse
         self._merged_data: tuple[tuple[Path, ...], dict[str, Any]] | None = None
+        # Data of the last file the syntax validation loaded, to reuse for a
+        # document check of a single file
+        self._file_data: dict[str, Any] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
         self.file_count: int = 0
@@ -665,6 +668,7 @@ class Validator:
                 )
                 return
 
+            self._file_data = data
             # Schema syntax validation
             if self.schema is None or data == {}:
                 return
@@ -707,6 +711,11 @@ class Validator:
         else:
             errors = check_data(self.schema, data, extensions, Scope.FILE, strict)
         self._record_schema_errors(source, errors, data, log_level)
+
+    def _forget_loaded_data(self) -> None:
+        """Drop data loaded by a previous run, as files may have changed."""
+        self._merged_data = None
+        self._file_data = None
 
     def _merged_data_from_paths(self, paths: Sequence[Path]) -> dict[str, Any]:
         """Load and merge YAML data from paths, reusing a previous load."""
@@ -805,8 +814,7 @@ class Validator:
         self.errors.clear()
         self.structured_syntax_errors.clear()
         self.file_count = 0
-        # Files may have changed since a previous run
-        self._merged_data = None
+        self._forget_loaded_data()
         extensions = used_extensions(self.schema) if self.schema is not None else []
 
         if self.data is not None:
@@ -839,9 +847,15 @@ class Validator:
                             if file_path.suffix in YAML_SUFFIXES:
                                 self.file_count += 1
             # Violations only visible after merging, checked once every file
-            # passed; a single file has nothing to merge
+            # passed. A single file has nothing to merge, so only extensions
+            # not checked per file need it, e.g. references
             document = [e for e in extensions if Scope.DOCUMENT in e.scopes]
-            if not self.errors and document and self.file_count > 1:
+            if self.file_count == 1:
+                document = [e for e in document if Scope.FILE not in e.scopes]
+            if not self.errors and document and self.file_count > 0:
+                if self.file_count == 1 and self._file_data is not None:
+                    # Merging a single file gives its data, already loaded
+                    self._merged_data = (tuple(resolved_paths), self._file_data)
                 data = self._merged_data_from_paths(resolved_paths)
                 if data != {}:
                     self._record_schema_errors(

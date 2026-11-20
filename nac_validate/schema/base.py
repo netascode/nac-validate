@@ -3,12 +3,13 @@
 
 """Base class for schema extensions."""
 
+from collections.abc import Sequence
 from enum import Enum
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from yamale.validators import Validator
 
-from .walker import DataNode, known_keywords
+from .walker import DataNode, KeyPath, known_keywords
 
 
 class Scope(Enum):
@@ -23,18 +24,21 @@ class Scope(Enum):
 class Extension:
     """A schema extension, configured by keyword arguments of Yamale validators.
 
-    Subclasses set ``keywords`` and implement ``check()``. An extension is
-    only checked against data that passed the Yamale validation.
+    Subclasses set ``keywords`` and implement ``check()``, or ``check_nodes()``
+    to relate values across the data. An extension is only checked against
+    data that passed the Yamale validation.
 
     Attributes:
         keywords: Keyword arguments configuring the extension
         validator_types: Validators the keywords are supported on
         scopes: Data the extension is checked against
+        relates_values: Whether the extension overrides ``check_nodes()``
     """
 
     keywords: ClassVar[tuple[str, ...]]
     validator_types: ClassVar[tuple[type[Validator], ...]] = (Validator,)
     scopes: ClassVar[frozenset[Scope]] = frozenset({Scope.FILE})
+    relates_values: ClassVar[bool] = False
 
     def configured(self, validator: Validator) -> list[str]:
         """Return the keywords of this extension the validator sets.
@@ -55,6 +59,29 @@ class Extension:
         """Return problems with the extension's keywords on the validator."""
         return []
 
+    def check_whole_schema(self, schema: Any) -> list[str]:
+        """Return problems that need the whole schema, e.g. names used across it.
+
+        Problems name their location themselves.
+        """
+        return []
+
     def check(self, node: DataNode, scope: Scope) -> list[str]:
         """Return violations of the value validated by the node's validator."""
         raise NotImplementedError
+
+    def check_nodes(
+        self, schema: Any, nodes: Sequence[DataNode], data: Any, scope: Scope
+    ) -> list[tuple[KeyPath, str]]:
+        """Return violations of the walked data as ``(path, message)``.
+
+        By default every node whose validator configures the extension is
+        checked on its own with ``check()``. Extensions relating values across
+        the data override this.
+        """
+        return [
+            (node.path, message)
+            for node in nodes
+            if self.applies(node.validator)
+            for message in self.check(node, scope)
+        ]

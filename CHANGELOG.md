@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add reference schema options: `ref_name` on a list with a single-field `primary_key` registers its items' keys under a name (shared by several lists for references to any of them), `ref` on a field requires its value to be such a key. Targets are looked up following the nesting of the data (e.g. the VRFs of the same device); `ref_in` selects the enclosing items by fields of the referencing item (e.g. `tenant` + `vrf`), `ref_scope='any'` on a list lifts the isolation of its items, and `ref_implicit` lists values that exist without being defined (globs allowed). Checked on the merged data, also for a single file. `nac_validate.schema.references()` gives rules the references of the data, for visibility the schema can't express
 - Add `unique` schema option for lists, for values that must be unique without identifying an item: `unique=True` on a list of single values (`list(str(), unique=True)`), or comma-separated fields of the items whose combination must be unique (`unique='prefix,vrf'`). Unlike `primary_key`, the fields may be optional: a field that is not set is a value of its own, and items setting none of the fields are not compared. Checked per file and on the merged data
 
 ## 2.1.0

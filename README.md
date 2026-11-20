@@ -113,6 +113,66 @@ zone_pairs: list(include('zone_pair'), primary_key='name', unique='source,destin
 
 As with primary keys, values of different types are distinct, and `unique` is checked in every file and, once every file passed, on the data merged from all files, where items from different files that don't merge still collide.
 
+### References
+
+A list declares what its items can be referenced as with `ref_name`, a field what it refers to with `ref`. The value of the field must then be the key of an item of such a list:
+
+```yaml
+device:
+  vrfs: list(include('vrf'), primary_key='name', ref_name='vrf', ref_implicit='default,management')
+interface:
+  vrf: str(ref='vrf', required=False)
+  vrfs: list(str(ref='vrf'), required=False)
+```
+
+- `ref_name` requires a single-field `primary_key`. Several lists may share a name, so a reference can name an item of any of them (e.g. hosts, networks and ranges as `network_object`)
+- `ref_implicit` lists comma-separated values that exist without being defined in the data, such as default objects of the platform; `*` and `?` are globs (`system-*`)
+- `ref` works on any validator of a single value, including the item validator of a list and `any()`. Values are compared as text, so an integer key matches its string form
+
+Targets are looked up following the nesting of the data: for every list enclosing both the reference and a list of targets, both must be in the same item of it. A VRF defined in one device is not visible from another device, while a reference outside the `devices` list sees the VRFs of all devices.
+
+`ref_in` names fields of the referencing item whose values select the items the target is in, the last one the innermost list's item. Paths are dotted and read from the nearest list item enclosing the reference. A selector that is not set falls back to nesting, and a selector naming an unknown item is only reported by its own `ref`:
+
+```yaml
+leak_destination:
+  tenant: str(ref='tenant')
+  vrf: str(ref='tenant_vrf', ref_in='tenant')
+contract_master:
+  application_profile: str(ref='application_profile', required=False)
+  endpoint_group: str(ref='endpoint_group', ref_in='application_profile')
+```
+
+`ref_scope='any'` on a list with a single-field `primary_key` lifts the isolation of its items: a reference inside one tenant sees targets in all tenants. Visibility rules the schema can't express, like a fallback to a shared tenant, are left to a rule that gets the references from `nac_validate.schema.references(schema, data)`:
+
+```python
+from nac_validate import RuleBase, Violation
+from nac_validate.schema import references
+
+
+class Rule(RuleBase):
+    id = "201"
+    description = "Verify tenant visibility of references"
+
+    @classmethod
+    def match(cls, data, schema):
+        violations = []
+        for ref in references(schema, data, within="apic.tenants"):
+            if ref.implicit or ref.selected("apic.tenants"):
+                continue
+            own = ref.scope_key("apic.tenants")
+            defined_in = ref.defined_in("apic.tenants")
+            if defined_in and not defined_in & {own, "common"}:
+                violations.append(
+                    Violation(
+                        message=f"{ref.kind} '{ref.value}' is not visible from tenant {own}",
+                        path=".".join(str(p) for p in ref.path),
+                    )
+                )
+        return violations
+```
+
+References are checked on the data merged from all files, also for a single file, once every file passed. Loading the schema fails for a `ref` naming no `ref_name`, a `ref_in` path that does not exist in the enclosing list item, more `ref_in` selectors than lists enclose the target, a selected list without a single-field `primary_key`, and lists sharing a `ref_name` used with `ref_in` that are nested differently.
+
 ## Packaged Schema and Rules (Experimental)
 
 > **Note:** This feature is experimental and may change in future versions. It is not subject to semantic versioning guarantees.
