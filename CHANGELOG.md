@@ -1,4 +1,4 @@
-## Unreleased
+## 2.2.0b1
 
 - Add `ordered` schema option for lists to document that the order of the items is significant (`list(str(), ordered=True)`). Without it, or with `ordered=False`, the order is not significant. It is not checked against the data
 - Add `type` schema option for `ip()` to restrict the form of a value: `address` (`10.0.0.1`), `interface` (host address with prefix length, `10.0.0.1/24`, not the network or broadcast address) or `network` (no host bits set, `10.0.0.0/24`), or several comma-separated (`ip(type='address,network')`). Prefix lengths must be numbers, not netmasks
