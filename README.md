@@ -142,36 +142,7 @@ contract_master:
   endpoint_group: str(ref='endpoint_group', ref_in='application_profile')
 ```
 
-`ref_scope='any'` on a list with a single-field `primary_key` lifts the isolation of its items: a reference inside one tenant sees targets in all tenants. Visibility rules the schema can't express, like a fallback to a shared tenant, are left to a rule that gets the references from `nac_validate.schema.references(schema, data)`:
-
-```python
-from nac_validate import RuleBase, Violation
-from nac_validate.schema import references
-
-
-class Rule(RuleBase):
-    id = "201"
-    description = "Verify tenant visibility of references"
-
-    @classmethod
-    def match(cls, data, schema):
-        violations = []
-        for ref in references(schema, data, within="apic.tenants"):
-            if ref.implicit or ref.selected("apic.tenants"):
-                continue
-            own = ref.scope_key("apic.tenants")
-            defined_in = ref.defined_in("apic.tenants")
-            if defined_in and not defined_in & {own, "common"}:
-                violations.append(
-                    Violation(
-                        message=f"{ref.kind} '{ref.value}' is not visible from tenant {own}",
-                        path=".".join(str(p) for p in ref.path),
-                    )
-                )
-        return violations
-```
-
-References are checked on the data merged from all files, also for a single file, once every file passed. Loading the schema fails for a `ref` naming no `ref_name`, a `ref_in` path that does not exist in the enclosing list item, more `ref_in` selectors than lists enclose the target, a selected list without a single-field `primary_key`, and lists sharing a `ref_name` used with `ref_in` that are nested differently.
+`ref_scope='any'` on a list with a single-field `primary_key` lifts the isolation of its items: a reference inside one tenant sees targets in all tenants.
 
 ### IP Forms
 
