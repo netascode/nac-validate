@@ -1,6 +1,6 @@
 ## Unreleased
 
-- Refer to list items by their primary key instead of their index in duplicate errors: `Duplicate primary key name=a in 2 items`, `Duplicate unique key ip=x in items [name=a], [name=b]` (or `in 2 items` for lists without a primary key)
+- Refer to list items by their primary key instead of their index in duplicate errors: `Duplicate primary key name=a in 2 items`, `Duplicate unique key ip=x in items [name=a], [name=b]` (or `in 2 items` for lists without a primary key or items sharing it). Item paths of schema errors name items by the schema's `primary_key` (including composite keys) instead of guessing it from `name` or `id`. Items without a key are named by their index in brackets (`Primary key 'name' missing in item [1]`), and values are shown as in YAML, so values of different types look different (`true`, `'1'`)
 
 ## 2.2.0b1
 

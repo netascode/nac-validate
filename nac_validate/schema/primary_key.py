@@ -53,13 +53,13 @@ class PrimaryKey(Extension):
             if not isinstance(item, dict):
                 continue
             missing = [f for f in fields if item.get(f) is None]
-            errors += [f"Primary key '{f}' missing in item {index}" for f in missing]
+            errors += [f"Primary key '{f}' missing in item [{index}]" for f in missing]
             # Maps and lists can't be compared, whatever the item validators allow
             nested = [
                 f for f in fields if f not in missing and not is_single_value(item[f])
             ]
             errors += [
-                f"Primary key '{f}' in item {index} must be a single value, not "
+                f"Primary key '{f}' in item [{index}] must be a single value, not "
                 f"{kind(item[f])}"
                 for f in nested
             ]

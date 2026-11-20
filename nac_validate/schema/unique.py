@@ -26,6 +26,7 @@ from .base import Extension, Scope
 from .values import (
     TypedValue,
     format_key,
+    format_value,
     is_single_value,
     item_label,
     kind,
@@ -47,16 +48,18 @@ def _duplicates(
     """Yield every value with more than one item and where they are.
 
     Items are named by the list's primary key, as in the paths of messages.
-    Without one, the duplicated value is what names them.
+    Without one, or if it doesn't tell them apart (items sharing their key are
+    reported by ``primary_key``), the duplicated value is what names them.
     """
     for value, indices in indexes.items():
         if len(indices) == 1:
             continue
         if scope == Scope.DOCUMENT:
             yield value, " across files"
-        elif key_fields is not None:
-            labels = ", ".join(item_label(items[i], i, key_fields) for i in indices)
-            yield value, f" in items {labels}"
+            continue
+        labels = [item_label(items[i], i, key_fields) for i in indices]
+        if key_fields is not None and len(set(labels)) == len(labels):
+            yield value, f" in items {', '.join(labels)}"
         else:
             yield value, f" in {len(indices)} items"
 
@@ -106,7 +109,7 @@ class Unique(Extension):
                 continue
             indexes.setdefault(typed(item), []).append(index)
         return [
-            f"Duplicate value {value}{where}"
+            f"Duplicate value {format_value(value)}{where}"
             for (_, value), where in _duplicates(indexes, items, None, scope)
         ]
 
@@ -129,15 +132,13 @@ class Unique(Extension):
                 for f in fields
                 if item.get(f) is not None and not is_single_value(item[f])
             ]
-            label = (
-                item_label(item, index, key_fields) if key_fields is not None else index
-            )
-            errors += [
-                f"Unique field '{f}' in item {label} must be a single value, not "
-                f"{kind(item[f])}"
-                for f in nested
-            ]
             if nested:
+                label = item_label(item, index, key_fields)
+                errors += [
+                    f"Unique field '{f}' in item {label} must be a single value, "
+                    f"not {kind(item[f])}"
+                    for f in nested
+                ]
                 continue
             key_value = tuple(typed(item.get(f)) for f in fields)
             # Items setting none of the fields are not compared

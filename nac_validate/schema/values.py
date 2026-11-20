@@ -45,22 +45,63 @@ def typed(value: Any) -> TypedValue:
     return (type(value), value)
 
 
+def format_value(value: Any) -> str:
+    """Format a single value for messages as it is written in YAML.
+
+    Booleans and nulls are lowercase, and strings that would read as another
+    type (e.g. ``'1'`` or ``'true'``) are quoted, so values of different types
+    don't look the same.
+    """
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, str) and _reads_as_other_type(value):
+        return repr(value)
+    return str(value)
+
+
+def _reads_as_other_type(value: str) -> bool:
+    if value != value.strip() or value.lower() in _YAML_WORDS:
+        return True
+    try:
+        float(value)
+    except ValueError:
+        return False
+    return True
+
+
+_YAML_WORDS = frozenset({"", "~", "null", "true", "false", "yes", "no", "on", "off"})
+
+
 def format_key(fields: list[str], values: tuple[TypedValue, ...]) -> str:
     """Format the set fields of a key, e.g. ``node=1, name=a``."""
     return ", ".join(
-        f"{f}={v}" for f, (_, v) in zip(fields, values, strict=True) if v is not None
+        f"{f}={format_value(v)}"
+        for f, (_, v) in zip(fields, values, strict=True)
+        if v is not None
     )
+
+
+def key_label(item: Any, key_fields: list[str]) -> str | None:
+    """Return a list item's label by its key, e.g. ``[name=a]``.
+
+    None if the item is not a map or does not set every key field to a
+    single value.
+    """
+    if not isinstance(item, dict):
+        return None
+    values = [item.get(f) for f in key_fields]
+    if not all(v is not None and is_single_value(v) for v in values):
+        return None
+    return f"[{format_key(key_fields, tuple(typed(v) for v in values))}]"
 
 
 def item_label(item: Any, index: int, key_fields: list[str] | None) -> str:
     """Return a list item's label for messages, e.g. ``[name=a]``.
 
     Items are named by the list's primary key, as in the paths of messages;
-    an item without a usable key falls back to its index, e.g. ``[3]``.
+    an item without a usable key is named by its index, e.g. ``[3]``.
     """
-    if key_fields is not None and isinstance(item, dict):
-        values = [item.get(f) for f in key_fields]
-        if all(v is not None and is_single_value(v) for v in values):
-            key = format_key(key_fields, tuple(typed(v) for v in values))
-            return f"[{key}]"
-    return f"[{index}]"
+    label = key_label(item, key_fields) if key_fields is not None else None
+    return label if label is not None else f"[{index}]"

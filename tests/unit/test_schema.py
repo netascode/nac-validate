@@ -88,7 +88,7 @@ class TestPrimaryKey:
     @pytest.mark.parametrize("item", [{"id": 1}, {"name": None}])
     def test_missing_key_fails(self, item: dict[str, Any]) -> None:
         data = {"tenants": [{"name": "a"}, item]}
-        assert errors(data) == ["tenants: Primary key 'name' missing in item 1"]
+        assert errors(data) == ["tenants: Primary key 'name' missing in item [1]"]
 
     def test_null_list_is_not_set(self) -> None:
         assert errors({"tenants": None}) == []
@@ -112,7 +112,7 @@ class TestPrimaryKey:
         schema = "items: list(map(), primary_key='name')"
         data = {"items": [{"name": value}, {"name": value}]}
         assert errors(data, schema) == [
-            f"items: Primary key 'name' in item {i} must be a single value, not {kind}"
+            f"items: Primary key 'name' in item [{i}] must be a single value, not {kind}"
             for i in (0, 1)
         ]
 
@@ -146,16 +146,16 @@ class TestCompositePrimaryKey:
     def test_each_missing_field_is_reported(self) -> None:
         data = {"items": [{"node": 1, "name": "a"}, {"x": 1}, {"node": 1}]}
         assert errors(data, self.SCHEMA) == [
-            "items: Primary key 'node' missing in item 1",
-            "items: Primary key 'name' missing in item 1",
-            "items: Primary key 'name' missing in item 2",
+            "items: Primary key 'node' missing in item [1]",
+            "items: Primary key 'name' missing in item [1]",
+            "items: Primary key 'name' missing in item [2]",
         ]
 
     def test_items_missing_a_field_are_not_duplicates(self) -> None:
         data = {"items": [{"node": 1}, {"node": 1}]}
         assert errors(data, self.SCHEMA) == [
-            "items: Primary key 'name' missing in item 0",
-            "items: Primary key 'name' missing in item 1",
+            "items: Primary key 'name' missing in item [0]",
+            "items: Primary key 'name' missing in item [1]",
         ]
 
     def test_values_of_different_types_are_distinct(self) -> None:
@@ -187,6 +187,14 @@ class TestUniqueValues:
 
     def test_values_of_different_types_are_distinct(self) -> None:
         assert errors({"items": [1, "1", True]}, self.SCHEMA) == []
+
+    @pytest.mark.parametrize(
+        ("value", "shown"), [(True, "true"), ("true", "'true'"), ("1", "'1'")]
+    )
+    def test_values_are_shown_as_in_yaml(self, value: Any, shown: str) -> None:
+        assert errors({"items": [value, value]}, self.SCHEMA) == [
+            f"items: Duplicate value {shown} in 2 items"
+        ]
 
     def test_maps_are_not_compared(self) -> None:
         assert errors({"items": [{"a": 1}, {"a": 1}]}, self.SCHEMA) == []
@@ -244,7 +252,7 @@ class TestUniqueFields:
     def test_field_value_must_be_a_single_value(self, value: Any, kind: str) -> None:
         data = {"items": [{"prefix": value}, {"prefix": value}]}
         assert errors(data, self.SCHEMA) == [
-            f"items: Unique field 'prefix' in item {i} must be a single value, not "
+            f"items: Unique field 'prefix' in item [{i}] must be a single value, not "
             f"{kind}"
             for i in (0, 1)
         ]
@@ -264,6 +272,21 @@ class TestUniqueFields:
             "items: Duplicate unique key src=1, dst=2 in items [name=a], [name=b]",
         ]
 
+    def test_items_sharing_their_primary_key_are_counted(self) -> None:
+        schema = "items: list(map(), primary_key='name', unique='ip')"
+        data = {"items": [{"name": "a", "ip": "x"}, {"name": "a", "ip": "x", "z": 1}]}
+        assert errors(data, schema) == [
+            "items: Duplicate primary key name=a in 2 items",
+            "items: Duplicate unique key ip=x in 2 items",
+        ]
+
+    def test_key_values_of_different_types_look_different(self) -> None:
+        schema = "items: list(map(), primary_key='name', unique='ip')"
+        data = {"items": [{"name": 1, "ip": True}, {"name": "1", "ip": True}]}
+        assert errors(data, schema) == [
+            "items: Duplicate unique key ip=true in items [name=1], [name='1']"
+        ]
+
     def test_items_are_named_by_composite_primary_key(self) -> None:
         schema = "items: list(map(), primary_key='node, name', unique='ip')"
         data = {
@@ -281,7 +304,7 @@ class TestUniqueFields:
         schema = "items: list(map(), primary_key='name', unique='ip')"
         data = {"items": [{"name": "a", "ip": "x"}, {"ip": "x"}]}
         assert errors(data, schema) == [
-            "items: Primary key 'name' missing in item 1",
+            "items: Primary key 'name' missing in item [1]",
             "items: Duplicate unique key ip=x in items [name=a], [1]",
         ]
 
@@ -819,6 +842,21 @@ class TestValidatorExtensions:
             " name=b across files (with conflicting values that prevent merging)"
         ]
 
+    def test_error_paths_name_items_by_schema_primary_key(
+        self, validator: Validator
+    ) -> None:
+        validator.schema = yamale.make_schema(
+            content="l: list(include('i'), primary_key='id')\n---\n"
+            "i:\n  id: int()\n  name: str()\n"
+            "  s: list(str(), unique=True, required=False)"
+        )
+        validator.load_data({"l": [{"id": 1, "name": "a", "s": ["x", "x"]}]})
+        with pytest.raises(SyntaxValidationError):
+            validator.validate_syntax(rich_output=False)
+        assert validator.errors == [
+            "Syntax error '<pre-loaded>': l.[id=1].s: Duplicate value x across files"
+        ]
+
     def test_invalid_extension_fails_loading_the_schema(self, project: Path) -> None:
         schema = project / "schema.yaml"
         schema.write_text("a: str(primary_key='name')")
@@ -967,3 +1005,35 @@ class TestValidatorExtensions:
         ) as mock_load:
             validator.validate_syntax([data], rich_output=False)
         assert mock_load.call_count == 1
+
+
+class TestViolationLabels:
+    """Tests for the labels of list items in violation paths."""
+
+    def test_items_are_labelled_by_schema_primary_key(self) -> None:
+        schema = yamale.make_schema(
+            content="l: list(include('i'), primary_key='node, name')\n---\n"
+            "i:\n  node: int()\n  name: str()\n"
+            "  s: list(str(), unique=True, required=False)"
+        )
+        data = {
+            "l": [{"node": 1, "name": "a"}, {"node": 1, "name": "b", "s": ["x"] * 2}]
+        }
+        yamale.validate(schema, [(data, "data")])
+        assert check_data(schema, data, EXTENSIONS, Scope.FILE) == [
+            Violation(
+                ("l", 1, "s"),
+                "Duplicate value x in 2 items",
+                ((1, "[node=1, name=b]"),),
+            )
+        ]
+
+    def test_lists_without_primary_key_are_not_labelled(self) -> None:
+        schema = yamale.make_schema(
+            content="l: list(include('i'))\n---\n"
+            "i:\n  name: str()\n  s: list(str(), unique=True)"
+        )
+        data = {"l": [{"name": "a", "s": ["x", "x"]}]}
+        yamale.validate(schema, [(data, "data")])
+        (violation,) = check_data(schema, data, EXTENSIONS, Scope.FILE)
+        assert violation.labels == ()
