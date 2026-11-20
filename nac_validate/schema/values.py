@@ -50,3 +50,17 @@ def format_key(fields: list[str], values: tuple[TypedValue, ...]) -> str:
     return ", ".join(
         f"{f}={v}" for f, (_, v) in zip(fields, values, strict=True) if v is not None
     )
+
+
+def item_label(item: Any, index: int, key_fields: list[str] | None) -> str:
+    """Return a list item's label for messages, e.g. ``[name=a]``.
+
+    Items are named by the list's primary key, as in the paths of messages;
+    an item without a usable key falls back to its index, e.g. ``[3]``.
+    """
+    if key_fields is not None and isinstance(item, dict):
+        values = [item.get(f) for f in key_fields]
+        if all(v is not None and is_single_value(v) for v in values):
+            key = format_key(key_fields, tuple(typed(v) for v in values))
+            return f"[{key}]"
+    return f"[{index}]"

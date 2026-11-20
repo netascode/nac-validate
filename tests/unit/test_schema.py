@@ -69,13 +69,13 @@ class TestPrimaryKey:
 
     def test_duplicate_key_fails(self) -> None:
         data = {"tenants": [{"name": "a"}, {"name": "b"}, {"name": "a", "id": 1}]}
-        assert errors(data) == ["tenants: Duplicate primary key name=a in items 0, 2"]
+        assert errors(data) == ["tenants: Duplicate primary key name=a in 2 items"]
 
     def test_each_duplicated_value_reported_once(self) -> None:
         data = {"tenants": [{"name": "a"}, {"name": "b"}] * 3}
         assert errors(data) == [
-            "tenants: Duplicate primary key name=a in items 0, 2, 4",
-            "tenants: Duplicate primary key name=b in items 1, 3, 5",
+            "tenants: Duplicate primary key name=a in 3 items",
+            "tenants: Duplicate primary key name=b in 3 items",
         ]
 
     def test_duplicate_in_merged_data_names_no_items(self) -> None:
@@ -101,8 +101,8 @@ class TestPrimaryKey:
         bds = [{"name": "x"}, {"name": "x"}]
         data = {"tenants": [{"name": "a", "bds": bds}, {"name": "a"}]}
         assert errors(data) == [
-            "tenants: Duplicate primary key name=a in items 0, 1",
-            "tenants.0.bds: Duplicate primary key name=x in items 0, 1",
+            "tenants: Duplicate primary key name=a in 2 items",
+            "tenants.0.bds: Duplicate primary key name=x in 2 items",
         ]
 
     @pytest.mark.parametrize(
@@ -140,7 +140,7 @@ class TestCompositePrimaryKey:
             ]
         }
         assert errors(data, self.SCHEMA) == [
-            "items: Duplicate primary key node=1, name=a in items 0, 3"
+            "items: Duplicate primary key node=1, name=a in 2 items"
         ]
 
     def test_each_missing_field_is_reported(self) -> None:
@@ -181,8 +181,8 @@ class TestUniqueValues:
     def test_duplicate_values_fail(self) -> None:
         data = {"items": ["a", "b", "a", "b", "a"]}
         assert errors(data, self.SCHEMA) == [
-            "items: Duplicate value a in items 0, 2, 4",
-            "items: Duplicate value b in items 1, 3",
+            "items: Duplicate value a in 3 items",
+            "items: Duplicate value b in 2 items",
         ]
 
     def test_values_of_different_types_are_distinct(self) -> None:
@@ -216,7 +216,7 @@ class TestUniqueFields:
             ]
         }
         assert errors(data, self.SCHEMA) == [
-            "items: Duplicate unique key prefix=p1, vrf=a in items 0, 3"
+            "items: Duplicate unique key prefix=p1, vrf=a in 2 items"
         ]
 
     def test_unset_field_is_a_value_of_its_own(self) -> None:
@@ -227,7 +227,7 @@ class TestUniqueFields:
     def test_unset_fields_are_shown_as_not_set(self, item: dict[str, Any]) -> None:
         data = {"items": [{"prefix": "p1"}, item]}
         assert errors(data, self.SCHEMA) == [
-            "items: Duplicate unique key prefix=p1 in items 0, 1"
+            "items: Duplicate unique key prefix=p1 in 2 items"
         ]
 
     def test_items_setting_no_field_are_not_compared(self) -> None:
@@ -260,8 +260,37 @@ class TestUniqueFields:
             ]
         }
         assert errors(data, schema) == [
-            "items: Duplicate primary key name=a in items 0, 3",
-            "items: Duplicate unique key src=1, dst=2 in items 0, 1",
+            "items: Duplicate primary key name=a in 2 items",
+            "items: Duplicate unique key src=1, dst=2 in items [name=a], [name=b]",
+        ]
+
+    def test_items_are_named_by_composite_primary_key(self) -> None:
+        schema = "items: list(map(), primary_key='node, name', unique='ip')"
+        data = {
+            "items": [
+                {"node": 1, "name": "a", "ip": "x"},
+                {"node": 2, "name": "a", "ip": "x"},
+            ]
+        }
+        assert errors(data, schema) == [
+            "items: Duplicate unique key ip=x in items [node=1, name=a], "
+            "[node=2, name=a]"
+        ]
+
+    def test_items_without_primary_key_value_are_named_by_index(self) -> None:
+        schema = "items: list(map(), primary_key='name', unique='ip')"
+        data = {"items": [{"name": "a", "ip": "x"}, {"ip": "x"}]}
+        assert errors(data, schema) == [
+            "items: Primary key 'name' missing in item 1",
+            "items: Duplicate unique key ip=x in items [name=a], [1]",
+        ]
+
+    def test_unique_field_errors_name_the_item_by_primary_key(self) -> None:
+        schema = "items: list(map(), primary_key='name', unique='ip')"
+        data = {"items": [{"name": "a", "ip": ["x"]}]}
+        assert errors(data, schema) == [
+            "items: Unique field 'ip' in item [name=a] must be a single value, "
+            "not a list"
         ]
 
     def test_duplicate_in_merged_data_names_no_items(self) -> None:
@@ -842,7 +871,7 @@ class TestValidatorExtensions:
             validator.validate_syntax([data], rich_output=False)
         assert validator.errors == [
             f"Syntax error '{data / 'a.yaml'}': "
-            "tenants: Duplicate primary key name=a in items 0, 1"
+            "tenants: Duplicate primary key name=a in 2 items"
         ]
 
     def test_schema_errors_skip_extensions_of_the_file(
