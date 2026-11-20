@@ -26,6 +26,7 @@ from .ordered import Ordered
 from .primary_key import PrimaryKey
 from .reference import Reference, References, references
 from .unique import Unique
+from .values import key_label, split_fields, valid_fields
 from .walker import DataNode, KeyPath, known_keywords, walk_data, walk_schema
 
 __all__ = [
@@ -59,6 +60,9 @@ class Violation:
     # Path segments, kept apart as map keys may contain dots
     path: KeyPath
     message: str
+    # Labels of list items in the path by their schema primary key, e.g.
+    # ``[name=a]``, as (position in the path, label)
+    labels: tuple[tuple[int, str], ...] = ()
 
     def __str__(self) -> str:
         """Format the violation like a Yamale error (``path: message``)."""
@@ -128,7 +132,9 @@ def check_data(
     per_node = [e for e in active if not e.relates_values]
     whole = [e for e in active if e.relates_values]
     nodes: list[DataNode] = []
-    errors: list[Violation] = []
+    errors: list[tuple[KeyPath, str]] = []
+    # Validators of the lists of the data, by path
+    lists: dict[KeyPath, Validator] = {}
 
     def accepts(validator: Validator, value: Any) -> bool:
         return all(
@@ -138,14 +144,35 @@ def check_data(
         )
 
     for node in walk_data(schema, data, strict, accepts):
+        if node.levels:
+            level = node.levels[-1]
+            lists.setdefault(level.path, level.validator)
         if whole:
             nodes.append(node)
         for ext in per_node:
             if ext.applies(node.validator):
-                errors += [Violation(node.path, m) for m in ext.check(node, scope)]
+                errors += [(node.path, m) for m in ext.check(node, scope)]
     for ext in whole:
-        errors += [
-            Violation(path, message)
-            for path, message in ext.check_nodes(schema, nodes, data, scope)
-        ]
-    return errors
+        errors += ext.check_nodes(schema, nodes, data, scope)
+    return [Violation(p, m, _labels(p, data, lists)) for p, m in errors]
+
+
+def _labels(
+    path: KeyPath, data: Any, lists: dict[KeyPath, Validator]
+) -> tuple[tuple[int, str], ...]:
+    """Return the labels of the list items in a path by their primary key."""
+    labels = []
+    value = data
+    for position, segment in enumerate(path):
+        try:
+            item = value[segment]
+        except (KeyError, IndexError, TypeError):
+            break
+        validator = lists.get(path[:position])
+        if isinstance(segment, int) and validator is not None:
+            key = validator.kwargs.get("primary_key")
+            label = key_label(item, split_fields(key)) if valid_fields(key) else None
+            if label is not None:
+                labels.append((position, label))
+        value = item
+    return tuple(labels)

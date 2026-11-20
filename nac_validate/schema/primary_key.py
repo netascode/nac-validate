@@ -47,39 +47,36 @@ class PrimaryKey(Extension):
             return []
         fields = _fields(node.validator)
         errors: list[str] = []
-        indexes: dict[tuple[TypedValue, ...], list[int]] = {}
+        counts: dict[tuple[TypedValue, ...], int] = {}
         for index, item in enumerate(node.value):
             # Items that are not maps are validated by the item validators
             if not isinstance(item, dict):
                 continue
             missing = [f for f in fields if item.get(f) is None]
-            errors += [f"Primary key '{f}' missing in item {index}" for f in missing]
+            errors += [f"Primary key '{f}' missing in item [{index}]" for f in missing]
             # Maps and lists can't be compared, whatever the item validators allow
             nested = [
                 f for f in fields if f not in missing and not is_single_value(item[f])
             ]
             errors += [
-                f"Primary key '{f}' in item {index} must be a single value, not "
+                f"Primary key '{f}' in item [{index}] must be a single value, not "
                 f"{kind(item[f])}"
                 for f in nested
             ]
             if missing or nested:
                 continue
             key_value = tuple(typed(item[f]) for f in fields)
-            indexes.setdefault(key_value, []).append(index)
-        for key_value, items in indexes.items():
-            if len(items) == 1:
+            counts[key_value] = counts.get(key_value, 0) + 1
+        for key_value, count in counts.items():
+            if count == 1:
                 continue
+            # The key names the items, as in the paths of messages
             key = format_key(fields, key_value)
             if scope == Scope.DOCUMENT:
-                # Item numbers of the merged data are of no help to find them
                 errors.append(
                     f"Duplicate primary key {key} across files"
                     " (with conflicting values that prevent merging)"
                 )
             else:
-                errors.append(
-                    f"Duplicate primary key {key} in items "
-                    + ", ".join(str(i) for i in items)
-                )
+                errors.append(f"Duplicate primary key {key} in {count} items")
         return errors

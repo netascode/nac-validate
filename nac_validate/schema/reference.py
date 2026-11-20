@@ -43,7 +43,7 @@ from yamale.validators import Include, Map, Subset, Validator
 from yamale.validators import List as ListValidator
 
 from .base import Extension, Scope
-from .values import is_single_value, split_fields, valid_fields
+from .values import is_single_value, item_label, split_fields, valid_fields
 from .walker import (
     DataNode,
     KeyPath,
@@ -96,9 +96,8 @@ def _label(location: str, validator: ListValidator, key: Any, index: int) -> str
     """Return a list item's label for messages, e.g. ``devices[name=LEAF1]``."""
     name = location.rsplit(".", 1)[-1]
     field_name = single_key_field(validator)
-    if field_name is None or key is None:
-        return f"{name}[{index}]"
-    return f"{name}[{field_name}={key}]"
+    key_fields = [field_name] if field_name is not None else None
+    return name + item_label({field_name: key}, index, key_fields)
 
 
 def _lookup(data: Any, path: Sequence[str]) -> Any:

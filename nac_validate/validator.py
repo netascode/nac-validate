@@ -9,7 +9,7 @@ import logging
 import re
 import sys
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from inspect import signature
 from pathlib import Path
@@ -736,7 +736,7 @@ class Validator:
         for err in errors:
             # Generate a meaningful path representation
             if isinstance(err, Violation):
-                named_path = self._get_named_path(data, err.path)
+                named_path = self._get_named_path(data, err.path, dict(err.labels))
                 transformed_err = f"{named_path}: {err.message}"
             else:
                 path = err.split(":")[0].strip()
@@ -754,24 +754,31 @@ class Validator:
             )
 
     def _get_named_path(
-        self, data: dict[str, Any], path: str | Sequence[str | int]
+        self,
+        data: dict[str, Any],
+        path: str | Sequence[str | int],
+        labels: Mapping[int, str] | None = None,
     ) -> str:
         """Convert a numeric path to a named path for better error messages.
 
         The path is a dotted string or, to keep map keys with dots intact, the
-        sequence of its segments.
+        sequence of its segments. List items are named by the given labels
+        (by position in the path), e.g. from the schema's primary keys, or
+        else by a guess of their key.
         """
         path_segments = path.split(".") if isinstance(path, str) else list(path)
         named_path = []
         current: Any = data
 
-        for segment in path_segments:
+        for position, segment in enumerate(path_segments):
             try:
                 if isinstance(current, list) and (
                     isinstance(segment, int) or segment.isdigit()
                 ):
                     current_item = current[int(segment)]
-                    if isinstance(current_item, dict) and current_item:
+                    if labels is not None and position in labels:
+                        named_path.append(labels[position])
+                    elif isinstance(current_item, dict) and current_item:
                         preferred_keys = ("name", "id")
                         primary_key = next(
                             (

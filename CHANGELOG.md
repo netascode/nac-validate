@@ -1,3 +1,7 @@
+## Unreleased
+
+- Refer to list items by their schema primary key instead of their index in error messages (`Duplicate unique key ip=x in items [name=a], [name=b]`)
+
 ## 2.2.0b1
 
 - Add `ordered` schema option for lists to document that the order of the items is significant (`list(str(), ordered=True)`). Without it, or with `ordered=False`, the order is not significant. It is not checked against the data
