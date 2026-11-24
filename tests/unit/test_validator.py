@@ -23,6 +23,7 @@ from nac_validate.exceptions import (
     RuleLoadError,
     RulesDirectoryNotFoundError,
     SchemaConflictError,
+    SemanticValidationError,
 )
 from nac_validate.layers import ValidationLayer
 from nac_validate.models import RuleBase, Violation
@@ -877,3 +878,62 @@ class TestFromProject:
 
         assert validator.rules["1"].description == "local"
         assert validator.rule_origins == {"1": "local"}
+
+
+class TestFailOn:
+    """Tests for the failure threshold of validate_semantics()."""
+
+    @staticmethod
+    def rule(rule_id: str, rule_severity: str) -> type[RuleBase]:
+        class Rule(RuleBase):
+            id = rule_id
+            description = f"rule {rule_id}"
+            severity = rule_severity
+
+            @classmethod
+            def match(cls, data: dict[str, Any]) -> list[Any]:
+                return [Violation(message="bad", path="x")]
+
+        return Rule
+
+    def test_below_threshold_does_not_raise(self) -> None:
+        v = Validator(schema=None, rules={"1": self.rule("1", "LOW")})
+        v.load_data({})
+
+        v.validate_semantics([], rich_output=False, fail_on="MEDIUM")
+
+        (result,) = v.semantic_results
+        assert result.rule_id == "1"
+        assert result.blocking is False
+
+    def test_raises_with_failing_rules_only_in_errors(self) -> None:
+        v = Validator(
+            schema=None,
+            rules={"1": self.rule("1", "HIGH"), "2": self.rule("2", "LOW")},
+        )
+        v.load_data({})
+
+        with pytest.raises(SemanticValidationError) as exc_info:
+            v.validate_semantics([], rich_output=False, fail_on="HIGH")
+
+        assert exc_info.value.errors == ["Rule 1: rule 1"]
+        assert [r.blocking for r in exc_info.value.structured_results] == [
+            True,
+            False,
+        ]
+
+    def test_unknown_severity_is_high(self) -> None:
+        v = Validator(schema=None, rules={"1": self.rule("1", "WARNING")})
+        v.load_data({})
+
+        with pytest.raises(SemanticValidationError) as exc_info:
+            v.validate_semantics([], rich_output=False, fail_on="HIGH")
+
+        assert exc_info.value.structured_results[0].severity == "HIGH"
+
+    def test_invalid_threshold_raises_value_error(self) -> None:
+        v = Validator(schema=None, rules={"1": self.rule("1", "LOW")})
+        v.load_data({})
+
+        with pytest.raises(ValueError, match="Unknown severity 'WARNING'"):
+            v.validate_semantics([], rich_output=False, fail_on="WARNING")

@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
+from .constants import DEFAULT_SEVERITY, SEVERITY_SORT_ORDER
+
 
 class RuleBase:
     """Base class for validation rules.
@@ -56,3 +58,32 @@ class Violation:
 def _is_violation_list(result: list[Any]) -> bool:
     """Check if a list contains Violation objects (vs legacy strings)."""
     return len(result) > 0 and all(isinstance(item, Violation) for item in result)
+
+
+def known_severity(severity: object) -> str | None:
+    """Return the severity in upper case if it is a known level, else None."""
+    if isinstance(severity, str):
+        upper = severity.upper()
+        if upper in SEVERITY_SORT_ORDER:
+            return upper
+    return None
+
+
+def rule_severity(rule: Any) -> str:
+    """Return the effective severity of a rule.
+
+    The declared severity in upper case if it is ``HIGH``, ``MEDIUM`` or
+    ``LOW``, else ``HIGH``: a rule with an unknown severity is never treated
+    as less severe than intended.
+    """
+    return known_severity(getattr(rule, "severity", None)) or DEFAULT_SEVERITY
+
+
+def is_blocking(severity: str, fail_on: str) -> bool:
+    """Whether a violation of the given severity fails validation.
+
+    Args:
+        severity: Effective severity of the violated rule.
+        fail_on: Lowest severity that fails validation.
+    """
+    return SEVERITY_SORT_ORDER[severity] <= SEVERITY_SORT_ORDER[fail_on]

@@ -15,6 +15,7 @@ from typing import Annotated
 import typer
 
 import nac_validate
+from nac_validate.constants import DEFAULT_FAIL_ON
 
 
 class VerbosityLevel(StrEnum):
@@ -25,6 +26,14 @@ class VerbosityLevel(StrEnum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+class Severity(StrEnum):
+    """Rule severity levels, most severe first."""
+
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 
 class OutputFormat(StrEnum):
@@ -199,6 +208,22 @@ NoColor = Annotated[
         "--no-color",
         help="Disable colored output.",
         envvar="NO_COLOR",
+    ),
+]
+
+
+# Default of --fail-on, the same as for library callers of validate_semantics()
+DEFAULT_FAIL_ON_SEVERITY = Severity(DEFAULT_FAIL_ON)
+
+
+FailOn = Annotated[
+    Severity,
+    typer.Option(
+        "--fail-on",
+        help="Lowest rule severity that fails validation. Violations of less "
+        "severe rules are still reported, but do not affect the exit code.",
+        envvar="NAC_VALIDATE_FAIL_ON",
+        case_sensitive=False,
     ),
 ]
 

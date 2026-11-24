@@ -15,7 +15,7 @@ import logging
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from nac_artifacts import ArtifactError
@@ -29,6 +29,7 @@ from ..exceptions import (
     SchemaConflictError,
     SchemaError,
     SchemaNotFoundError,
+    SemanticErrorResult,
     SemanticValidationError,
     SyntaxValidationError,
 )
@@ -36,9 +37,11 @@ from ..output_formatter import (
     format_artifacts_list,
 )
 from .options import (
+    DEFAULT_FAIL_ON_SEVERITY,
     Artifacts,
     Bundle,
     Compact,
+    FailOn,
     Format,
     ListArtifacts,
     ListRules,
@@ -124,6 +127,21 @@ def print_artifacts_list(
     raise typer.Exit(ExitCode.SUCCESS)
 
 
+def semantic_json(results: list[SemanticErrorResult]) -> dict[str, Any]:
+    """Build the JSON output for semantic validation results."""
+    return {
+        "syntax_errors": [],
+        "semantic_errors": [
+            {
+                k: v
+                for k, v in asdict(r).items()
+                if v is not None and v != "" and v != []
+            }
+            for r in results
+        ],
+    }
+
+
 def configure_logging(level: str) -> None:
     """Configure logging with the specified level."""
     logging.basicConfig(
@@ -153,6 +171,7 @@ def main(
     format: Format = OutputFormat.TEXT,
     no_color: NoColor = False,
     compact: Compact = False,
+    fail_on: FailOn = DEFAULT_FAIL_ON_SEVERITY,
     version: Version = False,
     list_artifacts: ListArtifacts = False,
     list_rules: ListRules = False,
@@ -202,7 +221,7 @@ def main(
             artifacts=load_artifacts,
         )
         validator.validate_syntax(paths, not non_strict, rich_output)
-        validator.validate_semantics(paths, rich_output, compact)
+        validator.validate_semantics(paths, rich_output, compact, fail_on=fail_on)
         if output:
             validator.write_output(paths, output)
 
@@ -232,18 +251,7 @@ def main(
 
     except SemanticValidationError as e:
         if format == OutputFormat.JSON:
-            json_output = {
-                "syntax_errors": [],
-                "semantic_errors": [
-                    {
-                        k: v
-                        for k, v in asdict(r).items()
-                        if v is not None and v != "" and v != []
-                    }
-                    for r in e.structured_results
-                ],
-            }
-            print(json.dumps(json_output, indent=2))
+            print(json.dumps(semantic_json(e.structured_results), indent=2))
         raise typer.Exit(ExitCode.SEMANTIC_ERROR) from e
 
     except Exception as e:
@@ -261,9 +269,12 @@ def main(
             logger.error("Unexpected error: %s", e)
         raise typer.Exit(ExitCode.CONFIG_ERROR) from e
 
-    # Success
+    # Success, possibly with violations below the failure threshold
     if format == OutputFormat.JSON:
-        print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
+        if validator.semantic_results:
+            print(json.dumps(semantic_json(validator.semantic_results), indent=2))
+        else:
+            print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
     else:
         validator.print_success_summary()
     raise typer.Exit(ExitCode.SUCCESS)

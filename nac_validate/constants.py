@@ -26,15 +26,18 @@ YAML_SUFFIXES = (".yaml", ".yml")
 RULE_MODULE_NAME = "nac_validate.rules"
 VALID_RULE_MATCH_PARAM_COUNTS = (1, 2)
 
-# Output formatting
-UNKNOWN_SEVERITY_SORT_ORDER = 99  # Sort order for unknown severity levels
-
-# Severity sort order
+# Severity sort order, most severe first
 SEVERITY_SORT_ORDER: dict[str, int] = {
     "HIGH": 0,
     "MEDIUM": 1,
     "LOW": 2,
 }
+
+# Severity a rule gets if it declares none, or one that is not known
+DEFAULT_SEVERITY = "HIGH"
+
+# Lowest severity that fails validation by default: every violation fails
+DEFAULT_FAIL_ON = "LOW"
 
 
 class ExitCode(IntEnum):

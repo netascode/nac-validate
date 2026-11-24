@@ -22,9 +22,12 @@ from ruamel.yaml.error import MarkedYAMLError
 from yamale.yamale_error import YamaleError
 
 from .constants import (
+    DEFAULT_FAIL_ON,
     DEFAULT_RULES,
     DEFAULT_SCHEMA,
+    DEFAULT_SEVERITY,
     RULE_MODULE_NAME,
+    SEVERITY_SORT_ORDER,
     VALID_RULE_MATCH_PARAM_COUNTS,
     YAML_SUFFIXES,
 )
@@ -39,7 +42,7 @@ from .exceptions import (
     SyntaxValidationError,
 )
 from .layers import ValidationLayer, resolve_layers
-from .models import _is_violation_list
+from .models import _is_violation_list, is_blocking, known_severity, rule_severity
 from .output_formatter import (
     format_json_result,
     format_semantic_error,
@@ -160,6 +163,28 @@ def _declared_rule(file_path: Path) -> DeclaredRule:
         severity=text("severity", "HIGH"),
         file=file_path,
     )
+
+
+def _warn_unknown_severities(rules: Mapping[str, Any]) -> None:
+    """Warn about rules declaring a severity other than HIGH, MEDIUM or LOW.
+
+    Only the rules that will run are checked, so a disabled or shadowed rule
+    is not reported. A rule that declares no severity is ``HIGH`` silently.
+    Rules read for listing only (``DeclaredRule``) are skipped.
+    """
+    for rule_id, rule in rules.items():
+        if isinstance(rule, DeclaredRule):
+            continue
+        severity = getattr(rule, "severity", DEFAULT_SEVERITY)
+        if known_severity(severity) is None:
+            logger.warning(
+                "Rule %s declares unknown severity %r, treated as %s "
+                "(expected one of %s)",
+                rule_id,
+                severity,
+                DEFAULT_SEVERITY,
+                ", ".join(SEVERITY_SORT_ORDER),
+            )
 
 
 def _normalize_rule_id(rule_id: Any, filename: str) -> str:
@@ -381,6 +406,7 @@ class Validator:
             self.schema = schema
             if isinstance(rules, dict):
                 self.rules = rules
+                _warn_unknown_severities(rules)
         self.layers: list[ValidationLayer] = []
         self.schema_origin: ValidationLayer | None = None
         self.rule_origins: dict[str, str] = {}
@@ -397,6 +423,9 @@ class Validator:
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
         self.file_count: int = 0
+        # Violated rules of the last semantic validation, failing or not
+        self.semantic_results: list[SemanticErrorResult] = []
+        self.fail_on: str = DEFAULT_FAIL_ON
 
     @classmethod
     def from_paths(
@@ -908,8 +937,33 @@ class Validator:
         input_paths: Sequence[Path | str],
         rich_output: bool = True,
         compact: bool = False,
+        *,
+        fail_on: str = DEFAULT_FAIL_ON,
     ) -> None:
-        """Run semantic validation"""
+        """Run semantic validation.
+
+        Violations of every rule are reported, and kept in
+        ``semantic_results``. Only those of rules with a severity at or above
+        ``fail_on`` fail validation.
+
+        Args:
+            input_paths: Paths to load the data from, unless already loaded
+            rich_output: Print violations and a summary to stderr
+            compact: Leave out the rule context in the printed violations
+            fail_on: Lowest severity that fails validation (HIGH, MEDIUM, LOW)
+
+        Raises:
+            ValueError: If ``fail_on`` is not a known severity
+            SemanticValidationError: If a rule at or above ``fail_on`` is violated
+        """
+        threshold = known_severity(fail_on)
+        if threshold is None:
+            raise ValueError(
+                f"Unknown severity '{fail_on}', expected one of "
+                + ", ".join(SEVERITY_SORT_ORDER)
+            )
+        self.fail_on = threshold
+        self.semantic_results = []
         if not self.rules:
             return
 
@@ -936,6 +990,8 @@ class Validator:
         if raw_results:
             for rule_id, result in raw_results.items():
                 rule = self.rules[rule_id]
+                severity = rule_severity(rule)
+                blocking = is_blocking(severity, threshold)
 
                 # Build structured result for JSON output
                 json_result = format_json_result(
@@ -946,8 +1002,9 @@ class Validator:
                     SemanticErrorResult(
                         rule_id=rule_id,
                         description=rule.description,
-                        severity=json_result.get("severity", "HIGH"),
+                        severity=severity,
                         errors=json_result["errors"],
+                        blocking=blocking,
                         title=json_result.get("title", ""),
                         explanation=json_result.get("explanation", ""),
                         recommendation=json_result.get("recommendation", ""),
@@ -962,10 +1019,11 @@ class Validator:
                         compact=compact,
                     )
                     print(formatted_msg, file=sys.stderr)
-                    semantic_errors.append(f"Rule {rule_id}: {rule.description}")
-                else:
+                if blocking:
                     semantic_errors.append(f"Rule {rule_id}: {rule.description}")
 
+        self.semantic_results = structured_results
+        if semantic_errors:
             if rich_output:
                 print(
                     format_validation_summary(
@@ -973,7 +1031,7 @@ class Validator:
                         semantic_passed=False,
                         file_count=self.file_count,
                         semantic_errors=structured_results,
-                        rules=self.rules,
+                        fail_on=threshold,
                     ),
                     file=sys.stderr,
                 )
@@ -987,6 +1045,8 @@ class Validator:
                 syntax_passed=True,
                 semantic_passed=True,
                 file_count=self.file_count,
+                semantic_errors=self.semantic_results,
+                fail_on=self.fail_on,
             ),
             file=sys.stderr,
         )

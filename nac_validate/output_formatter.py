@@ -14,10 +14,18 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from .constants import (
+    DEFAULT_FAIL_ON,
+    SEVERITY_SORT_ORDER,
     SUMMARY_SEPARATOR_WIDTH,
     Colors,
 )
-from .models import RuleBase, Violation, _is_violation_list
+from .models import (
+    RuleBase,
+    Violation,
+    _is_violation_list,
+    is_blocking,
+    rule_severity,
+)
 
 if TYPE_CHECKING:
     from .exceptions import SyntaxErrorResult
@@ -223,7 +231,7 @@ def format_semantic_error(
     compact: bool = False,
 ) -> str:
     """Convenience function for formatting semantic errors."""
-    formatter = OutputFormatter(severity=rule.severity)
+    formatter = OutputFormatter(severity=rule_severity(rule))
     return formatter.format_output(rule, result, compact=compact)
 
 
@@ -234,7 +242,7 @@ def format_json_result(
     """Format a rule result as a JSON-serializable dictionary."""
     base: dict[str, Any] = {
         "rule_id": rule.id,
-        "severity": getattr(rule, "severity", "HIGH"),
+        "severity": rule_severity(rule),
         "description": rule.description,
     }
 
@@ -284,22 +292,20 @@ class _SeverityBucket:
     rule_ids: list[str] = field(default_factory=list)
 
 
-def _bucket_by_severity(
-    semantic_errors: list[Any], rules: dict[str, Any]
-) -> dict[str, _SeverityBucket]:
-    """Group error counts and rule IDs by severity level."""
+def _bucket_by_severity(semantic_errors: list[Any]) -> dict[str, _SeverityBucket]:
+    """Group violation counts and rule IDs by effective severity."""
     buckets: dict[str, _SeverityBucket] = {
-        "HIGH": _SeverityBucket(),
-        "MEDIUM": _SeverityBucket(),
-        "LOW": _SeverityBucket(),
+        severity: _SeverityBucket() for severity in SEVERITY_SORT_ORDER
     }
     for error in semantic_errors:
-        rule = rules.get(error.rule_id)
-        severity = getattr(rule, "severity", "HIGH") if rule else "HIGH"
-        bucket = buckets.get(severity, buckets["LOW"])
+        bucket = buckets[rule_severity(error)]
         bucket.count += len(error.errors)
         bucket.rule_ids.append(error.rule_id)
     return buckets
+
+
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}{'s' if count != 1 else ''}"
 
 
 def format_validation_summary(
@@ -309,6 +315,7 @@ def format_validation_summary(
     syntax_error_count: int = 0,
     semantic_errors: list[Any] | None = None,
     rules: dict[str, Any] | None = None,
+    fail_on: str = DEFAULT_FAIL_ON,
 ) -> str:
     """Format a summary of validation results.
 
@@ -317,8 +324,11 @@ def format_validation_summary(
         semantic_passed: Whether semantic validation passed
         file_count: Number of files validated
         syntax_error_count: Number of syntax errors found
-        semantic_errors: List of SemanticErrorResult objects
-        rules: Dict of loaded rules (for severity lookup)
+        semantic_errors: SemanticErrorResult objects of every violated rule,
+            including those below the failure threshold
+        rules: Unused, kept for compatibility; the severity is read from
+            ``semantic_errors``
+        fail_on: Lowest severity that fails validation
 
     Returns:
         Formatted summary string
@@ -337,7 +347,7 @@ def format_validation_summary(
         )
     else:
         error_info = (
-            f" ({syntax_error_count} error{'s' if syntax_error_count != 1 else ''})"
+            f" ({_plural(syntax_error_count, 'error')})"
             if syntax_error_count > 0
             else ""
         )
@@ -348,49 +358,46 @@ def format_validation_summary(
 
     # Semantic validation status (only shown if syntax passed)
     if syntax_passed:
+        semantic_errors = semantic_errors or []
+        buckets = _bucket_by_severity(semantic_errors)
+        failing = sum(
+            b.count for sev, b in buckets.items() if is_blocking(sev, fail_on)
+        )
+        below = sum(b.count for b in buckets.values()) - failing
+        counts = []
+        if failing:
+            counts.append(_plural(failing, "violation"))
+        if below:
+            counts.append(f"{_plural(below, 'violation')} below failure threshold")
+        count_info = f" ({', '.join(counts)})" if counts else ""
         if semantic_passed:
             lines.append(
                 f"  {Colors.GREEN}✓{Colors.RESET} Semantic validation: "
-                f"{Colors.GREEN}PASSED{Colors.RESET}"
+                f"{Colors.GREEN}PASSED{Colors.RESET}{count_info}"
             )
         else:
-            semantic_total = (
-                sum(len(e.errors) for e in semantic_errors)
-                if semantic_errors is not None
-                else 0
-            )
-            error_info = (
-                f" ({semantic_total} violation{'s' if semantic_total != 1 else ''})"
-                if semantic_total > 0
-                else ""
-            )
             lines.append(
                 f"  {Colors.RED}✗{Colors.RESET} Semantic validation: "
-                f"{Colors.RED}FAILED{Colors.RESET}{error_info}"
+                f"{Colors.RED}FAILED{Colors.RESET}{count_info}"
             )
 
-            # Count violations by severity
-            if (
-                semantic_errors is not None
-                and len(semantic_errors) > 0
-                and rules is not None
-                and len(rules) > 0
-            ):
-                buckets = _bucket_by_severity(semantic_errors, rules)
-
-                lines.append("")
-                for severity, color in (
-                    ("HIGH", Colors.RED),
-                    ("MEDIUM", Colors.YELLOW),
-                    ("LOW", Colors.CYAN),
-                ):
-                    bucket = buckets[severity]
-                    if bucket.count > 0:
-                        rules_str = ", ".join(bucket.rule_ids)
-                        lines.append(
-                            f"    {color}•{Colors.RESET} {bucket.count} {severity} severity "
-                            f"violation{'s' if bucket.count != 1 else ''} (rules: {rules_str})"
-                        )
+        # Count violations by severity
+        if semantic_errors:
+            lines.append("")
+            for severity, bucket in buckets.items():
+                if bucket.count > 0:
+                    color = Colors.for_severity(severity)
+                    rules_str = ", ".join(bucket.rule_ids)
+                    note = (
+                        ""
+                        if is_blocking(severity, fail_on)
+                        else f" {Colors.DIM}(below failure threshold){Colors.RESET}"
+                    )
+                    lines.append(
+                        f"    {color}•{Colors.RESET} {bucket.count} {severity} severity "
+                        f"violation{'s' if bucket.count != 1 else ''} "
+                        f"(rules: {rules_str}){note}"
+                    )
 
     lines.append(f"{'─' * SUMMARY_SEPARATOR_WIDTH}\n")
     return "\n".join(lines)

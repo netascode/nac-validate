@@ -31,6 +31,10 @@ Options:
   --no-color            Disable colored output [env: NO_COLOR]
   --compact             Use compact output format without rule context details
                         [env: NAC_VALIDATE_COMPACT]
+  --fail-on [HIGH|MEDIUM|LOW]
+                        Lowest rule severity that fails validation. Violations of less
+                        severe rules are still reported, but do not affect the exit code
+                        [env: NAC_VALIDATE_FAIL_ON] [default: LOW]
   --version             Display version number
   --list-artifacts      List the effective schema, artifact layers and validation rules and exit
   --artifacts / --no-artifacts
@@ -55,9 +59,25 @@ The CLI uses specific exit codes to help automation distinguish between error ty
 | Exit Code | Meaning |
 |-----------|---------|
 | 0 | Validation passed |
-| 1 | Semantic validation failed (business rule violations) |
+| 1 | Semantic validation failed (violations of rules at or above the `--fail-on` severity) |
 | 2 | Syntax validation failed (YAML syntax or schema errors) |
 | 3 | Configuration error (missing schema, invalid rules, etc.) |
+
+## Failure Threshold
+
+Every rule has a severity (`HIGH`, `MEDIUM` or `LOW`). By default a violation of any rule fails validation. `--fail-on` (or `NAC_VALIDATE_FAIL_ON`) sets the lowest severity that fails it, so rules can give advice without blocking a pipeline:
+
+```text
+$ nac-validate data/ -s schema.yaml -r rules/ --fail-on HIGH
+...
+  ✓ Semantic validation: PASSED (1 violation below failure threshold)
+
+    • 1 MEDIUM severity violation (rules: 205) (below failure threshold)
+$ echo $?
+0
+```
+
+Violations below the threshold are still printed and included in the JSON output, marked `"blocking": false`.
 
 ## How It Works
 
@@ -324,7 +344,7 @@ All rules must subclass `RuleBase` and set at minimum `id` and `description`. Th
 |-----------|----------|---------|-------------|
 | `id` | Yes | — | Unique rule identifier, a number such as `"101"` or `101` (other IDs log a warning) |
 | `description` | Yes | — | Short description of the rule |
-| `severity` | No | `"HIGH"` | Severity level (`HIGH`, `MEDIUM`, `LOW`) |
+| `severity` | No | `"HIGH"` | Severity level (`HIGH`, `MEDIUM`, `LOW`), compared against `--fail-on`. Any other value logs a warning and is treated as `HIGH` |
 | `title` | No | `""` | Header displayed in violation output |
 | `explanation` | No | `""` | Detailed explanation of why this matters |
 | `recommendation` | No | `""` | How to fix the issue, with examples |
@@ -356,13 +376,17 @@ Output structure:
     {
       "rule_id": "301",
       "description": "Verify Infra VLAN Is Defined When Referenced by AAEPs",
+      "severity": "HIGH",
       "errors": [
         "apic.access_policies.aaeps[name=INFRA-AAEP].infra_vlan - AAEP 'INFRA-AAEP' has infra_vlan enabled but global infra_vlan is not defined"
-      ]
+      ],
+      "blocking": true
     }
   ]
 }
 ```
+
+`semantic_errors` lists every violated rule, including those below the `--fail-on` threshold; `blocking` tells whether the rule's violations fail validation.
 
 ## Installation
 

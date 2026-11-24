@@ -842,3 +842,162 @@ class TestCliMultipleBundles:
         result = runner.invoke(app, ["--artifacts", "data"])
 
         assert result.exit_code == ExitCode.SUCCESS
+
+
+class TestFailOn:
+    """Test the failure threshold set by --fail-on."""
+
+    @staticmethod
+    def write_rules(project: Path, severities: dict[str, str]) -> None:
+        """Write one always failing local rule per ID with the given severity."""
+        (project / ".rules").mkdir()
+        for rule_id, severity in severities.items():
+            (project / f".rules/r{rule_id}.py").write_text(
+                "class Rule:\n"
+                f"    id = '{rule_id}'\n    description = 'rule {rule_id}'\n"
+                f"    severity = '{severity}'\n"
+                "    @classmethod\n    def match(cls, data):\n        return ['boom']\n"
+            )
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: hello\n")
+
+    def test_default_fails_on_low(self, project: Path) -> None:
+        """Should fail on a LOW violation without --fail-on."""
+        self.write_rules(project, {"101": "LOW"})
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert "below failure threshold" not in result.output
+
+    def test_violation_below_threshold_passes(self, project: Path) -> None:
+        """Should report a MEDIUM violation but pass with --fail-on HIGH."""
+        self.write_rules(project, {"101": "MEDIUM"})
+
+        result = runner.invoke(app, ["--no-color", "data", "--fail-on", "HIGH"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "boom" in result.output
+        assert (
+            "Semantic validation: PASSED (1 violation below failure threshold)"
+            in result.output
+        )
+        assert (
+            "1 MEDIUM severity violation (rules: 101) (below failure threshold)"
+            in result.output
+        )
+
+    def test_violation_at_threshold_fails(self, project: Path) -> None:
+        """Should fail on violations at the threshold and count the others apart."""
+        self.write_rules(project, {"101": "MEDIUM", "102": "LOW"})
+
+        result = runner.invoke(app, ["--no-color", "data", "--fail-on", "medium"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert (
+            "Semantic validation: FAILED "
+            "(1 violation, 1 violation below failure threshold)" in result.output
+        )
+        assert "1 MEDIUM severity violation (rules: 101)\n" in result.output
+
+    def test_env_var(self, project: Path) -> None:
+        """Should read the threshold from NAC_VALIDATE_FAIL_ON."""
+        self.write_rules(project, {"101": "LOW"})
+
+        result = runner.invoke(
+            app, ["--no-color", "data"], env={"NAC_VALIDATE_FAIL_ON": "MEDIUM"}
+        )
+
+        assert result.exit_code == ExitCode.SUCCESS
+
+    def test_invalid_value_is_rejected(self, project: Path) -> None:
+        """Should reject a severity that is not HIGH, MEDIUM or LOW."""
+        self.write_rules(project, {"101": "LOW"})
+
+        result = runner.invoke(app, ["data", "--fail-on", "WARNING"])
+
+        assert result.exit_code == 2  # usage error from Typer
+        assert "Invalid value" in ANSI_ESCAPE.sub("", result.output)
+
+    def test_unknown_severity_warns_and_counts_as_high(self, project: Path) -> None:
+        """Should warn about a severity like WARNING and treat it as HIGH."""
+        self.write_rules(project, {"101": "WARNING"})
+
+        result = runner.invoke(app, ["--no-color", "data", "--fail-on", "HIGH"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert (
+            "Rule 101 declares unknown severity 'WARNING', treated as HIGH"
+            in result.output
+        )
+        assert "1 HIGH severity violation (rules: 101)" in result.output
+
+    def test_lower_case_severity_is_accepted(self, project: Path) -> None:
+        """Should accept a severity declared in lower case without a warning."""
+        self.write_rules(project, {"101": "low"})
+
+        result = runner.invoke(app, ["--no-color", "data", "--fail-on", "MEDIUM"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "unknown severity" not in result.output
+
+    def test_json_marks_blocking(self, project: Path) -> None:
+        """Should list every violated rule in JSON with whether it fails."""
+        self.write_rules(project, {"101": "HIGH", "102": "LOW"})
+
+        result = runner.invoke(app, ["data", "--format", "json", "--fail-on", "MEDIUM"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        errors = {e["rule_id"]: e for e in json.loads(result.output)["semantic_errors"]}
+        assert errors["101"]["blocking"] is True
+        assert errors["102"]["blocking"] is False
+        assert errors["102"]["severity"] == "LOW"
+
+    def test_json_reports_violations_below_threshold_on_success(
+        self, project: Path
+    ) -> None:
+        """Should keep violations below the threshold in JSON when passing."""
+        self.write_rules(project, {"101": "LOW"})
+
+        result = runner.invoke(app, ["data", "--format", "json", "--fail-on", "HIGH"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        (error,) = json.loads(result.output)["semantic_errors"]
+        assert error["rule_id"] == "101"
+        assert error["blocking"] is False
+
+
+class TestFailOnRuleLoading:
+    """Test the severity check when loading rules."""
+
+    def test_rule_without_severity_is_high(self, project: Path) -> None:
+        """Should load a rule declaring no severity, silently as HIGH."""
+        (project / ".rules").mkdir()
+        (project / ".rules/r.py").write_text(
+            "class Rule:\n    id = '101'\n    description = 'no severity'\n"
+            "    @classmethod\n    def match(cls, data):\n        return ['boom']\n"
+        )
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: hello\n")
+
+        result = runner.invoke(app, ["--no-color", "data", "--fail-on", "HIGH"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert "1 HIGH severity violation (rules: 101)" in result.output
+        assert "unknown severity" not in result.output
+
+    def test_disabled_rule_is_not_warned_about(self, project: Path) -> None:
+        """Should not warn about the severity of a rule disabled by overrides."""
+        rule = rule_source("505", "module rule").replace("HIGH", "WARNING")
+        raw_install_module(project, {"rules/505.py": rule})
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: hello\n")
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "data"])
+        assert "Rule 505 declares unknown severity 'WARNING'" in result.output
+
+        write_files(project / "nac", {"overrides.yaml": overrides_yaml(rules=["505"])})
+        result = runner.invoke(app, ["--artifacts", "--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "unknown severity" not in result.output

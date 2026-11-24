@@ -23,6 +23,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "NAC_VALIDATE_ARTIFACTS",
         "NAC_VALIDATE_BUNDLE",
         "NAC_VALIDATE_MODULE_DIR",
+        "NAC_VALIDATE_FAIL_ON",
     ):
         monkeypatch.delenv(var, raising=False)
     return project_dir
