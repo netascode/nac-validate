@@ -23,12 +23,14 @@ class SemanticErrorResult:
     Attributes:
         rule_id: The rule identifier (e.g., "101", "312")
         description: Human-readable rule description
-        severity: Rule severity level (HIGH, MEDIUM, LOW)
+        severity: Effective rule severity level (HIGH, MEDIUM, LOW)
         errors: List of violation dicts or legacy strings.
         title: Optional rule title
         explanation: Optional explanation of why this rule matters
         recommendation: Optional recommended fix
         references: Optional list of reference URLs
+        blocking: Whether the violations fail validation, i.e. the severity
+            is at or above the failure threshold (``--fail-on``)
     """
 
     rule_id: str
@@ -39,6 +41,7 @@ class SemanticErrorResult:
     explanation: str = ""
     recommendation: str = ""
     references: list[str] | None = None
+    blocking: bool = True
 
 
 class ValidationError(Exception):
@@ -95,7 +98,11 @@ class SyntaxValidationError(ValidationError):
 
 
 class SemanticValidationError(ValidationError):
-    """Raised when semantic validation fails."""
+    """Raised when semantic validation fails.
+
+    ``errors`` holds the rules that fail validation, ``structured_results``
+    every violated rule, including those below the failure threshold.
+    """
 
     def __init__(
         self,

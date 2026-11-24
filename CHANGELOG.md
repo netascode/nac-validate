@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add `--fail-on {HIGH,MEDIUM,LOW}` option (`NAC_VALIDATE_FAIL_ON`) to set the lowest rule severity that fails semantic validation. Violations of less severe rules are still reported, counted as below the failure threshold in the summary and marked `"blocking": false` in the JSON output, but no longer affect the exit code. Defaults to `LOW`, so every violation fails as before
+- Log a warning for rules declaring a severity other than `HIGH`, `MEDIUM` or `LOW` (case-insensitive), and treat them as `HIGH`. Before, such rules were counted as `LOW` in the summary
 - Refer to list items by their schema primary key instead of their index in error messages (`Duplicate unique key ip=x in items [name=a], [name=b]`)
 
 ## 2.2.0b1
