@@ -9,12 +9,13 @@ structured data from rules and renders it for different output formats.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from .constants import (
     DEFAULT_FAIL_ON,
+    DEFAULT_SEVERITY,
     SEVERITY_SORT_ORDER,
     SUMMARY_SEPARATOR_WIDTH,
     Colors,
@@ -229,20 +230,28 @@ def format_semantic_error(
     rule: type[RuleBase],
     result: list[Any],
     compact: bool = False,
+    severity: str | None = None,
 ) -> str:
-    """Convenience function for formatting semantic errors."""
-    formatter = OutputFormatter(severity=rule_severity(rule))
+    """Convenience function for formatting semantic errors.
+
+    ``severity`` replaces the one the rule declares (set by ``overrides.yaml``).
+    """
+    formatter = OutputFormatter(severity=severity or rule_severity(rule))
     return formatter.format_output(rule, result, compact=compact)
 
 
 def format_json_result(
     rule: type[RuleBase],
     result: list[Any],
+    severity: str | None = None,
 ) -> dict[str, Any]:
-    """Format a rule result as a JSON-serializable dictionary."""
+    """Format a rule result as a JSON-serializable dictionary.
+
+    ``severity`` replaces the one the rule declares (set by ``overrides.yaml``).
+    """
     base: dict[str, Any] = {
         "rule_id": rule.id,
-        "severity": rule_severity(rule),
+        "severity": severity or rule_severity(rule),
         "description": rule.description,
     }
 
@@ -412,13 +421,16 @@ def _rule_id_sort_key(rule_id: str) -> tuple[int, int, str]:
 
 
 def format_rules_list(
-    rules: dict[str, Any], annotations: dict[str, str] | None = None
+    rules: dict[str, Any],
+    annotations: dict[str, str] | None = None,
+    severities: Mapping[str, str] | None = None,
 ) -> str:
     """Format a list of validation rules for display.
 
     Args:
         rules: Dict of rule_id -> Rule class mappings
         annotations: Optional rule_id -> note appended after the rule line
+        severities: Optional rule_id -> severity replacing the declared one
 
     Returns:
         Formatted rules list string
@@ -436,7 +448,9 @@ def format_rules_list(
     sorted_rules = sorted(rules.items(), key=lambda x: _rule_id_sort_key(x[0]))
 
     for rule_id, rule in sorted_rules:
-        severity = getattr(rule, "severity", "HIGH")
+        severity = (severities or {}).get(rule_id) or getattr(
+            rule, "severity", DEFAULT_SEVERITY
+        )
         severity_color = Colors.for_severity(severity)
 
         lines.append(
@@ -501,7 +515,14 @@ def format_artifacts_list(validator: Validator) -> str:
         )
         for rule_id, origin in validator.rule_origins.items()
     }
-    lines.append(format_rules_list(validator.rules, annotations))
+    for change in validator.severity_changes:
+        annotations[change.rule_id] = (
+            annotations.get(change.rule_id, _label(change.origin))
+            + f" {Colors.DIM}severity set by{Colors.RESET} "
+            + _overrides(change.entry.source)
+            + f" {Colors.DIM}(declares {change.declared}){Colors.RESET}"
+        )
+    lines.append(format_rules_list(validator.rules, annotations, validator.severities))
     lines += _format_unresolved(validator)
     lines += _format_disabled(validator)
     return "\n".join(lines)
@@ -546,7 +567,7 @@ def _format_unresolved(validator: Validator) -> list[str]:
 
 
 def _format_disabled(validator: Validator) -> list[str]:
-    """Format rules disabled by overrides.yaml and entries that matched nothing."""
+    """Format rules disabled by overrides.yaml and entries without effect."""
     lines: list[str] = []
     if validator.disabled_rules:
         lines.append(f"{Colors.CYAN}{Colors.BOLD}Disabled Rules:{Colors.RESET}")
@@ -560,7 +581,7 @@ def _format_disabled(validator: Validator) -> list[str]:
                 f"{_overrides(disabled.entry.source)}"
             )
         lines.append("")
-    if validator.unmatched_disables:
+    if validator.unmatched_disables or validator.unmatched_severities:
         lines.append(
             f"{Colors.CYAN}{Colors.BOLD}Overrides Matching No Rule:{Colors.RESET}"
         )
@@ -568,6 +589,33 @@ def _format_disabled(validator: Validator) -> list[str]:
             f"  {entry.pattern} {Colors.DIM}({Colors.RESET}"
             f"{_overrides(entry.source)}{Colors.DIM}){Colors.RESET}"
             for entry in validator.unmatched_disables
+        ]
+        lines += [
+            f"  {entry.pattern}: {entry.severity} {Colors.DIM}({Colors.RESET}"
+            f"{_overrides(entry.source)}{Colors.DIM}){Colors.RESET}"
+            for entry in validator.unmatched_severities
+        ]
+        if validator.unresolved_rules:
+            # Listing reads rules without running them, so these cannot match
+            lines.append(
+                f"  {Colors.DIM}Rules with an unknown ID are not matched here; "
+                f"these entries may still apply to them.{Colors.RESET}"
+            )
+        lines.append("")
+    if validator.shadowed_severity_changes:
+        lines.append(
+            f"{Colors.CYAN}{Colors.BOLD}Severities Without Effect "
+            f"(rule shadowed):{Colors.RESET}"
+        )
+        lines += [
+            f"  {Colors.BOLD}[{change.rule_id}]{Colors.RESET} {change.severity} "
+            f"{Colors.DIM}by{Colors.RESET} {_overrides(change.entry.source)} "
+            f"{Colors.DIM}for the rule from{Colors.RESET} {_label(change.origin)}"
+            f"{Colors.DIM}, shadowed by{Colors.RESET} {_label(tag)}"
+            for change, tag in sorted(
+                validator.shadowed_severity_changes,
+                key=lambda c: _rule_id_sort_key(c[0].rule_id),
+            )
         ]
         lines.append("")
     return lines

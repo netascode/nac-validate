@@ -28,9 +28,10 @@ from nac_artifacts import (
     AmbiguousModuleError,
     ArtifactLayer,
     DisableEntry,
-    LayerDisables,
+    LayerOverrides,
     ModuleDiscoveryError,
-    layer_disables,
+    SeverityEntry,
+    layer_overrides,
     resolve_artifact_layers,
 )
 
@@ -58,6 +59,8 @@ class ValidationLayer:
         detail: Human-readable description of where the layer came from.
         disabled_rules: Entries (rule IDs) that disable rules of this layer, from
             ``nac/overrides.yaml`` and from bundles above it.
+        rule_severities: Entries that set the severity of rules of this layer,
+            from the same sources; the highest priority source comes first.
         label: Name for messages, e.g. ``bundle acme-base`` (defaults to the origin).
     """
 
@@ -68,6 +71,7 @@ class ValidationLayer:
     detail: str = ""
     disabled_rules: tuple[DisableEntry, ...] = ()
     label: str = ""
+    rule_severities: tuple[SeverityEntry, ...] = ()
 
     @property
     def tag(self) -> str:
@@ -101,7 +105,7 @@ def _local_layer(schema: Path, rules: Sequence[Path]) -> ValidationLayer:
 
 
 def _from_artifact_layer(
-    layer: ArtifactLayer, disables: LayerDisables
+    layer: ArtifactLayer, disables: LayerOverrides
 ) -> ValidationLayer:
     """Map a bundle or module layer to the schema and rules it provides."""
     schema = layer.nac_dir / ARTIFACTS_SCHEMA_FILENAME
@@ -114,6 +118,7 @@ def _from_artifact_layer(
         detail=layer.detail,
         disabled_rules=disables.rules,
         label=layer.label,
+        rule_severities=disables.rule_severities,
     )
 
 
@@ -142,10 +147,11 @@ def resolve_layers(
             provides=(ARTIFACTS_SCHEMA_FILENAME, ARTIFACTS_RULES_DIRNAME),
             bundles=bundles,
             module_dir=module_dir,
+            override_kinds=("rules",),
         )
     except AmbiguousModuleError as e:
         raise ModuleDiscoveryError(f"{e} Use --module-dir to select one.") from e
-    disables = layer_disables(project_dir, artifact_layers)
+    disables = layer_overrides(project_dir, artifact_layers)
     return [
         local,
         *(
