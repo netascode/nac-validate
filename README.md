@@ -79,6 +79,8 @@ $ echo $?
 
 Violations below the threshold are still printed and included in the JSON output, marked `"blocking": false`.
 
+The severity of a rule packaged in a bundle or module can be changed in `nac/overrides.yaml` (see [Packaged Schema and Rules](#packaged-schema-and-rules-experimental)).
+
 ## How It Works
 
 Syntactic validation is done by basic YAML syntax validation (e.g., indentation) and by providing a [Yamale](https://github.com/23andMe/Yamale) schema and validating all YAML files against that schema. Semantic validation is done by providing a set of rules (implemented in Python) which are then validated against the YAML data. Every rule is implemented as a Python class and should be placed in a `.py` file located in the `--rules` path.
@@ -218,13 +220,18 @@ The layers are, highest priority first:
 2. **Bundle**: every `.zip`, `.tar.gz` or `.tgz` archive and every directory in the project's `nac/bundles/` (or the paths given with `--bundle`), holding `manifest.yaml`, `schema.yaml` and `rules/` at its root
 3. **Module**: the `nac/` directory (`nac/schema.yaml`, `nac/rules/`) of the Terraform module installed by `terraform init` (or the one given with `--module-dir`)
 
-A higher layer replaces the schema of a lower one and rules with the same ID. Rules of lower layers can be disabled by ID in `nac/overrides.yaml`:
+A higher layer replaces the schema of a lower one and rules with the same ID. Rules of lower layers can be disabled, or given another severity, by ID in `nac/overrides.yaml`:
 
 ```yaml
 disable:
   rules:
     - "101"
+severity:
+  rules:
+    "205": LOW      # HIGH, MEDIUM or LOW
 ```
+
+The severity replaces the one the rule declares, everywhere: in the output, the summary, the JSON output and the `--fail-on` check. Like disable entries, a bundle's `overrides.yaml` can set severities of module rules, and local rules are never affected (edit them instead). `--list-artifacts` shows each changed severity, who set it and what the rule declares, entries that match no rule, and entries without effect because a higher layer's rule shadows the rule they apply to.
 
 Run `nac-validate --list-artifacts` to see the effective schema, the layers in use and where each rule comes from. It reads rules without running them: the `id`, `description` and `severity` of each rule are taken from the string or number literals in its `Rule` class, and a rule whose ID is not such a literal (computed or inherited) is listed as having an unknown ID. With `--artifacts` it still extracts bundle archives into `nac/bundles/.cache/`.
 
@@ -344,7 +351,7 @@ All rules must subclass `RuleBase` and set at minimum `id` and `description`. Th
 |-----------|----------|---------|-------------|
 | `id` | Yes | — | Unique rule identifier, a number such as `"101"` or `101` (other IDs log a warning) |
 | `description` | Yes | — | Short description of the rule |
-| `severity` | No | `"HIGH"` | Severity level (`HIGH`, `MEDIUM`, `LOW`), compared against `--fail-on`. Any other value logs a warning and is treated as `HIGH` |
+| `severity` | No | `"HIGH"` | Severity level (`HIGH`, `MEDIUM`, `LOW`), compared against `--fail-on`. Any other value logs a warning and is treated as `HIGH`. Projects can change it for packaged rules in `nac/overrides.yaml` |
 | `title` | No | `""` | Header displayed in violation output |
 | `explanation` | No | `""` | Detailed explanation of why this matters |
 | `recommendation` | No | `""` | How to fix the issue, with examples |

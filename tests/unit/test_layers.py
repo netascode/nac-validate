@@ -225,3 +225,45 @@ class TestDisabledRules:
 
         with pytest.raises(OverridesError, match="must be a mapping"):
             resolve(project)
+
+
+class TestOverrideKinds:
+    """nac-validate only reads rule entries of overrides.yaml."""
+
+    @staticmethod
+    def overrides_bundle(project: Path, name: str, text: str) -> None:
+        (project / "nac/bundles").mkdir(parents=True, exist_ok=True)
+        make_zip(
+            project / f"nac/bundles/{name}.zip",
+            {
+                "manifest.yaml": f"name: {name}\nversion: '1.0.0'\n",
+                "overrides.yaml": text,
+            },
+        )
+
+    def test_bundle_with_only_template_entries_is_skipped(self, project: Path) -> None:
+        """Should not use a bundle whose overrides only concern templates."""
+        install_module(project)
+        self.overrides_bundle(project, "tests", overrides_yaml(templates=["a.robot"]))
+
+        assert [layer.origin for layer in resolve(project)] == ["local", "module"]
+
+    def test_bundle_with_only_severities_is_used(self, project: Path) -> None:
+        """Should use a bundle whose overrides only set rule severities."""
+        install_module(project)
+        self.overrides_bundle(project, "sev", overrides_yaml(severities={"1": "LOW"}))
+
+        assert [layer.tag for layer in resolve(project)] == [
+            "local",
+            "bundle sev",
+            "module",
+        ]
+
+    def test_peer_bundles_with_different_severities_fail(self, project: Path) -> None:
+        """Should refuse to let the bundle order decide a rule's severity."""
+        install_module(project)
+        self.overrides_bundle(project, "a", overrides_yaml(severities={"1": "LOW"}))
+        self.overrides_bundle(project, "b", overrides_yaml(severities={"1": "HIGH"}))
+
+        with pytest.raises(OverridesError, match="different severities for rule '1'"):
+            resolve(project)

@@ -1001,3 +1001,134 @@ class TestFailOnRuleLoading:
 
         assert result.exit_code == ExitCode.SUCCESS
         assert "unknown severity" not in result.output
+
+
+class TestSeverityOverrides:
+    """Severities set in nac/overrides.yaml, end to end."""
+
+    @staticmethod
+    def setup_project(project: Path, severity: str = "HIGH") -> None:
+        rule = (
+            rule_source("5", "module rule")
+            .replace('"HIGH"', f'"{severity}"')
+            .replace("return []", "return ['boom']")
+        )
+        raw_install_module(project, {"rules/5.py": rule})
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: hello\n")
+
+    @staticmethod
+    def set_severity(project: Path, severity: str) -> None:
+        write_files(
+            project / "nac",
+            {"overrides.yaml": overrides_yaml(severities={"5": severity})},
+        )
+
+    def test_lowered_rule_passes_a_stricter_threshold(self, project: Path) -> None:
+        """Should report the violation with the new severity, below the threshold."""
+        self.setup_project(project)
+        args = ["--artifacts", "--no-color", "data", "--fail-on", "MEDIUM"]
+
+        failing = runner.invoke(app, args)
+        self.set_severity(project, "LOW")
+        passing = runner.invoke(app, args)
+
+        assert failing.exit_code == ExitCode.SEMANTIC_ERROR
+        assert passing.exit_code == ExitCode.SUCCESS
+        assert "1 LOW severity violation (rules: 5)" in passing.output
+
+    def test_json_reports_the_set_severity(self, project: Path) -> None:
+        """Should put the effective severity in the JSON result."""
+        self.setup_project(project)
+        self.set_severity(project, "medium")
+
+        result = runner.invoke(
+            app, ["--artifacts", "data", "--format", "json", "--fail-on", "HIGH"]
+        )
+
+        assert result.exit_code == ExitCode.SUCCESS
+        (error,) = json.loads(result.output)["semantic_errors"]
+        assert (error["severity"], error["blocking"]) == ("MEDIUM", False)
+
+    def test_replaces_an_unknown_declared_severity(self, project: Path) -> None:
+        """Should use the set severity for a rule declaring WARNING, without a warning."""
+        self.setup_project(project, "WARNING")
+        self.set_severity(project, "LOW")
+
+        result = runner.invoke(
+            app, ["--artifacts", "--no-color", "data", "--fail-on", "MEDIUM"]
+        )
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "unknown severity" not in result.output
+
+    def test_list_artifacts_shows_the_change(self, project: Path) -> None:
+        """Should show the set severity, who set it and what the rule declares."""
+        self.setup_project(project)
+        write_files(
+            project / "nac",
+            {"overrides.yaml": overrides_yaml(severities={"5": "LOW", "9": "LOW"})},
+        )
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert (
+            "[5] module rule (LOW) [module] severity set by project overrides "
+            "(declares HIGH)" in result.output
+        )
+        assert "Overrides Matching No Rule:" in result.output
+        assert "9: LOW (project overrides)" in result.output
+
+    def test_invalid_severity_is_a_config_error(self, project: Path) -> None:
+        """Should reject a severity other than HIGH, MEDIUM and LOW."""
+        self.setup_project(project)
+        self.set_severity(project, "WARNING")
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "data"])
+
+        assert result.exit_code == ExitCode.CONFIG_ERROR
+        assert "Invalid severity 'WARNING'" in result.output
+
+    def test_without_artifacts_the_file_is_not_read(self, project: Path) -> None:
+        """Should keep the declared severity when --artifacts is not given."""
+        (project / ".rules").mkdir()
+        (project / ".rules/5.py").write_text(
+            rule_source("5", "local rule").replace("return []", "return ['boom']")
+        )
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text("a: hello\n")
+        self.set_severity(project, "LOW")
+
+        result = runner.invoke(app, ["--no-color", "data", "--fail-on", "MEDIUM"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+
+    def test_list_artifacts_shows_entries_without_effect(self, project: Path) -> None:
+        """Should list an entry for a rule that a local rule shadows."""
+        self.setup_project(project)
+        (project / ".rules").mkdir()
+        (project / ".rules/5.py").write_text(rule_source("5", "local rule"))
+        self.set_severity(project, "LOW")
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "Severities Without Effect (rule shadowed):" in result.output
+        assert (
+            "[5] LOW by project overrides for the rule from [module], shadowed by "
+            "[local]" in result.output
+        )
+        assert "Overrides Matching No Rule" not in result.output
+
+    def test_list_artifacts_notes_rules_with_unknown_id(self, project: Path) -> None:
+        """Should say unmatched entries may apply to rules whose ID is unknown."""
+        rule = rule_source("5", "computed id").replace('id = "5"', 'id = "" + "5"')
+        raw_install_module(project, {"rules/5.py": rule})
+        self.set_severity(project, "LOW")
+
+        result = runner.invoke(app, ["--artifacts", "--no-color", "--list-artifacts"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "5: LOW (project overrides)" in result.output
+        assert "Rules with an unknown ID are not matched here" in result.output

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import yamale
-from nac_artifacts import DisableEntry, DisableMatcher
+from nac_artifacts import DisableEntry, EntryMatcher, SeverityEntry
 from nac_yaml.yaml import load_yaml_files, write_yaml_file
 from ruamel.yaml.error import MarkedYAMLError
 from yamale.yamale_error import YamaleError
@@ -76,6 +76,28 @@ class DisabledRule:
     description: str
     origin: str
     entry: DisableEntry
+
+
+@dataclass(frozen=True)
+class SeverityChange:
+    """A rule whose severity is set by an ``overrides.yaml`` entry.
+
+    Attributes:
+        rule_id: ID of the rule.
+        origin: Layer the rule came from.
+        declared: The severity the rule declares itself.
+        entry: The entry that sets the severity, with the layer it came from.
+    """
+
+    rule_id: str
+    origin: str
+    declared: str
+    entry: SeverityEntry
+
+    @property
+    def severity(self) -> str:
+        """The severity the rule has."""
+        return self.entry.severity
 
 
 class _NoBytecodeLoader(importlib.machinery.SourceFileLoader):
@@ -165,15 +187,18 @@ def _declared_rule(file_path: Path) -> DeclaredRule:
     )
 
 
-def _warn_unknown_severities(rules: Mapping[str, Any]) -> None:
+def _warn_unknown_severities(
+    rules: Mapping[str, Any], severities: Mapping[str, str]
+) -> None:
     """Warn about rules declaring a severity other than HIGH, MEDIUM or LOW.
 
     Only the rules that will run are checked, so a disabled or shadowed rule
-    is not reported. A rule that declares no severity is ``HIGH`` silently.
-    Rules read for listing only (``DeclaredRule``) are skipped.
+    is not reported, nor is one whose severity ``severities`` sets. A rule
+    that declares no severity is ``HIGH`` silently. Rules read for listing only
+    (``DeclaredRule``) are skipped.
     """
     for rule_id, rule in rules.items():
-        if isinstance(rule, DeclaredRule):
+        if isinstance(rule, DeclaredRule) or rule_id in severities:
             continue
         severity = getattr(rule, "severity", DEFAULT_SEVERITY)
         if known_severity(severity) is None:
@@ -386,12 +411,34 @@ class Validator:
             rules.update(dir_rules)
         return rules
 
-    def __init__(self, schema: Any | None, rules: Any | None = None):
+    def __init__(
+        self,
+        schema: Any | None,
+        rules: Any | None = None,
+        *,
+        severities: Mapping[str, str] | None = None,
+    ):
         """Create a validator from a loaded schema and rules, or their paths.
+
+        Args:
+            schema: Loaded schema, or the path of a schema file
+            rules: Rules by ID, or the path of a rules directory
+            severities: Severity (HIGH, MEDIUM or LOW) by rule ID, replacing the
+                severity the rule declares
 
         Raises:
             SchemaError: If the schema uses an extension incorrectly
+            ValueError: If a severity in ``severities`` is unknown
         """
+        self.severities: dict[str, str] = {}
+        for rule_id, value in (severities or {}).items():
+            severity = known_severity(value)
+            if severity is None:
+                raise ValueError(
+                    f"Unknown severity {value!r} for rule {rule_id!r}, expected "
+                    "one of " + ", ".join(SEVERITY_SORT_ORDER)
+                )
+            self.severities[str(rule_id)] = severity
         self.schema: Any | None = None
         self.rules: dict[str, Any] = {}
         if isinstance(schema, (str | Path)):
@@ -406,13 +453,18 @@ class Validator:
             self.schema = schema
             if isinstance(rules, dict):
                 self.rules = rules
-                _warn_unknown_severities(rules)
+                _warn_unknown_severities(rules, self.severities)
         self.layers: list[ValidationLayer] = []
         self.schema_origin: ValidationLayer | None = None
         self.rule_origins: dict[str, str] = {}
         self.shadowed_rules: list[tuple[str, str, str]] = []
         self.disabled_rules: list[DisabledRule] = []
         self.unmatched_disables: list[DisableEntry] = []
+        self.severity_changes: list[SeverityChange] = []
+        # Changes without effect, as a rule of a higher layer shadows the rule
+        # they apply to: (change, label of the shadowing layer)
+        self.shadowed_severity_changes: list[tuple[SeverityChange, str]] = []
+        self.unmatched_severities: list[SeverityEntry] = []
         self.unresolved_rules: list[tuple[DeclaredRule, str]] = []
         self.data: dict[str, Any] | None = None
         # Data merged from the paths by the syntax validation, for reuse
@@ -514,6 +566,8 @@ class Validator:
 
         The schema comes from the highest layer providing one (schemas are not
         merged). Rules are merged by ID, with higher layers shadowing lower ones.
+        Entries of ``overrides.yaml`` disable rules of a layer, or set their
+        severity.
 
         Args:
             layers: Resolved artifact layers, highest priority first
@@ -570,10 +624,15 @@ class Validator:
         shadowed: list[tuple[str, str, str]] = []
         disabled: list[DisabledRule] = []
         all_entries: dict[DisableEntry, None] = {}
+        changes: dict[str, SeverityChange] = {}
+        shadowed_changes: list[tuple[SeverityChange, str]] = []
+        severity_entries: dict[SeverityEntry, None] = {}
+        used_severity_entries: set[SeverityEntry] = set()
         unresolved: list[tuple[DeclaredRule, str]] = []
         for tier in reversed(tiers):
             tier_rules: dict[str, Any] = {}
             tier_origins: dict[str, str] = {}
+            tier_changes: dict[str, SeverityChange] = {}
             for layer in tier:
                 layer_rules = cls._load_rules(
                     layer.rules_dirs,
@@ -584,7 +643,22 @@ class Validator:
                 for rule_id, rule in list(layer_rules.items()):
                     if isinstance(rule, DeclaredRule) and rule.id is None:
                         unresolved.append((layer_rules.pop(rule_id), layer.tag))
-                matcher = DisableMatcher(layer.disabled_rules)
+                # Severity entries are matched before disabling, so an entry
+                # for a disabled rule is not reported as matching no rule
+                severity_matcher = EntryMatcher(layer.rule_severities)
+                severity_entries.update(dict.fromkeys(layer.rule_severities))
+                for rule_id, rule in layer_rules.items():
+                    severity_entry = severity_matcher.match(rule_id)
+                    if severity_entry is None:
+                        continue
+                    used_severity_entries.add(severity_entry)
+                    tier_changes[rule_id] = SeverityChange(
+                        rule_id,
+                        layer.tag,
+                        str(getattr(rule, "severity", DEFAULT_SEVERITY)),
+                        severity_entry,
+                    )
+                matcher = EntryMatcher(layer.disabled_rules)
                 all_entries.update(dict.fromkeys(layer.disabled_rules))
                 # Entries only remove rules of lower tiers; a peer's or a higher
                 # layer's rule with the same ID is never touched
@@ -592,6 +666,7 @@ class Validator:
                     entry = matcher.match(rule_id)
                     if entry is not None:
                         rule = layer_rules.pop(rule_id)
+                        tier_changes.pop(rule_id, None)
                         disabled.append(
                             DisabledRule(rule_id, rule.description, layer.tag, entry)
                         )
@@ -620,9 +695,37 @@ class Validator:
                     )
                     shadowed.append((rule_id, origins[rule_id], tag))
                 origins[rule_id] = tag
+                # A shadowing rule keeps only its own layer's severity change;
+                # an entry for the shadowed rule no longer has any effect
+                dropped = changes.pop(rule_id, None)
+                if dropped is not None and rule_id not in tier_changes:
+                    shadowed_changes.append((dropped, tag))
+                    logger.info(
+                        "Severity %s for rule %s from %s set by %s overrides has "
+                        "no effect: the rule from %s shadows it",
+                        dropped.severity,
+                        rule_id,
+                        dropped.origin,
+                        dropped.entry.source,
+                        tag,
+                    )
+            changes.update(tier_changes)
             rules.update(tier_rules)
 
-        validator = cls(schema, rules)
+        for change in changes.values():
+            logger.info(
+                "Rule %s from %s has severity %s (declares %s) set by %s overrides",
+                change.rule_id,
+                change.origin,
+                change.severity,
+                change.declared,
+                change.entry.source,
+            )
+        validator = cls(
+            schema,
+            rules,
+            severities={rule_id: c.severity for rule_id, c in changes.items()},
+        )
         validator.layers = list(layers)
         validator.schema_origin = schema_layers[0][0] if schema_layers else None
         validator.rule_origins = origins
@@ -630,6 +733,11 @@ class Validator:
         validator.disabled_rules = disabled
         used = {d.entry for d in disabled}
         validator.unmatched_disables = [e for e in all_entries if e not in used]
+        validator.severity_changes = list(changes.values())
+        validator.shadowed_severity_changes = shadowed_changes
+        validator.unmatched_severities = [
+            e for e in severity_entries if e not in used_severity_entries
+        ]
         # Highest priority layer first, like the layers
         priority = {layer.tag: i for i, layer in enumerate(layers)}
         validator.unresolved_rules = sorted(unresolved, key=lambda u: priority[u[1]])
@@ -990,13 +1098,14 @@ class Validator:
         if raw_results:
             for rule_id, result in raw_results.items():
                 rule = self.rules[rule_id]
-                severity = rule_severity(rule)
+                severity = self.rule_severity(rule_id)
                 blocking = is_blocking(severity, threshold)
 
                 # Build structured result for JSON output
                 json_result = format_json_result(
                     rule=rule,
                     result=result,
+                    severity=severity,
                 )
                 structured_results.append(
                     SemanticErrorResult(
@@ -1017,6 +1126,7 @@ class Validator:
                         rule=rule,
                         result=result,
                         compact=compact,
+                        severity=severity,
                     )
                     print(formatted_msg, file=sys.stderr)
                 if blocking:
@@ -1037,6 +1147,13 @@ class Validator:
                 )
 
             raise SemanticValidationError(semantic_errors, structured_results)
+
+    def rule_severity(self, rule_id: str) -> str:
+        """Severity of a rule: set by ``overrides.yaml`` or declared by the rule.
+
+        A declared severity other than HIGH, MEDIUM or LOW counts as HIGH.
+        """
+        return self.severities.get(rule_id) or rule_severity(self.rules[rule_id])
 
     def print_success_summary(self) -> None:
         """Print validation success summary to stderr."""

@@ -14,7 +14,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from nac_artifacts import DisableEntry
+from nac_artifacts import DisableEntry, SeverityEntry
 from nac_artifacts.testing import bundle_files as raw_bundle_files
 from nac_artifacts.testing import overrides_yaml, write_files
 
@@ -686,6 +686,244 @@ class TestDisabledRules:
         Validator.from_layers(resolve(project))
 
         assert "Rule 2 from module disabled by project overrides" in caplog.text
+
+
+class TestSeverityOverrides:
+    """Tests for setting the severity of rules of lower layers through overrides.yaml."""
+
+    @staticmethod
+    def set_severity(project: Path, **severities: str) -> None:
+        write_files(
+            project / "nac", {"overrides.yaml": overrides_yaml(severities=severities)}
+        )
+
+    @staticmethod
+    def failing_module_rule(project: Path, rule_id: str, severity: str) -> None:
+        source = (
+            rule_source(rule_id, "module rule")
+            .replace('"HIGH"', f'"{severity}"')
+            .replace("return []", "return ['boom']")
+        )
+        module_rules = install_module(project, schema=False) / "nac/rules"
+        module_rules.mkdir()
+        (module_rules / f"{rule_id}.py").write_text(source)
+
+    def test_module_rule_gets_the_severity(self, project: Path) -> None:
+        """Should use the severity of the entry, and record the change."""
+        install_module(project, rules={"1": "one", "2": "two"})
+        self.set_severity(project, **{"2": "low"})
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert validator.severities == {"2": "LOW"}
+        assert validator.rule_severity("1") == "HIGH"
+        assert validator.rule_severity("2") == "LOW"
+        (change,) = validator.severity_changes
+        assert (change.rule_id, change.origin, change.declared, change.severity) == (
+            "2",
+            "module",
+            "HIGH",
+            "LOW",
+        )
+        assert change.entry == SeverityEntry("2", "LOW", "project")
+        assert validator.unmatched_severities == []
+
+    def test_local_rule_keeps_its_severity(self, project: Path) -> None:
+        """Should never change local rules, which the project can edit directly."""
+        install_module(project, rules={"2": "module two"})
+        (project / ".rules").mkdir()
+        (project / ".rules/2.py").write_text(rule_source("2", "local two"))
+        self.set_severity(project, **{"2": "LOW"})
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert validator.rules["2"].description == "local two"
+        assert validator.rule_severity("2") == "HIGH"
+        assert validator.severity_changes == []
+        # It matched the shadowed module rule, so it is reported as without
+        # effect rather than as matching no rule
+        assert validator.unmatched_severities == []
+        ((change, tag),) = validator.shadowed_severity_changes
+        assert (change.rule_id, change.origin, change.severity, tag) == (
+            "2",
+            "module",
+            "LOW",
+            "local",
+        )
+
+    def test_bundle_sets_module_rule_severity(
+        self, project: Path, tmp_path: Path
+    ) -> None:
+        """Should let a bundle's overrides.yaml change a module rule."""
+        install_module(project, rules={"3": "module three"})
+        archive = make_zip(
+            tmp_path / "b.zip",
+            bundle_files(
+                extra={"overrides.yaml": overrides_yaml(severities={"3": "MEDIUM"})}
+            ),
+        )
+
+        validator = Validator.from_layers(resolve(project, bundle=archive))
+
+        assert validator.rule_severity("3") == "MEDIUM"
+        assert [c.entry.source for c in validator.severity_changes] == ["bundle acme"]
+
+    def test_project_entry_wins_over_bundle_entry(
+        self, project: Path, tmp_path: Path
+    ) -> None:
+        """Should apply the highest priority source when both set a severity."""
+        install_module(project, rules={"3": "module three"})
+        archive = make_zip(
+            tmp_path / "b.zip",
+            bundle_files(
+                extra={"overrides.yaml": overrides_yaml(severities={"3": "MEDIUM"})}
+            ),
+        )
+        self.set_severity(project, **{"3": "LOW"})
+
+        validator = Validator.from_layers(resolve(project, bundle=archive))
+
+        assert validator.rule_severity("3") == "LOW"
+        assert [e.source for e in validator.unmatched_severities] == ["bundle acme"]
+
+    def test_bundle_rule_shadowing_a_module_rule_keeps_its_own_severity(
+        self, project: Path, tmp_path: Path
+    ) -> None:
+        """Should not carry a bundle's entry for the module rule over to the bundle's rule."""
+        install_module(project, rules={"2": "module two"})
+        archive = make_zip(
+            tmp_path / "b.zip",
+            bundle_files(
+                extra={"overrides.yaml": overrides_yaml(severities={"2": "LOW"})}
+            ),
+        )
+
+        validator = Validator.from_layers(resolve(project, bundle=archive))
+
+        # The bundle ships rule 2 itself (see bundle_files)
+        assert validator.rules["2"].description == "bundle rule"
+        assert validator.rule_severity("2") == "HIGH"
+        assert validator.severity_changes == []
+        assert [
+            (c.entry.source, tag) for c, tag in validator.shadowed_severity_changes
+        ] == [("bundle acme", "bundle acme")]
+
+    def test_shadowing_rule_with_its_own_change_is_not_without_effect(
+        self, project: Path, tmp_path: Path
+    ) -> None:
+        """Should not report an entry that also applies to the shadowing rule."""
+        install_module(project, rules={"2": "module two"})
+        archive = make_zip(tmp_path / "b.zip", bundle_files())  # has rule 2
+        self.set_severity(project, **{"2": "LOW"})
+
+        validator = Validator.from_layers(resolve(project, bundle=archive))
+
+        assert validator.rule_severity("2") == "LOW"
+        assert validator.shadowed_severity_changes == []
+
+    def test_entry_without_effect_is_logged(
+        self, project: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Should log that a local rule makes the entry ineffective."""
+        caplog.set_level(logging.INFO, logger="nac_validate")
+        install_module(project, rules={"2": "module two"})
+        (project / ".rules").mkdir()
+        (project / ".rules/2.py").write_text(rule_source("2", "local two"))
+        self.set_severity(project, **{"2": "LOW"})
+
+        Validator.from_layers(resolve(project))
+
+        assert (
+            "Severity LOW for rule 2 from module set by project overrides has no "
+            "effect: the rule from local shadows it" in caplog.text
+        )
+
+    def test_entry_for_a_disabled_rule_is_not_unmatched(self, project: Path) -> None:
+        """Should neither apply nor report an entry for a rule that is disabled."""
+        install_module(project, rules={"2": "two"})
+        write_files(
+            project / "nac",
+            {"overrides.yaml": overrides_yaml(rules=["2"], severities={"2": "LOW"})},
+        )
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert validator.rules == {}
+        assert validator.severity_changes == []
+        assert validator.unmatched_severities == []
+
+    def test_entry_matching_nothing_is_reported(self, project: Path) -> None:
+        """Should list entries for rules that do not exist."""
+        install_module(project, rules={"1": "one"})
+        self.set_severity(project, **{"999": "LOW"})
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert validator.severities == {}
+        assert validator.unmatched_severities == [
+            SeverityEntry("999", "LOW", "project")
+        ]
+
+    def test_severity_decides_whether_a_violation_fails(self, project: Path) -> None:
+        """Should apply --fail-on to the severity set by overrides.yaml."""
+        self.failing_module_rule(project, "5", "HIGH")
+        self.set_severity(project, **{"5": "LOW"})
+        validator = Validator.from_layers(resolve(project))
+        validator.load_data({"a": 1})
+
+        validator.validate_semantics([], rich_output=False, fail_on="MEDIUM")
+
+        (result,) = validator.semantic_results
+        assert (result.severity, result.blocking) == ("LOW", False)
+
+    def test_severity_can_raise_a_rule(self, project: Path) -> None:
+        """Should also make a LOW rule fail a stricter threshold."""
+        self.failing_module_rule(project, "5", "LOW")
+        self.set_severity(project, **{"5": "HIGH"})
+        validator = Validator.from_layers(resolve(project))
+        validator.load_data({"a": 1})
+
+        with pytest.raises(SemanticValidationError):
+            validator.validate_semantics([], rich_output=False, fail_on="HIGH")
+
+    def test_set_severity_silences_unknown_severity_warning(
+        self, project: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Should not warn about a declared severity that is replaced."""
+        caplog.set_level(logging.WARNING, logger="nac_validate")
+        self.failing_module_rule(project, "505", "WARNING")
+        self.set_severity(project, **{"505": "LOW"})
+
+        validator = Validator.from_layers(resolve(project))
+
+        assert validator.rule_severity("505") == "LOW"
+        assert "unknown severity" not in caplog.text
+        assert validator.severity_changes[0].declared == "WARNING"
+
+    def test_change_is_logged(
+        self, project: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Should log each severity change at INFO level."""
+        caplog.set_level(logging.INFO, logger="nac_validate")
+        install_module(project, rules={"2": "two"})
+        self.set_severity(project, **{"2": "MEDIUM"})
+
+        Validator.from_layers(resolve(project))
+
+        assert (
+            "Rule 2 from module has severity MEDIUM (declares HIGH) set by project "
+            "overrides" in caplog.text
+        )
+
+    def test_severities_argument(self) -> None:
+        """Should accept severities directly and reject unknown ones."""
+        rule = TestFailOn.rule("1", "HIGH")
+
+        validator = Validator(None, {"1": rule}, severities={"1": "low"})
+
+        assert validator.rule_severity("1") == "LOW"
+        with pytest.raises(ValueError, match="Unknown severity 'WARNING'"):
+            Validator(None, {"1": rule}, severities={"1": "WARNING"})
 
 
 class TestMultipleBundles:
