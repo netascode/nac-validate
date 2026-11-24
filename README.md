@@ -81,6 +81,27 @@ Violations below the threshold are still printed and included in the JSON output
 
 The severity of a rule packaged in a bundle or module can be changed in `nac/overrides.yaml` (see [Packaged Schema and Rules](#packaged-schema-and-rules-experimental)).
 
+## Ignore Comments
+
+A comment in a data file exempts an object from rules:
+
+```yaml
+iosxe:
+  devices:
+    - name: edge-1  # nac-validate: ignore[505, 506] legacy peer, CHG-1234
+      configuration:
+        # nac-validate: ignore[205] mixed modes during migration
+        interfaces:
+          ...
+# nac-validate: ignore-file[413]
+```
+
+- A comment after content applies to that entry and everything below it, a comment on its own line to the next entry, and `ignore-file` to every object in the file.
+- Rule IDs are required. Text after them is the reason.
+- Only violations with a `path` can be suppressed. List items are matched by the selectors in the path (`devices[name=edge-1]`), so comments keep working when files are merged.
+
+Suppressed violations don't fail validation but are counted in the summary and listed in the JSON output. Comments that suppressed nothing are reported as a warning.
+
 ## How It Works
 
 Syntactic validation is done by basic YAML syntax validation (e.g., indentation) and by providing a [Yamale](https://github.com/23andMe/Yamale) schema and validating all YAML files against that schema. Semantic validation is done by providing a set of rules (implemented in Python) which are then validated against the YAML data. Every rule is implemented as a Python class and should be placed in a `.py` file located in the `--rules` path.
@@ -394,6 +415,8 @@ Output structure:
 ```
 
 `semantic_errors` lists every violated rule, including those below the `--fail-on` threshold; `blocking` tells whether the rule's violations fail validation.
+
+With [ignore comments](#ignore-comments), `suppressed` lists the suppressed violations (with the comment's file, line and reason) and `unused_ignores` the comments that suppressed nothing.
 
 ## Installation
 

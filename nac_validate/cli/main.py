@@ -127,9 +127,15 @@ def print_artifacts_list(
     raise typer.Exit(ExitCode.SUCCESS)
 
 
-def semantic_json(results: list[SemanticErrorResult]) -> dict[str, Any]:
-    """Build the JSON output for semantic validation results."""
-    return {
+def semantic_json(
+    results: list[SemanticErrorResult],
+    validator: nac_validate.validator.Validator | None = None,
+) -> dict[str, Any]:
+    """Build the JSON output for semantic validation results.
+
+    ``suppressed`` and ``unused_ignores`` are added when the validator has any.
+    """
+    output: dict[str, Any] = {
         "syntax_errors": [],
         "semantic_errors": [
             {
@@ -140,6 +146,14 @@ def semantic_json(results: list[SemanticErrorResult]) -> dict[str, Any]:
             for r in results
         ],
     }
+    if validator is not None and validator.suppressed:
+        output["suppressed"] = [asdict(s) for s in validator.suppressed]
+    if validator is not None and validator.unused_ignores:
+        output["unused_ignores"] = [
+            {k: v for k, v in asdict(u).items() if v != ""}
+            for u in validator.unused_ignores
+        ]
+    return output
 
 
 def configure_logging(level: str) -> None:
@@ -251,7 +265,7 @@ def main(
 
     except SemanticValidationError as e:
         if format == OutputFormat.JSON:
-            print(json.dumps(semantic_json(e.structured_results), indent=2))
+            print(json.dumps(semantic_json(e.structured_results, validator), indent=2))
         raise typer.Exit(ExitCode.SEMANTIC_ERROR) from e
 
     except Exception as e:
@@ -271,8 +285,16 @@ def main(
 
     # Success, possibly with violations below the failure threshold
     if format == OutputFormat.JSON:
-        if validator.semantic_results:
-            print(json.dumps(semantic_json(validator.semantic_results), indent=2))
+        if (
+            validator.semantic_results
+            or validator.suppressed
+            or validator.unused_ignores
+        ):
+            print(
+                json.dumps(
+                    semantic_json(validator.semantic_results, validator), indent=2
+                )
+            )
         else:
             print(json.dumps({"syntax_errors": [], "semantic_errors": []}))
     else:

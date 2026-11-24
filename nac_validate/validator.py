@@ -41,6 +41,7 @@ from .exceptions import (
     SyntaxErrorResult,
     SyntaxValidationError,
 )
+from .ignores import IgnoreMatcher, SuppressedViolation, UnusedIgnore, scan
 from .layers import ValidationLayer, resolve_layers
 from .models import _is_violation_list, is_blocking, known_severity, rule_severity
 from .output_formatter import (
@@ -477,6 +478,10 @@ class Validator:
         self.file_count: int = 0
         # Violated rules of the last semantic validation, failing or not
         self.semantic_results: list[SemanticErrorResult] = []
+        # Violations suppressed by ignore comments in the data, and comments
+        # that suppressed nothing, of the last semantic validation
+        self.suppressed: list[SuppressedViolation] = []
+        self.unused_ignores: list[UnusedIgnore] = []
         self.fail_on: str = DEFAULT_FAIL_ON
 
     @classmethod
@@ -1052,7 +1057,10 @@ class Validator:
 
         Violations of every rule are reported, and kept in
         ``semantic_results``. Only those of rules with a severity at or above
-        ``fail_on`` fail validation.
+        ``fail_on`` fail validation. Violations exempted by an ignore comment
+        in the data files (``# nac-validate: ignore[101]``) are kept in
+        ``suppressed`` instead, and comments that exempted nothing in
+        ``unused_ignores``.
 
         Args:
             input_paths: Paths to load the data from, unless already loaded
@@ -1072,6 +1080,8 @@ class Validator:
             )
         self.fail_on = threshold
         self.semantic_results = []
+        self.suppressed = []
+        self.unused_ignores = []
         if not self.rules:
             return
 
@@ -1094,6 +1104,8 @@ class Validator:
 
             if self._result_has_violations(result):
                 raw_results[rule.id] = result
+
+        self._apply_ignore_comments(input_paths, raw_results)
 
         if raw_results:
             for rule_id, result in raw_results.items():
@@ -1142,11 +1154,42 @@ class Validator:
                         file_count=self.file_count,
                         semantic_errors=structured_results,
                         fail_on=threshold,
+                        suppressed=self.suppressed,
+                        unused_ignores=self.unused_ignores,
                     ),
                     file=sys.stderr,
                 )
 
             raise SemanticValidationError(semantic_errors, structured_results)
+
+    def _apply_ignore_comments(
+        self, input_paths: Sequence[Path | str], raw_results: dict[str, list[Any]]
+    ) -> None:
+        """Remove violations exempted by ignore comments in the data files.
+
+        Rules left without violations are removed from ``raw_results``.
+        """
+        comments = scan(input_paths) if input_paths else []
+        if not comments:
+            return
+        matcher = IgnoreMatcher(comments)
+        for rule_id in list(raw_results):
+            kept, suppressed = matcher.suppress(rule_id, raw_results[rule_id])
+            if not suppressed:
+                continue
+            self.suppressed += suppressed
+            if kept:
+                raw_results[rule_id] = kept
+            else:
+                del raw_results[rule_id]
+        self.unused_ignores = matcher.unused()
+        logger.info(
+            "Ignore comments: %d in data files, %d violation(s) suppressed, "
+            "%d file(s) read again to resolve them",
+            len(comments),
+            len(self.suppressed),
+            len(matcher.parsed_files),
+        )
 
     def rule_severity(self, rule_id: str) -> str:
         """Severity of a rule: set by ``overrides.yaml`` or declared by the rule.
@@ -1164,6 +1207,8 @@ class Validator:
                 file_count=self.file_count,
                 semantic_errors=self.semantic_results,
                 fail_on=self.fail_on,
+                suppressed=self.suppressed,
+                unused_ignores=self.unused_ignores,
             ),
             file=sys.stderr,
         )
