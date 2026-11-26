@@ -5,6 +5,7 @@
 - Read `severity.rules` in `nac/overrides.yaml` (and in bundles' `overrides.yaml`) to change the severity of packaged rules of lower layers (`"205": LOW`). The new severity applies to the output, the JSON output and `--fail-on`, and `--list-artifacts` shows each change, entries matching no rule and entries without effect because the rule is shadowed. Two bundles setting different severities for the same rule are a configuration error unless the project sets it.
 - Skip bundles whose `overrides.yaml` only has entries for other tools (`disable.templates`), like bundles without schema or rules
 - Refer to list items by their schema primary key instead of their index in error messages (`Duplicate unique key ip=x in items [name=a], [name=b]`)
+- Update nac-yaml to 2.2.1: faster parsing, and files in directories are merged in sorted order
 
 ## 2.2.0b1
 
