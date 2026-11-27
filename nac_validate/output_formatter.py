@@ -30,6 +30,7 @@ from .models import (
 
 if TYPE_CHECKING:
     from .exceptions import SyntaxErrorResult
+    from .ignores import SuppressedViolation, UnusedIgnore
     from .validator import Validator
 
 
@@ -325,6 +326,8 @@ def format_validation_summary(
     semantic_errors: list[Any] | None = None,
     rules: dict[str, Any] | None = None,
     fail_on: str = DEFAULT_FAIL_ON,
+    suppressed: Sequence[SuppressedViolation] = (),
+    unused_ignores: Sequence[UnusedIgnore] = (),
 ) -> str:
     """Format a summary of validation results.
 
@@ -338,6 +341,8 @@ def format_validation_summary(
         rules: Unused, kept for compatibility; the severity is read from
             ``semantic_errors``
         fail_on: Lowest severity that fails validation
+        suppressed: Violations exempted by ignore comments
+        unused_ignores: Rule IDs of ignore comments that exempted nothing
 
     Returns:
         Formatted summary string
@@ -378,6 +383,8 @@ def format_validation_summary(
             counts.append(_plural(failing, "violation"))
         if below:
             counts.append(f"{_plural(below, 'violation')} below failure threshold")
+        if suppressed:
+            counts.append(f"{len(suppressed)} suppressed")
         count_info = f" ({', '.join(counts)})" if counts else ""
         if semantic_passed:
             lines.append(
@@ -407,6 +414,27 @@ def format_validation_summary(
                         f"violation{'s' if bucket.count != 1 else ''} "
                         f"(rules: {rules_str}){note}"
                     )
+        if suppressed:
+            if not semantic_errors:
+                lines.append("")
+            rule_ids = ", ".join(
+                sorted({s.rule_id for s in suppressed}, key=_rule_id_sort_key)
+            )
+            lines.append(
+                f"    {Colors.DIM}• {_plural(len(suppressed), 'violation')} "
+                f"suppressed by ignore comments (rules: {rule_ids}){Colors.RESET}"
+            )
+        if unused_ignores:
+            lines.append("")
+            lines.append(
+                f"  {Colors.YELLOW}!{Colors.RESET} Ignore comments that suppressed "
+                f"nothing (remove them, or fix the rule ID):"
+            )
+            lines += [
+                f"    {u.file}:{u.line} ignore[{u.rule_id}]"
+                + (f" {Colors.DIM}({u.note}){Colors.RESET}" if u.note else "")
+                for u in unused_ignores
+            ]
 
     lines.append(f"{'─' * SUMMARY_SEPARATOR_WIDTH}\n")
     return "\n".join(lines)

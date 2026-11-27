@@ -1132,3 +1132,130 @@ class TestSeverityOverrides:
         assert result.exit_code == ExitCode.SUCCESS
         assert "5: LOW (project overrides)" in result.output
         assert "Rules with an unknown ID are not matched here" in result.output
+
+
+class TestIgnoreComments:
+    """Ignore comments in data files, end to end."""
+
+    RULE = (
+        "from nac_validate import RuleBase, Violation\n"
+        "class Rule(RuleBase):\n"
+        "    id = '101'\n    description = 'no legacy devices'\n"
+        "    @classmethod\n"
+        "    def match(cls, data):\n"
+        "        return [\n"
+        "            Violation(message=f'{d[\"name\"]} is legacy',\n"
+        "                      path=f'devices[name={d[\"name\"]}]')\n"
+        "            for d in data.get('devices', []) if d.get('legacy')\n"
+        "        ]\n"
+    )
+
+    def setup_project(self, project: Path, data: str) -> None:
+        (project / ".rules").mkdir()
+        (project / ".rules/101.py").write_text(self.RULE)
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text(data)
+
+    def test_suppressed_violation_passes(self, project: Path) -> None:
+        """Should pass and count the suppressed violation in the summary."""
+        self.setup_project(
+            project,
+            "devices:\n"
+            "  - name: a  # nac-validate: ignore[101] CHG-1\n"
+            "    legacy: true\n",
+        )
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "PASSED (1 suppressed)" in result.output
+        assert "1 violation suppressed by ignore comments (rules: 101)" in result.output
+        assert "a is legacy" not in result.output
+
+    def test_other_objects_still_fail(self, project: Path) -> None:
+        """Should only suppress the commented object."""
+        self.setup_project(
+            project,
+            "devices:\n"
+            "  - name: a  # nac-validate: ignore[101]\n"
+            "    legacy: true\n"
+            "  - name: b\n"
+            "    legacy: true\n",
+        )
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SEMANTIC_ERROR
+        assert "b is legacy" in result.output
+        assert "a is legacy" not in result.output
+        assert "FAILED (1 violation, 1 suppressed)" in result.output
+
+    def test_unused_comment_is_reported(self, project: Path) -> None:
+        """Should list comments that suppressed nothing, without failing."""
+        self.setup_project(
+            project, "devices:\n  - name: a  # nac-validate: ignore[101, 999]\n"
+        )
+
+        result = runner.invoke(app, ["--no-color", "data"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        assert "Ignore comments that suppressed nothing" in result.output
+        file = Path("data/a.yaml")
+        assert f"{file}:2 ignore[101]" in result.output
+        assert f"{file}:2 ignore[999]" in result.output
+
+    def test_json_lists_suppressed_and_unused(self, project: Path) -> None:
+        """Should keep suppressed violations and unused comments in the JSON output."""
+        self.setup_project(
+            project,
+            "devices:\n"
+            "  - name: a  # nac-validate: ignore[101, 7] CHG-1\n"
+            "    legacy: true\n",
+        )
+
+        result = runner.invoke(app, ["data", "--format", "json"])
+
+        assert result.exit_code == ExitCode.SUCCESS
+        output = json.loads(result.output)
+        assert output["semantic_errors"] == []
+        assert output["suppressed"] == [
+            {
+                "rule_id": "101",
+                "message": "a is legacy",
+                "path": "devices[name=a]",
+                "file": str(Path("data/a.yaml")),
+                "line": 2,
+                "reason": "CHG-1",
+            }
+        ]
+        assert output["unused_ignores"] == [
+            {"rule_id": "7", "file": str(Path("data/a.yaml")), "line": 2}
+        ]
+
+    def test_json_without_comments_is_unchanged(self, project: Path) -> None:
+        """Should not add keys when there are no ignore comments."""
+        self.setup_project(project, "devices:\n  - name: a\n")
+
+        result = runner.invoke(app, ["data", "--format", "json"])
+
+        assert json.loads(result.output) == {"syntax_errors": [], "semantic_errors": []}
+
+    def test_unused_comment_for_rule_without_paths_has_a_note(
+        self, project: Path
+    ) -> None:
+        """Should explain why a comment for a rule returning strings did nothing."""
+        (project / ".rules").mkdir()
+        (project / ".rules/7.py").write_text(
+            "class Rule:\n    id = '7'\n    description = 'strings'\n"
+            "    severity = 'LOW'\n"
+            "    @classmethod\n    def match(cls, data):\n        return ['a is bad']\n"
+        )
+        (project / "data").mkdir()
+        (project / "data/a.yaml").write_text(
+            "devices:\n  - name: a  # nac-validate: ignore[7]\n"
+        )
+
+        result = runner.invoke(app, ["data", "--format", "json", "--fail-on", "HIGH"])
+
+        (unused,) = json.loads(result.output)["unused_ignores"]
+        assert unused["note"].startswith("rule 7 reports violations without a path")
