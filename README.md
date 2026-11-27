@@ -418,6 +418,26 @@ Output structure:
 
 With [ignore comments](#ignore-comments), `suppressed` lists the suppressed violations (with the comment's file, line and reason) and `unused_ignores` the comments that suppressed nothing.
 
+## Library API
+
+Tools such as editors can run the checks of the CLI on data in memory, without printing or raising:
+
+```python
+from pathlib import Path
+
+from nac_validate import Validator
+
+validator = Validator.from_project(Path("."))
+# One file: Yamale and the schema extensions checked per file
+violations = validator.check_file(data)
+# Data merged from two files: references, keys unique across files
+violations += validator.check_merged(merged, files=2)
+# A RuleResult per rule
+results = validator.run_rules(merged)
+```
+
+Schema violations have the path segments of the data they are at (`("nxos", "devices", 0, "url")`). A rule that raises is reported with its exception instead of stopping the others. `nac_validate.ignores` reads [ignore comments](#ignore-comments) from text (`read_comments()`) and applies them (`IgnoreMatcher`), and `nac_validate.schema` walks the schema and the data (`walk_data()`, `walk_schema_contexts()`, `ReferenceIndex`). The names in `__all__` of `nac_validate`, `nac_validate.schema` and `nac_validate.ignores` are the public API. Loading schema and rules from bundles and modules (`from_project()`) is [experimental](#packaged-schema-and-rules-experimental); `Validator.from_paths()` loads a local schema and rules.
+
 ## Installation
 
 Python 3.11+ is required to install `nac-validate`. Don't have Python 3.11 or later? See [Python 3 Installation & Setup Guide](https://realpython.com/installing-python/).

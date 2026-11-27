@@ -17,7 +17,7 @@ from typing import Any
 
 import yamale
 from nac_artifacts import DisableEntry, EntryMatcher, SeverityEntry
-from nac_yaml.yaml import load_yaml_files, write_yaml_file
+from nac_yaml.yaml import find_yaml_files, load_yaml_files, write_yaml_file
 from ruamel.yaml.error import MarkedYAMLError
 from yamale.yamale_error import YamaleError
 
@@ -43,7 +43,13 @@ from .exceptions import (
 )
 from .ignores import IgnoreMatcher, SuppressedViolation, UnusedIgnore, scan
 from .layers import ValidationLayer, resolve_layers
-from .models import _is_violation_list, is_blocking, known_severity, rule_severity
+from .models import (
+    RuleResult,
+    _is_violation_list,
+    is_blocking,
+    known_severity,
+    rule_severity,
+)
 from .output_formatter import (
     format_json_result,
     format_semantic_error,
@@ -57,6 +63,7 @@ from .schema import (
     check_data,
     check_schema,
     used_extensions,
+    yamale_violation,
 )
 
 logger = logging.getLogger(__name__)
@@ -473,6 +480,8 @@ class Validator:
         # Data of the last file the syntax validation loaded, to reuse for a
         # document check of a single file
         self._file_data: dict[str, Any] | None = None
+        # Extensions configured in the schema, with the schema they are of
+        self._extensions: tuple[Any, list[Extension]] | None = None
         self.errors: list[str] = []
         self.structured_syntax_errors: list[SyntaxErrorResult] = []
         self.file_count: int = 0
@@ -775,12 +784,7 @@ class Validator:
         self._merged_data = None
         return self.data
 
-    def _validate_syntax_file(
-        self,
-        file_path: Path,
-        strict: bool = True,
-        extensions: Sequence[Extension] = (),
-    ) -> None:
+    def _validate_syntax_file(self, file_path: Path, strict: bool = True) -> None:
         """Run syntactic validation for a single file"""
         if file_path.is_file() and file_path.suffix in YAML_SUFFIXES:
             logger.info("Validate file: %s", file_path)
@@ -811,48 +815,113 @@ class Validator:
                 return
 
             self._file_data = data
-            # Schema syntax validation
-            if self.schema is None or data == {}:
-                return
-            self._validate_schema(
-                data,
+            self._record_schema_errors(
                 str(file_path),
-                strict,
-                extensions,
-                merged=False,
-                log_level=logging.DEBUG,
+                self.check_file(data, strict=strict),
+                data,
+                logging.DEBUG,
             )
 
-    def _validate_schema(
-        self,
-        data: Any,
-        source: str,
-        strict: bool,
-        extensions: Sequence[Extension],
-        *,
-        merged: bool,
-        log_level: int,
-    ) -> None:
-        """Validate data against the schema, then against its extensions.
+    def _used_extensions(self) -> list[Extension]:
+        """Extensions configured in the schema, found once per schema."""
+        if self.schema is None:
+            return []
+        if self._extensions is None or self._extensions[0] is not self.schema:
+            self._extensions = (self.schema, used_extensions(self.schema))
+        return self._extensions[1]
 
-        Extensions are only checked once the data passed Yamale validation, so
-        they can rely on its structure. Merged data is checked against every
-        extension once, in the document scope where supported.
-        """
+    def _yamale_violations(self, data: Any, strict: bool) -> list[Violation]:
         try:
-            yamale.validate(self.schema, [(data, source)], strict=strict)
+            yamale.validate(self.schema, [(data, "<data>")], strict=strict)
         except YamaleError as e:
-            for result in e.results:
-                self._record_schema_errors(result.data, result.errors, data, log_level)
-            return
-        errors: list[Violation]
-        if merged:
-            file_only = [e for e in extensions if Scope.DOCUMENT not in e.scopes]
-            errors = check_data(self.schema, data, file_only, Scope.FILE, strict)
-            errors += check_data(self.schema, data, extensions, Scope.DOCUMENT, strict)
-        else:
-            errors = check_data(self.schema, data, extensions, Scope.FILE, strict)
-        self._record_schema_errors(source, errors, data, log_level)
+            return [
+                yamale_violation(error, data)
+                for result in e.results
+                for error in result.errors
+            ]
+        return []
+
+    def _document_extensions(self, files: int) -> list[Extension]:
+        """Extensions checked on data merged from files that passed one by one.
+
+        A single file has nothing to merge, so only extensions not checked per
+        file need it, e.g. references.
+        """
+        document = [e for e in self._used_extensions() if Scope.DOCUMENT in e.scopes]
+        if files == 1:
+            document = [e for e in document if Scope.FILE not in e.scopes]
+        return document
+
+    def check_file(self, data: Any, *, strict: bool = True) -> list[Violation]:
+        """Check the data of one file against the schema, like the CLI does.
+
+        Yamale validation first, then the schema extensions checked per file.
+        The extensions are only checked if the data passed Yamale validation,
+        as they rely on its structure. Empty data has nothing to check, and
+        without a schema there is nothing to check against.
+
+        Args:
+            data: Data of one file, e.g. from ``nac_yaml.yaml.parse_yaml()``
+            strict: Report keys the schema doesn't define
+
+        Returns:
+            Violations with the path segments of the data they are at
+        """
+        if self.schema is None or not data:
+            return []
+        violations = self._yamale_violations(data, strict)
+        if violations:
+            return violations
+        return check_data(
+            self.schema, data, self._used_extensions(), Scope.FILE, strict
+        )
+
+    def check_merged(
+        self, data: Any, *, files: int, strict: bool = True
+    ) -> list[Violation]:
+        """Check data merged from files that each passed :meth:`check_file`.
+
+        Checks the schema extensions that relate values across files, like
+        unique keys and references, on the merged data, like the CLI does once
+        every file passed.
+
+        Args:
+            data: Data merged from the files, e.g. by
+                ``nac_yaml.yaml.merge_documents()``
+            files: Number of files merged; for a single file, extensions
+                already checked per file are left out
+            strict: Report keys the schema doesn't define
+
+        Returns:
+            Violations with the path segments of the merged data they are at
+        """
+        if self.schema is None or not data or files <= 0:
+            return []
+        document = self._document_extensions(files)
+        if not document:
+            return []
+        return check_data(self.schema, data, document, Scope.DOCUMENT, strict)
+
+    def check_model(self, data: Any, *, strict: bool = True) -> list[Violation]:
+        """Check a whole data model at once instead of file by file.
+
+        Used for data loaded with :meth:`load_data`: Yamale validation of the
+        whole model, then every schema extension, those relating values across
+        files in the document scope.
+
+        Returns:
+            Violations with the path segments of the data they are at
+        """
+        if self.schema is None:
+            return []
+        violations = self._yamale_violations(data, strict)
+        if violations:
+            return violations
+        extensions = self._used_extensions()
+        file_only = [e for e in extensions if Scope.DOCUMENT not in e.scopes]
+        return check_data(
+            self.schema, data, file_only, Scope.FILE, strict
+        ) + check_data(self.schema, data, extensions, Scope.DOCUMENT, strict)
 
     def _forget_loaded_data(self) -> None:
         """Drop data loaded by a previous run, as files may have changed."""
@@ -870,19 +939,14 @@ class Validator:
     def _record_schema_errors(
         self,
         source: str,
-        errors: Sequence[str] | Sequence[Violation],
+        errors: Sequence[Violation],
         data: Any,
         log_level: int,
     ) -> None:
-        """Record Yamale errors (``path: message``) or extension violations."""
+        """Record violations of the schema, with list items named in their paths."""
         for err in errors:
-            # Generate a meaningful path representation
-            if isinstance(err, Violation):
-                named_path = self._get_named_path(data, err.path, dict(err.labels))
-                transformed_err = f"{named_path}: {err.message}"
-            else:
-                path = err.split(":")[0].strip()
-                transformed_err = err.replace(path, self._get_named_path(data, path))
+            named_path = self._get_named_path(data, err.path, dict(err.labels))
+            transformed_err = f"{named_path}: {err.message}"
             msg = f"Syntax error '{source}': {transformed_err}"
             logger.log(log_level, msg)
             self.errors.append(msg)
@@ -964,7 +1028,6 @@ class Validator:
         self.structured_syntax_errors.clear()
         self.file_count = 0
         self._forget_loaded_data()
-        extensions = used_extensions(self.schema) if self.schema is not None else []
 
         if self.data is not None:
             if self.schema is not None:
@@ -973,46 +1036,37 @@ class Validator:
                     if resolved_paths is not None and len(resolved_paths) > 0
                     else "<pre-loaded>"
                 )
-                self._validate_schema(
-                    self.data,
+                self._record_schema_errors(
                     source,
-                    strict,
-                    extensions,
-                    merged=True,
-                    log_level=logging.ERROR,
+                    self.check_model(self.data, strict=strict),
+                    self.data,
+                    logging.ERROR,
                 )
         else:
             if resolved_paths is None or len(resolved_paths) == 0:
                 return
-            for input_path in resolved_paths:
-                if input_path.is_file():
-                    self._validate_syntax_file(input_path, strict, extensions)
-                    if input_path.suffix in YAML_SUFFIXES:
-                        self.file_count += 1
-                else:
-                    for file_path in input_path.rglob("*"):
-                        if file_path.is_file():
-                            self._validate_syntax_file(file_path, strict, extensions)
-                            if file_path.suffix in YAML_SUFFIXES:
-                                self.file_count += 1
+            # The files the data is merged from, in merge order
+            for file_path, _explicit in find_yaml_files(resolved_paths):
+                self._validate_syntax_file(file_path, strict)
+                self.file_count += 1
             # Violations only visible after merging, checked once every file
-            # passed. A single file has nothing to merge, so only extensions
-            # not checked per file need it, e.g. references
-            document = [e for e in extensions if Scope.DOCUMENT in e.scopes]
-            if self.file_count == 1:
-                document = [e for e in document if Scope.FILE not in e.scopes]
-            if not self.errors and document and self.file_count > 0:
+            # passed; the merged data is only loaded if an extension needs it
+            if (
+                not self.errors
+                and self.schema is not None
+                and self.file_count > 0
+                and self._document_extensions(self.file_count)
+            ):
                 if self.file_count == 1 and self._file_data is not None:
                     # Merging a single file gives its data, already loaded
                     self._merged_data = (tuple(resolved_paths), self._file_data)
                 data = self._merged_data_from_paths(resolved_paths)
-                if data != {}:
-                    self._record_schema_errors(
-                        ", ".join(str(p) for p in resolved_paths),
-                        check_data(self.schema, data, document, Scope.DOCUMENT, strict),
-                        data,
-                        logging.DEBUG,
-                    )
+                self._record_schema_errors(
+                    ", ".join(str(p) for p in resolved_paths),
+                    self.check_merged(data, files=self.file_count, strict=strict),
+                    data,
+                    logging.DEBUG,
+                )
 
         if self.errors:
             if rich_output:
@@ -1094,16 +1148,11 @@ class Validator:
         # Store raw results for JSON output
         raw_results: dict[str, list[Any]] = {}
 
-        for rule in self.rules.values():
-            logger.info("Verifying rule id %s", rule.id)
-            sig = signature(rule.match)
-            if len(sig.parameters) == 1:
-                result = rule.match(data)
-            else:
-                result = rule.match(data, self.schema)
-
-            if self._result_has_violations(result):
-                raw_results[rule.id] = result
+        for rule_result in self.run_rules(data):
+            if rule_result.error is not None:
+                raise rule_result.error
+            if self._result_has_violations(rule_result.violations):
+                raw_results[rule_result.rule_id] = rule_result.violations
 
         self._apply_ignore_comments(input_paths, raw_results)
 
@@ -1161,6 +1210,39 @@ class Validator:
                 )
 
             raise SemanticValidationError(semantic_errors, structured_results)
+
+    def run_rules(self, data: Any) -> list[RuleResult]:
+        """Run every rule on the data, without printing or raising.
+
+        A rule raising an exception, e.g. on incomplete data, does not stop
+        the others: its result holds the exception. Ignore comments are not
+        applied, see :class:`nac_validate.ignores.IgnoreMatcher`.
+
+        Args:
+            data: Merged data model
+
+        Returns:
+            One result per rule, in the order of ``rules``
+        """
+        results: list[RuleResult] = []
+        for rule_id, rule in self.rules.items():
+            logger.info("Verifying rule id %s", rule_id)
+            result = RuleResult(rule_id, self.rule_severity(rule_id))
+            try:
+                if len(signature(rule.match).parameters) == 1:
+                    violations = rule.match(data)
+                else:
+                    violations = rule.match(data, self.schema)
+            except Exception as e:  # reported with the rule, see the docstring
+                result.error = e
+            else:
+                result.violations = (
+                    violations
+                    if isinstance(violations, list)
+                    else list(violations or [])
+                )
+            results.append(result)
+        return results
 
     def _apply_ignore_comments(
         self, input_paths: Sequence[Path | str], raw_results: dict[str, list[Any]]

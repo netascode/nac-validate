@@ -11,8 +11,8 @@ import pytest
 
 from nac_validate.ignores import (
     IgnoreMatcher,
+    Selector,
     UnusedIgnore,
-    _Select,
     data_files,
     parse_path,
     scan,
@@ -151,13 +151,13 @@ class TestParsePath:
         segments = parse_path("a[node=1, name='1']") or []
 
         select = segments[1]
-        assert isinstance(select, _Select)
+        assert isinstance(select, Selector)
         assert select.pairs == (("node", "1"), ("name", "1"))
 
     def test_values_containing_commas(self) -> None:
         segments = parse_path("tenants[name=Prod, Lab].vrfs[name=x, node=1]") or []
 
-        assert [s.pairs for s in segments if isinstance(s, _Select)] == [
+        assert [s.pairs for s in segments if isinstance(s, Selector)] == [
             (("name", "Prod, Lab"),),
             (("name", "x"), ("node", "1")),
         ]

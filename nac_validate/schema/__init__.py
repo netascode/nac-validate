@@ -24,21 +24,50 @@ from .description import Description
 from .ip_type import IpType
 from .ordered import Ordered
 from .primary_key import PrimaryKey
-from .reference import Reference, References, references
+from .reference import (
+    LevelChoice,
+    Reference,
+    ReferenceIndex,
+    References,
+    references,
+)
 from .unique import Unique
 from .values import key_label, split_fields, valid_fields
-from .walker import DataNode, KeyPath, known_keywords, walk_data, walk_schema
+from .walker import (
+    DataNode,
+    KeyPath,
+    ListLevel,
+    SchemaContext,
+    SchemaNode,
+    known_keywords,
+    resolves,
+    walk_data,
+    walk_schema,
+    walk_schema_contexts,
+)
 
 __all__ = [
     "EXTENSIONS",
+    "DataNode",
     "Extension",
+    "KeyPath",
+    "LevelChoice",
+    "ListLevel",
     "Reference",
+    "ReferenceIndex",
+    "SchemaContext",
+    "SchemaNode",
     "Scope",
     "Violation",
     "check_data",
     "check_schema",
     "references",
+    "resolves",
     "used_extensions",
+    "walk_data",
+    "walk_schema",
+    "walk_schema_contexts",
+    "yamale_violation",
 ]
 
 logger = logging.getLogger(__name__)
@@ -67,6 +96,80 @@ class Violation:
     def __str__(self) -> str:
         """Format the violation like a Yamale error (``path: message``)."""
         return f"{'.'.join(str(p) for p in self.path)}: {self.message}"
+
+
+# A key the data doesn't have
+_MISSING = object()
+
+
+def yamale_violation(error: str, data: Any) -> Violation:
+    """Turn a Yamale error (``a.b.0.c: message``) into a violation.
+
+    Yamale joins the path with dots and puts a colon after it, so the path is
+    found by following the data: a map key containing dots or colons is kept
+    whole, and the position of a list item becomes an integer. The rest of a
+    path not found in the data, e.g. a missing required key, is one key.
+    """
+    colons = [i for i, c in enumerate(error) if c == ":"]
+    if not colons:
+        return Violation((), error.strip())
+    candidates = [
+        (*_split_yamale_path(error[:colon].strip(), data), error[colon + 1 :].strip())
+        for colon in colons
+    ]
+    # The first colon after a path that is in the data, else after one that
+    # only misses its last key in a map (a required key), else the first one
+    for wanted in ("found", "missing_key"):
+        for path, state, message in candidates:
+            if state == wanted:
+                return Violation(path, message)
+    path, _state, message = candidates[0]
+    return Violation(path, message)
+
+
+def _split_yamale_path(text: str, data: Any) -> tuple[KeyPath, str]:
+    """The segments of a Yamale path, and whether it is in the data.
+
+    The state is ``found`` for a path in the data, ``missing_key`` for one
+    whose last key is not in the map it leads to, else ``unknown``.
+    """
+    if not text:
+        return (), "found"
+    tokens = text.split(".")
+    path: list[str | int] = []
+    value = data
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if isinstance(value, list) and token.isascii() and token.isdigit():
+            index = int(token)
+            path.append(index)
+            if index >= len(value):
+                return tuple(path), "unknown"
+            value = value[index]
+            i += 1
+            continue
+        if isinstance(value, dict):
+            # The longest key first, as keys may contain dots
+            for j in range(len(tokens), i, -1):
+                key = _key(value, ".".join(tokens[i:j]))
+                if key is not _MISSING:
+                    path.append(key)
+                    value = value[key]
+                    i = j
+                    break
+            else:
+                return (*path, ".".join(tokens[i:])), "missing_key"
+            continue
+        return (*path, ".".join(tokens[i:])), "unknown"
+    return tuple(path), "found"
+
+
+def _key(mapping: dict[Any, Any], text: str) -> Any:
+    """The key of a map Yamale prints as ``text``, e.g. ``1`` for an int key."""
+    if text in mapping:
+        return text
+    return next((k for k in mapping if str(k) == text), _MISSING)
 
 
 def check_schema(schema: Any, extensions: Collection[Extension] = EXTENSIONS) -> None:
