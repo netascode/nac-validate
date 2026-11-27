@@ -33,19 +33,36 @@ reported violations.
 
 import bisect
 import logging
-import os
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from nac_yaml.yaml import find_yaml_files
 from ruamel.yaml import YAML
 from ruamel.yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
 
-from .constants import YAML_SUFFIXES
 from .models import Violation, _is_violation_list
+
+__all__ = [
+    "MARKER",
+    "IgnoreComment",
+    "IgnoreKind",
+    "IgnoreMatcher",
+    "IgnoreProblem",
+    "PathSegment",
+    "Position",
+    "Selector",
+    "SuppressedViolation",
+    "UnusedIgnore",
+    "data_files",
+    "parse_path",
+    "read_comments",
+    "scan",
+    "scan_text",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +110,23 @@ class IgnoreComment:
 
 
 @dataclass(frozen=True)
+class IgnoreProblem:
+    """A ``nac-validate:`` comment that cannot be read, so it is ignored.
+
+    Attributes:
+        file: The data file.
+        line: Line number (1-based).
+        column: Column of the ``#`` (0-based).
+        message: What is wrong with the comment.
+    """
+
+    file: Path
+    line: int
+    column: int
+    message: str
+
+
+@dataclass(frozen=True)
 class SuppressedViolation:
     """A violation suppressed by an ignore comment.
 
@@ -131,20 +165,8 @@ class UnusedIgnore:
 
 
 def data_files(paths: Iterable[Path | str]) -> list[Path]:
-    """YAML files of the given files and directories, like the data loading."""
-    files: list[Path] = []
-    for path in map(Path, paths):
-        if path.is_file():
-            if path.suffix in YAML_SUFFIXES:
-                files.append(path)
-        else:
-            for directory, _dirs, names in os.walk(path):
-                files += [
-                    Path(directory, n)
-                    for n in sorted(names)
-                    if n.endswith(YAML_SUFFIXES)
-                ]
-    return files
+    """YAML files of the given files and directories, in merge order."""
+    return [file for file, _explicit in find_yaml_files(list(paths))]
 
 
 def _comment_start(line: str) -> re.Match[str] | None:
@@ -204,9 +226,16 @@ def _block_string_lines(lines: Sequence[str]) -> set[int]:
     return inside
 
 
-def scan_text(file: Path, text: str) -> list[IgnoreComment]:
-    """Read the ignore comments of a file's text, warning about malformed ones."""
+def read_comments(
+    file: Path, text: str
+) -> tuple[list[IgnoreComment], list[IgnoreProblem]]:
+    """Read the ignore comments of a file's text.
+
+    Returns:
+        The comments, and the ``nac-validate:`` comments that cannot be read
+    """
     comments: list[IgnoreComment] = []
+    problems: list[IgnoreProblem] = []
     lines = text.splitlines()
     # Only files with block strings need the pass over every line
     has_blocks = ("|" in text or ">" in text) and (
@@ -223,29 +252,31 @@ def scan_text(file: Path, text: str) -> list[IgnoreComment]:
         body = match.group("body").strip()
         directive = _DIRECTIVE.match(body)
         if directive is None:
-            logger.warning(
-                "%s:%d: unknown nac-validate comment %r, expected "
-                "'ignore[ID, ...]' or 'ignore-file[ID, ...]'",
-                file,
-                number,
-                body,
+            problems.append(
+                IgnoreProblem(
+                    file,
+                    number,
+                    match.start(),
+                    f"unknown nac-validate comment {body!r}, expected "
+                    "'ignore[ID, ...]' or 'ignore-file[ID, ...]'",
+                )
             )
             continue
         ids = [i.strip() for i in (directive.group("ids") or "").split(",")]
         ids = [i for i in ids if i]
+        kind_text = directive.group("kind")
         if not ids:
-            logger.warning(
-                "%s:%d: nac-validate %s comment without rule IDs is ignored, "
-                "name the rules, e.g. '%s[101]'",
-                file,
-                number,
-                directive.group("kind"),
-                directive.group("kind"),
+            problems.append(
+                IgnoreProblem(
+                    file,
+                    number,
+                    match.start(),
+                    f"nac-validate {kind_text} comment without rule IDs is "
+                    f"ignored, name the rules, e.g. '{kind_text}[101]'",
+                )
             )
             continue
-        kind: IgnoreKind = (
-            "ignore-file" if directive.group("kind") == "ignore-file" else "ignore"
-        )
+        kind: IgnoreKind = "ignore-file" if kind_text == "ignore-file" else "ignore"
         comments.append(
             IgnoreComment(
                 file=file,
@@ -257,6 +288,14 @@ def scan_text(file: Path, text: str) -> list[IgnoreComment]:
                 own_line=not line[: match.start()].strip(),
             )
         )
+    return comments, problems
+
+
+def scan_text(file: Path, text: str) -> list[IgnoreComment]:
+    """Read the ignore comments of a file's text, warning about malformed ones."""
+    comments, problems = read_comments(file, text)
+    for problem in problems:
+        logger.warning("%s:%d: %s", problem.file, problem.line, problem.message)
     return comments
 
 
@@ -298,14 +337,14 @@ def scan(paths: Iterable[Path | str]) -> list[IgnoreComment]:
 
 
 @dataclass(frozen=True)
-class _Select:
+class Selector:
     """``[name=a, node=1]``: a list item with these field values."""
 
     pairs: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)
-class _Index:
+class Position:
     """``[3]``: a list item by position (cannot be matched to a comment)."""
 
     index: int
@@ -313,15 +352,20 @@ class _Index:
 
 @dataclass(frozen=True)
 class _Item:
-    """A list item of a data file, with its scalar fields as written."""
+    """A list item of a data file, with its scalar fields.
 
-    fields: dict[str, str] = field(hash=False)
+    A field matches its value as written (``true``) and as the loaded value
+    prints (``True``), as rules build the selectors of their paths from the
+    loaded data.
+    """
 
-    def satisfies(self, select: _Select) -> bool:
-        return all(self.fields.get(k) == v for k, v in select.pairs)
+    fields: dict[str, frozenset[str]] = field(hash=False)
+
+    def satisfies(self, select: Selector) -> bool:
+        return all(v in self.fields.get(k, ()) for k, v in select.pairs)
 
 
-PathSegment = str | _Select | _Index
+PathSegment = str | Selector | Position
 _TOKEN = re.compile(r"\.?(?:\[(?P<select>[^\]]*)\]|(?P<key>[^.\[\]]+))")
 _FIELD_SEPARATOR = re.compile(r",\s*(?=[^=,\s]+\s*=)")
 
@@ -351,7 +395,7 @@ def parse_path(path: str) -> list[PathSegment] | None:
             continue
         content = match.group("select").strip()
         if re.fullmatch(r"-?\d+", content):
-            segments.append(_Index(int(content)))
+            segments.append(Position(int(content)))
             continue
         pairs: list[tuple[str, str]] = []
         # Fields are joined by commas, but a value may contain one too
@@ -360,16 +404,28 @@ def parse_path(path: str) -> list[PathSegment] | None:
             if not sep or not name.strip():
                 return None
             pairs.append((name.strip(), _unquote(value.strip())))
-        segments.append(_Select(tuple(pairs)))
+        segments.append(Selector(tuple(pairs)))
     return segments
 
 
-def _item(node: Node) -> _Item:
+def _forms(node: ScalarNode, constructor: Any) -> frozenset[str]:
+    """A scalar as written, and as its loaded value prints."""
+    construct = constructor.yaml_constructors.get(node.tag)
+    if construct is None:
+        return frozenset((node.value,))
+    try:
+        value = construct(constructor, node)
+    except Exception:  # e.g. an invalid timestamp, matched as written
+        return frozenset((node.value,))
+    return frozenset((node.value, str(value)))
+
+
+def _item(node: Node, constructor: Any) -> _Item:
     if not isinstance(node, MappingNode):
         return _Item({})
     return _Item(
         {
-            k.value: v.value
+            k.value: _forms(v, constructor)
             for k, v in node.value
             if isinstance(k, ScalarNode) and isinstance(v, ScalarNode)
         }
@@ -382,8 +438,10 @@ Target = tuple[str | _Item, ...]
 class _FileIndex:
     """Entries of one data file by the line they start on, from its node tree."""
 
-    def __init__(self, root: Node | None) -> None:
+    def __init__(self, root: Node | None, constructor: Any) -> None:
         self.root = root
+        # Constructs the values of scalars, see _Item
+        self._constructor = constructor
         # Line (0-based) -> path of the outermost entry starting on it
         self._starts: dict[int, Target] = {}
         # Scalars spanning several lines, and the others by line
@@ -424,7 +482,7 @@ class _FileIndex:
                 self._walk(value, child, active)
         elif isinstance(node, SequenceNode):
             for value in node.value:
-                item = self._items[id(value)] = _item(value)
+                item = self._items[id(value)] = _item(value, self._constructor)
                 child = (*path, item)
                 self._record(value.start_mark.line, child)
                 self._walk(value, child, active)
@@ -456,7 +514,7 @@ class _FileIndex:
         about an attribute that is not set.
         """
         last = max(
-            (i for i, s in enumerate(segments) if isinstance(s, _Select)), default=-1
+            (i for i, s in enumerate(segments) if isinstance(s, Selector)), default=-1
         )
         needed = segments[: last + 1] if last >= 0 else segments
         node = self.root
@@ -470,7 +528,7 @@ class _FileIndex:
                     ),
                     None,
                 )
-            elif isinstance(segment, _Select) and isinstance(node, SequenceNode):
+            elif isinstance(segment, Selector) and isinstance(node, SequenceNode):
                 node = self._find(node, segment)
             else:
                 return False
@@ -478,14 +536,15 @@ class _FileIndex:
                 return False
         return bool(needed)
 
-    def _find(self, sequence: SequenceNode, select: _Select) -> Node | None:
+    def _find(self, sequence: SequenceNode, select: Selector) -> Node | None:
         """The first item of a list with the selected field values."""
         lookup = self._lookup.get(id(sequence))
         if lookup is None:
             lookup = self._lookup[id(sequence)] = {}
             for value in sequence.value:
-                for pair in self._items[id(value)].fields.items():
-                    lookup.setdefault(pair, []).append(value)
+                for name, forms in self._items[id(value)].fields.items():
+                    for form in forms:
+                        lookup.setdefault((name, form), []).append(value)
         candidates = lookup.get(select.pairs[0], ()) if select.pairs else ()
         return next(
             (v for v in candidates if self._items[id(v)].satisfies(select)), None
@@ -500,9 +559,17 @@ def _leads_to(target: Target, segments: Sequence[PathSegment]) -> bool:
         if isinstance(expected, str):
             if segment != expected:
                 return False
-        elif not (isinstance(segment, _Select) and expected.satisfies(segment)):
+        elif not (isinstance(segment, Selector) and expected.satisfies(segment)):
             return False
     return True
+
+
+def _resolved(path: Path | str) -> Path:
+    """The absolute path of a file, with symlinks resolved, to compare paths."""
+    try:
+        return Path(path).resolve()
+    except OSError:
+        return Path(path).absolute()
 
 
 class IgnoreMatcher:
@@ -512,8 +579,21 @@ class IgnoreMatcher:
     for rules that reported violations are read again.
     """
 
-    def __init__(self, comments: Sequence[IgnoreComment]) -> None:
+    def __init__(
+        self,
+        comments: Sequence[IgnoreComment],
+        texts: Mapping[Path, str] | None = None,
+    ) -> None:
+        """Create a matcher for the comments of data files.
+
+        Args:
+            comments: Comments, e.g. from :func:`scan` or :func:`read_comments`
+            texts: Text of files by path, e.g. unsaved editor buffers; other
+                files are read from disk. Paths are compared resolved, so a
+                relative and an absolute path of a file match
+        """
         self._comments = list(comments)
+        self._texts = {_resolved(p): t for p, t in (texts or {}).items()}
         self._by_rule: dict[str, list[IgnoreComment]] = {}
         for comment in self._comments:
             for rule_id in comment.rule_ids:
@@ -535,11 +615,14 @@ class IgnoreMatcher:
         index = self._indexes.get(file)
         if index is None:
             try:
-                root = self._yaml.compose(file.read_text(encoding="utf-8"))
+                text = self._texts.get(_resolved(file)) if self._texts else None
+                if text is None:
+                    text = file.read_text(encoding="utf-8")
+                root = self._yaml.compose(text)
             except Exception as e:  # a bad file must not fail validation
                 logger.warning("Cannot read ignore comments of %s: %s", file, e)
                 root = None
-            index = self._indexes[file] = _FileIndex(root)
+            index = self._indexes[file] = _FileIndex(root, self._yaml.constructor)
         return index
 
     def _target(self, comment: IgnoreComment) -> Target | None:

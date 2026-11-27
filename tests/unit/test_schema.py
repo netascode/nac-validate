@@ -27,7 +27,14 @@ from nac_validate.schema.ip_type import IpType
 from nac_validate.schema.primary_key import PrimaryKey
 from nac_validate.schema.reference import References
 from nac_validate.schema.unique import Unique
-from nac_validate.schema.walker import DataNode, walk_data, walk_schema
+from nac_validate.schema.walker import (
+    DataNode,
+    KeyInfo,
+    PathInfo,
+    schema_at,
+    walk_data,
+    walk_schema,
+)
 from nac_validate.validator import Validator
 
 SCHEMA = """
@@ -461,6 +468,288 @@ class TestWalkSchema:
             ("item.b.c", "str"),
             ("item.b.c", "int"),
         ]
+
+
+SCHEMA_AT = r"""
+nxos: include('nxos', required=False)
+---
+nxos:
+  devices: list(include('device'), primary_key='name', required=False)
+device:
+  name: str(description='Name of the device')
+  mtu: any(int(min=576, max=9216), regex('^.*[\\$\\%]\\{.*$'), required=False)
+  mode: enum('access', 'trunk', required=False)
+  managed: bool(required=False)
+  address: ip(version=4, type='address', required=False)
+  vrf: str(ref='vrf', required=False)
+  variables: map(required=False)
+  tags: subset(str(), int(), required=False)
+  parent: include('device', required=False)
+"""
+
+
+def info_at(path: tuple[str | int, ...], schema: str = SCHEMA_AT) -> PathInfo | None:
+    return schema_at(yamale.make_schema(content=schema), path)
+
+
+class TestSchemaAt:
+    """Tests for schema_at()."""
+
+    def test_root_keys(self) -> None:
+        info = info_at(())
+        assert info is not None
+        assert info.kinds == ("map",)
+        assert info.required is False
+        assert [k.key for k in info.keys] == ["nxos"]
+
+    def test_keys_of_a_list_item(self) -> None:
+        info = info_at(("nxos", "devices", 3))
+        assert info is not None
+        assert info.kinds == ("map",)
+        assert info.summary == "map (device)"
+        assert [k.key for k in info.keys] == [
+            "name",
+            "mtu",
+            "mode",
+            "managed",
+            "address",
+            "vrf",
+            "variables",
+            "tags",
+            "parent",
+        ]
+        assert info.keys[0] == KeyInfo(
+            key="name",
+            required=True,
+            summary="string",
+            kinds=("scalar",),
+            description="Name of the device",
+            templatable=False,
+            primary_key=None,
+        )
+
+    def test_keys_name_the_primary_key_of_lists(self) -> None:
+        info = info_at(("nxos",))
+        assert info is not None
+        devices = info.keys[0]
+        assert devices.primary_key == "name"
+        assert devices.kinds == ("list",)
+        assert devices.summary == "list of map (device)"
+
+    def test_list(self) -> None:
+        info = info_at(("nxos", "devices"))
+        assert info is not None
+        assert info.kinds == ("list",)
+        assert info.primary_key == "name"
+        assert info.item_summary == "map (device)"
+        assert info.required is False
+
+    def test_item_summary_is_none_for_values_that_are_no_lists(self) -> None:
+        info = info_at(("nxos",))
+        assert info is not None
+        assert info.item_summary is None
+
+    def test_template_variable_alternative(self) -> None:
+        info = info_at(("nxos", "devices", 0, "mtu"))
+        assert info is not None
+        assert info.templatable is True
+        assert info.summary == "integer (min 576, max 9216)"
+        assert info.kinds == ("scalar",)
+        assert info.keys == ()
+
+    def test_values_of_enum_and_bool(self) -> None:
+        mode = info_at(("nxos", "devices", 0, "mode"))
+        managed = info_at(("nxos", "devices", 0, "managed"))
+        assert mode is not None and managed is not None
+        assert mode.values == ("access", "trunk")
+        assert mode.summary == "one of access, trunk"
+        assert managed.values == (True, False)
+
+    def test_constraints_include_extensions_restricting_the_value(self) -> None:
+        info = info_at(("nxos", "devices", 0, "address"))
+        assert info is not None
+        assert dict(info.constraints) == {"version": 4, "type": "address"}
+
+    def test_constraints_leave_out_documentation_and_references(self) -> None:
+        name = info_at(("nxos", "devices", 0, "name"))
+        vrf = info_at(("nxos", "devices", 0, "vrf"))
+        assert name is not None and vrf is not None
+        assert name.description == "Name of the device"
+        assert name.constraints == ()
+        assert vrf.constraints == ()
+        assert vrf.ref == "vrf"
+
+    def test_map_with_any_key(self) -> None:
+        info = info_at(("nxos", "devices", 0, "variables"))
+        assert info is not None
+        assert info.any_key is True
+        below = info_at(("nxos", "devices", 0, "variables", "x"))
+        assert below is not None
+        assert below.summary == "any value"
+        # A map() value can be null
+        assert below.required is False
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ("variables", "x"),
+            ("variables", "x", "y", 0),
+            ("items", 0),
+            ("items", 0, "z"),
+            ("other",),
+        ],
+    )
+    def test_any_value_can_be_of_every_kind(self, path: tuple[str | int, ...]) -> None:
+        schema = "variables: map()\nitems: list()\nother: any()"
+        info = info_at(path, schema)
+        assert info is not None
+        assert info.kinds == ("map", "list", "scalar")
+        assert info.any_key is True
+        assert info.item_summary == "any value"
+
+    def test_list_without_validators_takes_any_items(self) -> None:
+        info = info_at(("items",), "items: list()")
+        assert info is not None
+        assert info.summary == "list"
+        assert info.item_summary == "any value"
+
+    def test_subset_is_one_alternative_or_a_list_of_them(self) -> None:
+        info = info_at(("nxos", "devices", 0, "tags"))
+        assert info is not None
+        assert info.summary == "string or integer"
+        assert info.kinds == ("scalar", "list")
+        assert info.item_summary == "string or integer"
+        item = info_at(("nxos", "devices", 0, "tags", 3))
+        assert item is not None
+        assert item.kinds == ("scalar",)
+        assert item.summary == "string or integer"
+
+    def test_recursive_include(self) -> None:
+        info = info_at(("nxos", "devices", 0, "parent", "parent", "name"))
+        assert info is not None
+        assert info.required is True
+
+    def test_undefined_include_is_left_out(self) -> None:
+        schema = "a: any(include('missing'), include('x'))\n---\nx:\n  k: str()"
+        info = info_at(("a",), schema)
+        assert info is not None
+        assert [k.key for k in info.keys] == ["k"]
+        assert info_at(("a", "nope"), schema) is None
+        assert info_at(("b", "c"), "b: include('missing')") is None
+
+    def test_any_combines_the_keys_of_its_maps(self) -> None:
+        schema = (
+            "a: any(include('x'), include('y'), list(int()))\n---\n"
+            "x:\n  k: str()\n  l: int()\n"
+            "y:\n  k: int(required=False, description='K')\n  m: str()"
+        )
+        info = info_at(("a",), schema)
+        assert info is not None
+        assert info.kinds == ("map", "list")
+        assert info.item_summary == "integer"
+        # A key of several maps combines them, like the lookup of its value
+        assert info.keys[0] == KeyInfo(
+            key="k",
+            required=True,
+            summary="string or integer",
+            kinds=("scalar",),
+            description="K",
+            templatable=False,
+            primary_key=None,
+        )
+        assert [k.key for k in info.keys] == ["k", "l", "m"]
+        k = info_at(("a", "k"), schema)
+        assert k is not None
+        assert (k.required, k.summary, k.kinds, k.description) == (
+            True,
+            "string or integer",
+            ("scalar",),
+            "K",
+        )
+        assert k.item_summary is None
+
+    def test_constraints_of_alternatives(self) -> None:
+        info = info_at(("nxos", "devices", 0, "mtu"))
+        assert info is not None
+        assert dict(info.constraints) == {"min": 576, "max": 9216}
+        schema = "a: any(ip(type='network'), int(max=3, min=1), required=False)"
+        info = info_at(("a",), schema)
+        assert info is not None
+        assert dict(info.constraints) == {"type": "network", "max": 3, "min": 1}
+
+    def test_constraints_of_the_value_come_first(self) -> None:
+        schema = "a: list(int(min=5), min=1)"
+        info = info_at(("a",), schema)
+        item = info_at(("a", 0), schema)
+        assert info is not None and item is not None
+        assert info.constraints == (("min", 1),)
+        assert item.constraints == (("min", 5),)
+
+    def test_static_list(self) -> None:
+        schema = "a:\n  - str()\n  - int()"
+        root = info_at((), schema)
+        info = info_at(("a",), schema)
+        assert root is not None and info is not None
+        assert root.keys == (
+            KeyInfo(
+                "a", True, "list of string or integer", ("list",), None, False, None
+            ),
+        )
+        assert info.kinds == ("list",)
+        assert info.required is True
+        assert info.item_summary == "string or integer"
+        # The items of a static list are validated by position
+        first = info_at(("a", 0), schema)
+        second = info_at(("a", 1), schema)
+        assert first is not None and second is not None
+        assert (first.summary, second.summary) == ("string", "integer")
+        assert info_at(("a", 2), schema) is None
+        assert info_at(("a", -1), schema) is None
+
+    @pytest.mark.parametrize("segment", [1, "1"])
+    def test_number_keys_of_static_maps(self, segment: str | int) -> None:
+        schema = "vlans:\n  1: str()\n  two: int()"
+        info = info_at(("vlans", segment), schema)
+        assert info is not None
+        assert info.summary == "string"
+        root = info_at(("vlans",), schema)
+        assert root is not None
+        assert [k.key for k in root.keys] == ["1", "two"]
+
+    def test_bool_segment_is_no_list_position_or_number_key(self) -> None:
+        assert info_at(("vlans", True), "vlans:\n  1: str()") is None
+        assert info_at(("a", True), "a: list(str())") is None
+
+    def test_nested_static_map_is_required(self) -> None:
+        schema = "a:\n  b: str(required=False)"
+        root = info_at((), schema)
+        info = info_at(("a",), schema)
+        assert root is not None and info is not None
+        assert root.keys == (KeyInfo("a", True, "map", ("map",), None, False, None),)
+        assert info.required is True
+        assert info.kinds == ("map",)
+        assert [k.key for k in info.keys] == ["b"]
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ("nope",),
+            ("nxos", "nope"),
+            ("nxos", 0),
+            ("nxos", "devices", "name"),
+            ("nxos", "devices", 0, "name", "x"),
+        ],
+    )
+    def test_path_the_schema_has_no_place_for(
+        self, path: tuple[str | int, ...]
+    ) -> None:
+        assert info_at(path) is None
+
+    def test_results_are_frozen(self) -> None:
+        info = info_at(("nxos",))
+        assert info is not None
+        with pytest.raises(AttributeError):
+            info.summary = "x"  # ty: ignore[invalid-assignment]
 
 
 class TestCheckSchema:

@@ -55,6 +55,25 @@ class Violation:
     details: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class RuleResult:
+    """The result of running one rule on the data.
+
+    Attributes:
+        rule_id: ID of the rule.
+        severity: Effective severity of the rule (HIGH, MEDIUM or LOW).
+        violations: What the rule's ``match()`` returned: ``Violation``
+            objects, or strings for rules returning plain messages.
+        error: The exception the rule raised, e.g. on incomplete data; its
+            violations are then empty.
+    """
+
+    rule_id: str
+    severity: str
+    violations: list[Any] = field(default_factory=list)
+    error: Exception | None = None
+
+
 def _is_violation_list(result: list[Any]) -> bool:
     """Check if a list contains Violation objects (vs legacy strings)."""
     return len(result) > 0 and all(isinstance(item, Violation) for item in result)
